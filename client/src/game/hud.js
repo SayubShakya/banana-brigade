@@ -72,6 +72,7 @@ export function createHud() {
   });
   on('survival:wave', ({ wave, count }) => toast(`Wave ${wave}: ${count} enemies incoming`));
   on('survival:cleared', ({ wave }) => toast(`Wave ${wave} cleared!`));
+  on('campaign:ramp', () => toast('The bots are getting sharper!'));
   on('soldier:respawned', ({ soldier }) => { if (soldier.isPlayer) toast('Back in the fight'); });
   on('input:zoom', ({ level }) => { el.zoom.textContent = ['1x', '2x', '3x'][level]; });
   on('input:scoreboard', ({ show }) => { if (world) el.board.hidden = !show; });
@@ -127,6 +128,11 @@ export function createHud() {
           el.rank.textContent = left ? `${left} enemies left` : 'Next wave incoming…';
           break;
         }
+        case 'campaign':
+          el.timer.textContent = fmtTime(world.timeLeft);
+          el.score.textContent = `Target ${p.kills} / ${world.cfg.killLimit}`;
+          el.rank.textContent = `Lives ${'♥'.repeat(Math.max(0, p.lives))}${'♡'.repeat(Math.max(0, world.cfg.lives - Math.max(0, p.lives)))} · ${world.cfg.name}`;
+          break;
         case 'team':
           el.timer.textContent = fmtTime(world.timeLeft);
           el.rank.textContent = `Blue ${world.teamKills.blue} – ${world.teamKills.red} Red · first to ${world.cfg.killLimit}`;
@@ -141,7 +147,8 @@ export function createHud() {
       // Death message with the Banana respawn offer.
       if (!p.alive && !world.over) {
         const by = p.lastAttacker && p.lastAttacker !== p ? `Killed by ${esc(p.lastAttacker.name)}` : 'You went down';
-        el.msg.innerHTML = world.mode === 'survival'
+        el.msg.innerHTML = world.mode === 'campaign' && p.lives <= 0 ? `${by}: <b>out of lives</b>`
+          : world.mode === 'survival'
           ? `${by} — <b>solve a Banana puzzle to revive</b> (B)`
           : `${by} — respawning in ${Math.ceil(p.respawnTimer)} · <b>Banana respawn now</b> (B)`;
         el.msg.hidden = false;

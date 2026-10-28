@@ -36,7 +36,10 @@ export default function PuzzleModal() {
   })), []);
 
   // options.seconds (from the chosen difficulty) overrides the default time.
-  const rules = req ? { ...PUZZLE_RULES[req.purpose], seconds: req.options.seconds ?? PUZZLE_RULES[req.purpose].seconds } : null;
+  const rules = req ? {
+    ...PUZZLE_RULES[req.purpose], seconds: req.options.seconds ?? PUZZLE_RULES[req.purpose].seconds,
+    ...(req.options.retry ? { rule: 'New puzzle after a miss' } : {}),
+  } : null;
   const secondsFor = (r) => r.options.seconds ?? PUZZLE_RULES[r.purpose].seconds;
 
   const finish = useCallback((result) => {
@@ -104,7 +107,7 @@ export default function PuzzleModal() {
         return;
       }
       const why = timedOut ? 'Time is up' : 'Not quite';
-      if (PUZZLE_RULES[r.purpose].retry) {
+      if (r.options.retry ?? PUZZLE_RULES[r.purpose].retry) {
         setStatus({ text: `${why}: it was ${result.solution}. Here comes another one.`, kind: 'bad' });
         setTimeout(() => { if (live.current === r) load(r); }, 1500);
       } else {

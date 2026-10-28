@@ -9,7 +9,8 @@ import { Icon, AvatarCanvas, RankCard, Sky } from './common.jsx';
 
 // Three clear choices, like the original's Quick Play / Online / Local menu.
 const MAIN = [
-  { action: 'quick', icon: 'cross', name: 'Quick Play', text: 'Free-for-all vs 5 bots · first to 20 kills', tag: 'Deploy', primary: true },
+  { action: 'campaign', icon: 'map', name: 'Campaign', text: '9 missions · earn stars · unlock chapters', tag: 'Missions', primary: true },
+  { action: 'quick', icon: 'cross', name: 'Quick Play', text: 'Free-for-all vs 5 bots · first to 20 kills', tag: 'Deploy' },
   { action: 'online', icon: 'globe', name: 'Play Online', text: 'Real players · share a room code', tag: 'Rooms' },
   { action: 'modes', icon: 'shield', name: 'More Modes', text: 'Survival · Team Battle · Training', tag: 'Choose' },
 ];
@@ -43,7 +44,7 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
 
       <nav className="menu-right" aria-label="Play">
         {MAIN.map((m) => (
-          <button key={m.action} className={`mode-card big${m.primary ? ' primary' : ''}`} onClick={() => (m.action === 'modes' ? onOpen('modes') : onDeploy(m.action))}>
+          <button key={m.action} className={`mode-card big${m.primary ? ' primary' : ''}`} onClick={() => (m.action === 'modes' || m.action === 'campaign' ? onOpen(m.action) : onDeploy(m.action))}>
             <Icon id={m.icon} className="mode-ico" />
             <span className="mode-text"><b>{m.name}</b><small>{m.text}</small></span>
             <span className="mode-tag">{m.tag}</span>

@@ -29,6 +29,8 @@ import Lobby from './screens/Lobby.jsx';
 import Modes from './screens/Modes.jsx';
 import Daily from './screens/Daily.jsx';
 import Difficulty from './screens/Difficulty.jsx';
+import Campaign from './screens/Campaign.jsx';
+import { chapterOf, missionById } from './game/campaign.js';
 import { DIFFICULTY } from './game/config.js';
 import Toasts from './screens/Toasts.jsx';
 
@@ -101,6 +103,20 @@ export default function App() {
     if (result === 'solved') startBattle(mode);
   }, [startBattle]);
 
+  // A campaign mission: the chapter decides the difficulty; the deploy puzzle comes first.
+  const playMission = useCallback(async (mission) => {
+    const difficulty = chapterOf(mission).difficulty;
+    game().quit();
+    setOver(null);
+    game().prepare('campaign', difficulty, mission);
+    setScreen('campaign');
+    const result = await askPuzzle('deploy', {
+      modeLabel: `Mission ${mission.id} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
+      title: mission.name, subtitle: `${mission.target} kills in ${Math.floor(mission.timeLimit / 60)} minutes. Solve the Banana puzzle to deploy.`,
+    });
+    if (result === 'solved') startBattle('campaign');
+  }, [startBattle]);
+
   const toMenu = () => {
     game().quit();
     if (netGame) { net().leave(); getSocket().emit('room:leave'); }
@@ -119,9 +135,14 @@ export default function App() {
     const [name, arg] = hash.split('-');
     if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick', settings.difficulty); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'difficulty') deploy('quick');
+    else if (name === 'mission' && missionById(Number(arg))) {
+      const m = missionById(Number(arg));
+      game().prepare('campaign', chapterOf(m).difficulty, m);
+      startBattle('campaign');
+    }
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
-    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily'].includes(name)) setScreen(name);
+    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign'].includes(name)) setScreen(name);
   }
 
   const back = () => setScreen('menu');
@@ -135,12 +156,13 @@ export default function App() {
       {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
+      {screen === 'campaign' && <Campaign onPlay={playMission} onBack={back} />}
       {screen === 'difficulty' && <Difficulty mode={pendingMode} current={settings.difficulty} onPick={(d) => deployWith(pendingMode, d)} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={toMenu} />}
       {screen === 'pause' && <Pause sound={settings.sound} online={online} onResume={() => (online ? net().resume() : game().resume())}
         onToggleSound={() => toggle('sound')} onEnd={() => game().endNow()} onQuit={toMenu} />}
-      {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu}
+      {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu} onMission={playMission} onMap={() => { game().quit(); setOver(null); setScreen('campaign'); }}
         onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deployWith(m, settings.difficulty); }} />}
       <PuzzleModal />
       <Toasts />

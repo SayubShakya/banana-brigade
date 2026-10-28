@@ -60,7 +60,7 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
               {data && !data.recent.length && <tr className="empty-row"><td colSpan={6}>No battles yet. Deploy to start your record.</td></tr>}
               {data?.recent.slice(0, 4).map((r) => (
                 <tr key={r.id}>
-                  <td>{MODE_NAMES[r.mode]}{r.mode !== 'online' && <small className={`level-tag ${r.difficulty}`}>{r.difficulty}</small>}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.puzzles_solved} / {r.puzzles_attempted}</td>
+                  <td>{MODE_NAMES[r.mode] ?? r.mode}{r.mode !== 'online' && <small className={`level-tag ${r.difficulty}`}>{r.difficulty}</small>}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.puzzles_solved} / {r.puzzles_attempted}</td>
                   <td>{r.mode === 'survival' ? `Wave ${r.wave}` : r.won ? <span className="win">Won</span> : 'Lost'}</td><td>{when(r.created_at)}</td>
                 </tr>
               ))}

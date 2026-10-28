@@ -15,7 +15,7 @@
 import { on, emit } from '../eventBus.js';
 import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
-import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow } from './world.js';
+import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission } from './world.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
 import { setListener, setMuted, unlockAudio } from './sound.js';
@@ -29,7 +29,12 @@ const newStats = () => ({
 });
 
 // Title and one line for the results screen; `won` is saved with the score.
-export function outcome({ ranking, player, reason, mode, wave, teamKills }) {
+export function outcome({ ranking, player, reason, mode, wave, teamKills, mission }) {
+  if (mode === 'campaign') {
+    const won = reason === 'target';
+    const why = reason === 'time' ? 'Time ran out.' : reason === 'out' ? 'Out of lives.' : reason === 'quit' ? 'You left the mission.' : `${mission.target} kills reached.`;
+    return { won, title: won ? 'Mission complete!' : 'Mission failed', line: `${mission.name}: ${player.kills} / ${mission.target} kills. ${why}` };
+  }
   if (mode === 'survival') return { won: false, title: `Wave ${wave}`, line: `You held out until wave ${wave} with ${player.kills} kills.` };
   if (mode === 'training') return { won: false, title: 'Training over', line: `${player.kills} dummies down. Training is not ranked.` };
   const why = reason === 'time' ? 'Time is up.' : reason === 'quit' ? 'You ended the battle.' : 'Kill limit reached.';
@@ -50,6 +55,7 @@ export function createGameSession() {
   let mode = 'quick';
   let level = DIFFICULTY.medium;
   let levelKey = 'medium';
+  let mission = null;
 
   const setState = (next) => { state = next; emit('game:state', { state }); };
 
@@ -74,6 +80,7 @@ export function createGameSession() {
 
   async function bananaRespawn() {
     if (!world || world.player.alive || world.over) return;
+    if (world.mode === 'campaign' && world.player.lives <= 0) return;   // the continue puzzle handles this
     const survival = world.mode === 'survival';
     const result = await inGamePuzzle('respawn', {
       title: survival ? 'Banana revive' : 'Banana respawn',
@@ -87,6 +94,18 @@ export function createGameSession() {
   on('input:banana', bananaRespawn);
   document.getElementById('center-msg').addEventListener('click', bananaRespawn);
   on('player:down', () => setTimeout(bananaRespawn, 1200));
+
+  // Campaign: out of lives. Solve a Banana puzzle (new puzzle after a miss) to continue, or give up.
+  on('player:out', () => setTimeout(async () => {
+    if (!world || world.over) return;
+    const result = await inGamePuzzle('respawn', {
+      title: 'Out of lives!', subtitle: 'Solve a Banana puzzle to continue with one more life. Continuing costs the 2nd and 3rd stars.',
+      cancelText: 'Give up', retry: true,
+    });
+    if (!world || world.over || result === null) return;
+    if (result === 'solved') continueMission(world);
+    else endMatchNow(world, 'out');
+  }, 900));
 
   on('banana:crate', async ({ pickup }) => {
     if (!pickup.active) return;
@@ -112,7 +131,7 @@ export function createGameSession() {
     input.setEnabled(false);
     hud.hide();
     const s = stats ?? newStats();
-    emit('game:over', { result, outcome: outcome(result), session: s, difficulty: levelKey, durationS: Math.round((performance.now() - s.started) / 1000) });
+    emit('game:over', { result, outcome: outcome(result), session: s, difficulty: levelKey, mission, durationS: Math.round((performance.now() - s.started) / 1000) });
   }, 1500));
 
   const session = {
@@ -120,8 +139,9 @@ export function createGameSession() {
     get mode() { return mode; },
 
     // Call before the deploy puzzle, so it counts in this deployment's stats.
-    prepare(nextMode, difficulty = 'medium') {
+    prepare(nextMode, difficulty = 'medium', nextMission = null) {
       mode = nextMode;
+      mission = nextMission;
       levelKey = DIFFICULTY[difficulty] ? difficulty : 'medium';
       level = DIFFICULTY[levelKey];
       stats = newStats();
@@ -133,7 +153,7 @@ export function createGameSession() {
       stats ??= newStats();
       stats.started = performance.now();
       world = createWorld({
-        mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey,
+        mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey, mission,
       });
       hud.attach(world);
       input.setEnabled(true);

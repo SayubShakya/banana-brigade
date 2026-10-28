@@ -11,6 +11,7 @@
 import { emit as busEmit } from '../eventBus.js';
 import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY } from './config.js';
 import { createMap, moveBox, raycast, isSolid } from './map.js';
+import { RAMP } from './campaign.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -64,8 +65,11 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
 // mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
 // Online worlds take `humans` ([{ id, name, avatar, team }]) instead of one player,
 // `teamMode` for Blue vs Red, and are topped up with bots to cfg.size soldiers.
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium' }) {
-  const cfg = MODES[mode];
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null }) {
+  // A campaign mission brings its own bot count, kill target, time limit and lives.
+  const cfg = mode === 'campaign'
+    ? { name: mission.name, bots: mission.bots, killLimit: mission.target, timeLimit: mission.timeLimit, respawn: 5, lives: mission.lives }
+    : MODES[mode];
   const map = createMap();
   const online = mode === 'online';
   const player = online ? null : createSoldier('p0', playerName, playerAvatar, true, mode === 'team' ? 'blue' : 'p0');
@@ -73,6 +77,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
   const world = {
     emit, map, soldiers, mode, cfg, player, teamMode: mode === 'team' || (online && teamMode),
     difficulty: DIFFICULTY[difficulty] ?? DIFFICULTY.medium,
+    mission, rampBonus: 0, nextRamp: RAMP.every, continues: 0,
     training: mode === 'training',
     looks: { avatars: botAvatars, names: botNames, next: 0 },
     bullets: [], rockets: [], flames: [], grenades: [], particles: [],
@@ -84,7 +89,8 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
     over: false,
   };
 
-  if (mode === 'quick') for (let i = 0; i < cfg.bots; i++) addBot(world);
+  if (mode === 'quick' || mode === 'campaign') for (let i = 0; i < cfg.bots; i++) addBot(world);
+  if (mode === 'campaign') player.lives = cfg.lives;
   if (online) {
     for (let i = soldiers.length; i < cfg.size; i++) {
       const blue = soldiers.filter((s) => s.team === 'blue').length;
@@ -167,6 +173,10 @@ export function damage(world, victim, amount, attacker, weaponName) {
   victim.deaths += 1;
   victim.streak = 0;
   victim.respawnTimer = victim.isDummy ? world.cfg.respawn : world.cfg.respawn ?? SOLDIER.respawnDelay;
+  if (world.mode === 'campaign' && victim.isPlayer) {
+    victim.lives -= 1;
+    if (victim.lives <= 0) { victim.respawnTimer = Infinity; world.emit('player:out', { continues: world.continues }); }
+  }
   if (world.mode === 'survival') {
     if (victim.isPlayer) victim.respawnTimer = Infinity;   // only a Banana puzzle can revive you
     else victim.gone = true;                                // enemies stay dead in survival
@@ -189,6 +199,7 @@ export function damage(world, victim, amount, attacker, weaponName) {
   const killer = attacker && attacker !== victim ? attacker : null;
   const freeForAll = world.mode === 'quick' || (world.mode === 'online' && !world.teamMode);
   if (freeForAll && killer && killer.kills >= world.cfg.killLimit) endMatch(world, 'kill limit');
+  if (world.mode === 'campaign' && killer?.isPlayer && killer.kills >= world.cfg.killLimit) endMatch(world, 'target');
   if (world.teamMode && Math.max(world.teamKills.blue, world.teamKills.red) >= world.cfg.killLimit) endMatch(world, 'kill limit');
 }
 
@@ -196,6 +207,15 @@ export function damage(world, victim, amount, attacker, weaponName) {
 export function revive(world, s) {
   if (s.alive || world.over) return;
   spawn(world, s);
+}
+
+// Campaign: out of lives, but a solved Banana puzzle buys one more.
+export function continueMission(world) {
+  const p = world.player;
+  if (world.over || p.lives > 0) return;
+  world.continues += 1;
+  p.lives = 1;
+  spawn(world, p);
 }
 
 // A solved Banana crate puzzle: a power weapon, full health and extra grenades.
@@ -222,7 +242,7 @@ function endMatch(world, reason) {
   if (world.over) return;
   world.over = true;
   const ranking = [...world.soldiers].filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
-  world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills } });
+  world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills }, mission: world.mission, continues: world.continues });
 }
 
 function explode(world, x, y, radius, dmg, owner, weaponName) {
@@ -540,6 +560,14 @@ export function updateWorld(world, dt) {
   for (const s of world.soldiers) updateSoldier(world, s, dt);
   updateProjectiles(world, dt);
   updatePickups(world, dt);
+
+  // Campaign missions get harder every minute: bots aim better and react faster.
+  if (world.mode === 'campaign' && !world.over && world.time >= world.nextRamp) {
+    world.nextRamp += RAMP.every;
+    world.rampBonus += RAMP.accuracy;
+    world.difficulty = { ...world.difficulty, reaction: world.difficulty.reaction * RAMP.reaction };
+    world.emit('campaign:ramp', { level: Math.round(world.rampBonus / RAMP.accuracy) });
+  }
 
   if (world.mode === 'survival' && !world.over) {
     world.soldiers = world.soldiers.filter((s) => !s.gone);
