@@ -21,6 +21,7 @@ import Avatar from './screens/Avatar.jsx';
 import Profile from './screens/Profile.jsx';
 import Scores from './screens/Scores.jsx';
 import Settings from './screens/Settings.jsx';
+import Admin from './screens/Admin.jsx';
 import Controls from './screens/Controls.jsx';
 import Pause from './screens/Pause.jsx';
 import Results from './screens/Results.jsx';
@@ -60,6 +61,8 @@ export default function App() {
   }, [screen]);
 
   useEffect(() => { game().applySettings(settings); }, [settings]);
+  // A player who reaches #admin is sent back to the menu (the API would refuse them anyway).
+  useEffect(() => { if (screen === 'admin' && account && account.role !== 'admin') setScreen('menu'); }, [screen, account]);
 
   // Already logged in (the session cookie is still valid)? Skip the login screen.
   useEffect(() => {
@@ -124,8 +127,11 @@ export default function App() {
     setOnline(false);
     setScreen('menu');
   };
+  // Back to the login screen once the server has ended the session (logout,
+  // log out everywhere or a deleted account).
+  const signedOut = () => { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('login'); };
   const logout = async () => {
-    try { await api.logout(); } finally { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('login'); }
+    try { await api.logout(); } finally { signedOut(); }
   };
   const toggle = (key) => setSettings((s) => { const next = { ...s, [key]: !s[key] }; store.set('settings', JSON.stringify(next)); return next; });
 
@@ -142,7 +148,7 @@ export default function App() {
     }
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
-    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign'].includes(name)) setScreen(name);
+    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
   }
 
   const back = () => setScreen('menu');
@@ -153,7 +159,10 @@ export default function App() {
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
-      {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
+      {screen === 'settings' && <Settings settings={settings} account={account} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout}
+        onSignedOut={signedOut} onAdmin={() => setScreen('admin')} onBack={back} />}
+      {/* Only offered to admins; the server still checks the role on every admin request. */}
+      {screen === 'admin' && account?.role === 'admin' && <Admin account={account} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
       {screen === 'campaign' && <Campaign onPlay={playMission} onBack={back} />}

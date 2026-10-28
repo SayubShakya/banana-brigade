@@ -15,8 +15,10 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [badges, setBadges] = useState(null);
+  const [identity, setIdentity] = useState(null);
   useEffect(() => {
     api.myRecord().then(setData).catch((e) => setError(e.message));
+    api.sessions().then(setIdentity).catch(() => {});
     api.achievements().then(setBadges).catch(() => {});
   }, []);
   const have = new Map((badges?.mine ?? []).map((a) => [a.id, a.at]));
@@ -37,6 +39,13 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
           <AvatarCanvas parts={parts} aria-label="Your soldier" />
           <b>{account.username}</b>
           <span className="role-badge" data-role={account.role}>{account.role}</span>
+          {identity && (
+            <dl className="identity">
+              <div><dt>Member since</dt><dd>{when(identity.memberSince)}</dd></div>
+              <div><dt>Last login</dt><dd>{identity.lastLogin ? when(identity.lastLogin) : '—'}</dd></div>
+              <div><dt>Active sessions</dt><dd>{identity.count}</dd></div>
+            </dl>
+          )}
           <button className="mbtn" onClick={onCustomise}>Customise</button>
         </div>
         <div className="profile-main">

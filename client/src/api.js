@@ -20,9 +20,17 @@ async function call(method, path, body) {
 
 export const api = {
   me: () => call('GET', '/api/auth/me'),
-  login: (username, password) => call('POST', '/api/auth/login', { username, password }),
+  login: (username, password, remember = false) => call('POST', '/api/auth/login', { username, password, remember }),
   register: (username, password) => call('POST', '/api/auth/register', { username, password }),
   logout: () => call('POST', '/api/auth/logout'),
+  logoutAll: () => call('POST', '/api/auth/logout-all'),
+  changePassword: (current, next) => call('POST', '/api/auth/password', { current, next }),
+  deleteAccount: (password) => call('DELETE', '/api/auth/account', { password }),
+  available: (name) => call('GET', `/api/auth/available?u=${encodeURIComponent(name)}`),
+  sessions: () => call('GET', '/api/auth/sessions'),
+  adminUsers: () => call('GET', '/api/admin/users'),
+  resetScores: (id) => call('DELETE', `/api/admin/users/${id}/scores`),
+  setRole: (id, role) => call('PATCH', `/api/admin/users/${id}/role`, { role }),
   status: () => call('GET', '/api/status'),
   puzzle: (purpose) => call('GET', `/api/puzzle?purpose=${encodeURIComponent(purpose)}`),
   answer: (puzzleId, answer) => call('POST', '/api/puzzle/answer', { puzzleId, answer }),

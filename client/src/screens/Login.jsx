@@ -4,7 +4,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Sky } from './common.jsx';
 
@@ -19,6 +19,26 @@ function strength(pw) {
   return Math.min(4, score);
 }
 const LEVELS = ['Too weak', 'Weak', 'OK', 'Strong', 'Very strong'];
+const NAME = /^[A-Za-z0-9_]{3,16}$/;
+
+// Asks the server whether the name is free, 400 ms after the player stops typing,
+// so a fast typist sends one request instead of one per key.
+function useNameHint(name, active) {
+  const [hint, setHint] = useState(null);
+  useEffect(() => {
+    setHint(null);
+    if (!active || !name) return undefined;
+    if (!NAME.test(name)) { setHint({ ok: false, text: '3–16 letters, numbers or _' }); return undefined; }
+    let stale = false;
+    const timer = setTimeout(() => {
+      api.available(name)
+        .then(({ available }) => !stale && setHint(available ? { ok: true, text: 'Name is free' } : { ok: false, text: 'That name is taken' }))
+        .catch(() => {});   // the hint is only a help; register still checks
+    }, 400);
+    return () => { stale = true; clearTimeout(timer); };
+  }, [name, active]);
+  return hint;
+}
 
 export default function Login({ onLogin }) {
   const [mode, setMode] = useState('login');
@@ -27,6 +47,8 @@ export default function Login({ onLogin }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const hint = useNameHint(username.trim(), mode === 'register');
   const level = password ? strength(password) : '';
 
   function switchTo(next) { setMode(next); setError(''); }
@@ -37,7 +59,7 @@ export default function Login({ onLogin }) {
     if (mode === 'register' && password !== confirm) { setError('The two passwords do not match.'); return; }
     setBusy(true);
     try {
-      const { user } = mode === 'login' ? await api.login(username.trim(), password) : await api.register(username.trim(), password);
+      const { user } = mode === 'login' ? await api.login(username.trim(), password, remember) : await api.register(username.trim(), password);
       onLogin(user, mode === 'register');
     } catch (err) {
       setError(err.message);
@@ -60,6 +82,7 @@ export default function Login({ onLogin }) {
             <input name="username" autoComplete="username" required minLength={3} maxLength={16} pattern="[A-Za-z0-9_]{3,16}"
               placeholder="e.g. sayub_s" value={username} onChange={(e) => setUsername(e.target.value)} />
           </label>
+          {mode === 'register' && <span className="name-hint" data-ok={hint?.ok} aria-live="polite">{hint?.text ?? ''}</span>}
           <label className="field">Password
             <input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} maxLength={72}
               value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -71,6 +94,12 @@ export default function Login({ onLogin }) {
               <input type="password" autoComplete="new-password" maxLength={72} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </label>
           </div>
+          {mode === 'login' && (
+            <label className="remember">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              Remember me for 30 days <small>(not on a shared computer)</small>
+            </label>
+          )}
           <p className="auth-error" role="alert">{error}</p>
           <button className="mbtn primary" type="submit" disabled={busy}>{mode === 'login' ? 'Log in' : 'Create account'}</button>
           <p className="auth-note">Passwords are stored only as bcrypt hashes. You stay signed in with a secure, HttpOnly session cookie.</p>

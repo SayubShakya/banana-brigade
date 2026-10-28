@@ -29,6 +29,7 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
       <Sky />
       <nav className="menu-rail" aria-label="Your soldier">
         {RAIL.map(([screen, icon, label]) => <button key={screen} className="tile" onClick={() => onOpen(screen)}><Icon id={icon} />{label}</button>)}
+        {account.role === 'admin' && <button className="tile" onClick={() => onOpen('admin')}><Icon id="lock" />Admin</button>}
       </nav>
 
       <div className="menu-left">
