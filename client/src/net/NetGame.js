@@ -17,7 +17,7 @@ import { BOT_AVATARS, makeAvatar } from '../game/characters.js';
 import { createMap, isSolid } from '../game/map.js';
 import { emptyControls, activeGun } from '../game/world.js';
 import { getStage } from '../game/stage.js';
-import { setListener } from '../game/sound.js';
+import { setListener, updateSound } from '../game/sound.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
 import { getSocket, request } from './socket.js';
 
@@ -236,6 +236,7 @@ export function createNetGame() {
       updateParticles(dt);
       if (near && me.alive && !me.busy) emit('pickup:available', { banana: true });
       setListener(me.x + me.w / 2, me.y + me.h / 2);
+      updateSound(view.soldiers, me);
       const maxZoom = (WEAPONS[activeGun(me).key].zoom ?? 2) - 1;
       renderer.render(view, input.mouse, dt, ZOOM_LEVELS[Math.min(input.zoom, maxZoom)]);
       hud.update();

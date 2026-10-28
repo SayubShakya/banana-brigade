@@ -468,6 +468,7 @@ function updateProjectiles(world, dt) {
     b.travelled += Math.hypot(endX - b.x, endY - b.y);
     b.x = endX; b.y = endY;
     if (wall) {
+      world.emit('bullet:wall', { x: endX, y: endY });
       for (let i = 0; i < 4; i++) world.particles.push({ x: endX, y: endY, vx: rand(-90, 90), vy: rand(-140, 0), life: 0.25, color: '#ffe8a3', size: 2, gravity: true });
       return false;
     }
