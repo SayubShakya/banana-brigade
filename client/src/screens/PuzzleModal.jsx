@@ -153,6 +153,10 @@ export default function PuzzleModal() {
   const { options = {} } = req;
   const total = rules.seconds;
   const imgState = phase === 'error' && !puzzle ? 'error' : puzzle ? 'ready' : 'loading';
+  // Timer colour: banana while more than half is left, orange under half, red and pulsing under a quarter.
+  const counting = phase === 'ready' || phase === 'answering';
+  const frac = counting && total ? left / total : 1;
+  const urgency = frac > 0.5 ? 'safe' : frac >= 0.25 ? 'warn' : 'danger';
 
   return (
     <div className="puzzle" role="dialog" aria-modal="true" aria-labelledby="puzzle-title" data-purpose={req.purpose}>
@@ -165,11 +169,11 @@ export default function PuzzleModal() {
             <h2 id="puzzle-title">{options.title}</h2>
             <p id="puzzle-sub">{options.subtitle}</p>
           </div>
-          <div className="timer-ring" aria-label="Seconds left">
-            <svg viewBox="0 0 60 60">
+          <div className="timer-ring" role="timer" aria-label="Seconds left" data-level={urgency}>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
               <circle className="track" cx="30" cy="30" r="26" />
-              <circle className="ring" cx="30" cy="30" r="26" data-low={left < 8 ? 'true' : 'false'}
-                style={{ strokeDasharray: RING, strokeDashoffset: phase === 'ready' || phase === 'answering' ? RING * (1 - left / total) : 0 }} />
+              <circle className="ring" cx="30" cy="30" r="26"
+                style={{ strokeDasharray: RING, strokeDashoffset: counting ? RING * (1 - left / total) : 0 }} />
             </svg>
             <span id="puzzle-time">{Math.ceil(left)}</span>
           </div>
@@ -188,7 +192,7 @@ export default function PuzzleModal() {
               ))}
             </div>
             <div className="puzzle-stats">
-              <span><svg className="ico"><use href="#i-banana" /></svg><b>{puzzleStats.solved}</b> solved</span>
+              <span><svg className="ico" aria-hidden="true"><use href="#i-banana" /></svg><b>{puzzleStats.solved}</b> solved</span>
               <span><b>{puzzleStats.streak}</b> streak</span>
             </div>
             <div className="puzzle-actions">

@@ -42,12 +42,22 @@ const game = () => (gameSession ??= createGameSession());
 let netGame = null;
 const net = () => (netGame ??= createNetGame());
 
+// Saved settings. Older saves had one on/off "sound" switch: it becomes the mute.
+const DEFAULT_SETTINGS = {
+  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, difficulty: 'medium',
+  contrast: false, largeText: false, calm: false,
+};
+function loadSettings() {
+  const { sound, ...saved } = readJson('settings', DEFAULT_SETTINGS);
+  return sound === false ? { ...saved, muted: true } : saved;
+}
+
 export default function App() {
   const [screen, setScreen] = useState('loading');
   const [account, setAccount] = useState(null);
   const [isNew, setIsNew] = useState(false);
   const [parts, setPartsState] = useState(() => readJson('avatar', DEFAULT_AVATAR));
-  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true, fps: false, difficulty: 'medium' }));
+  const [settings, setSettings] = useState(loadSettings);
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
@@ -63,6 +73,13 @@ export default function App() {
   useEffect(() => { game().applySettings(settings); }, [settings]);
   // A player who reaches #admin is sent back to the menu (the API would refuse them anyway).
   useEffect(() => { if (screen === 'admin' && account && account.role !== 'admin') setScreen('menu'); }, [screen, account]);
+
+  // Accessibility settings are classes on <body>; the CSS does the rest.
+  useEffect(() => {
+    document.body.classList.toggle('a11y-contrast', !!settings.contrast);
+    document.body.classList.toggle('a11y-large', !!settings.largeText);
+    document.body.classList.toggle('a11y-calm', !!settings.calm);
+  }, [settings.contrast, settings.largeText, settings.calm]);
 
   // Already logged in (the session cookie is still valid)? Skip the login screen.
   useEffect(() => {
@@ -133,7 +150,12 @@ export default function App() {
   const logout = async () => {
     try { await api.logout(); } finally { signedOut(); }
   };
-  const toggle = (key) => setSettings((s) => { const next = { ...s, [key]: !s[key] }; store.set('settings', JSON.stringify(next)); return next; });
+  const setSetting = (key, value) => setSettings((s) => {
+    const next = { ...s, [key]: typeof value === 'function' ? value(s[key]) : value };
+    store.set('settings', JSON.stringify(next));
+    return next;
+  });
+  const toggle = (key) => setSetting(key, (v) => !v);
 
   // Preview links such as #battle-team or #puzzle-crate open a screen directly
   // (no deploy puzzle), so every screen can be reviewed and screenshotted.
@@ -159,7 +181,7 @@ export default function App() {
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
-      {screen === 'settings' && <Settings settings={settings} account={account} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout}
+      {screen === 'settings' && <Settings settings={settings} account={account} onToggle={toggle} onSet={setSetting} onControls={() => setScreen('controls')} onLogout={logout}
         onSignedOut={signedOut} onAdmin={() => setScreen('admin')} onBack={back} />}
       {/* Only offered to admins; the server still checks the role on every admin request. */}
       {screen === 'admin' && account?.role === 'admin' && <Admin account={account} onBack={back} />}
@@ -169,8 +191,8 @@ export default function App() {
       {screen === 'difficulty' && <Difficulty mode={pendingMode} current={settings.difficulty} onPick={(d) => deployWith(pendingMode, d)} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={toMenu} />}
-      {screen === 'pause' && <Pause sound={settings.sound} online={online} onResume={() => (online ? net().resume() : game().resume())}
-        onToggleSound={() => toggle('sound')} onEnd={() => game().endNow()} onQuit={toMenu} />}
+      {screen === 'pause' && <Pause sound={!settings.muted} online={online} onResume={() => (online ? net().resume() : game().resume())}
+        onToggleSound={() => toggle('muted')} onEnd={() => game().endNow()} onQuit={toMenu} />}
       {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu} onMission={playMission} onMap={() => { game().quit(); setOver(null); setScreen('campaign'); }}
         onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deployWith(m, settings.difficulty); }} />}
       <PuzzleModal />

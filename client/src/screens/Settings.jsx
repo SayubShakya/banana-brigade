@@ -6,8 +6,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Panel } from './common.jsx';
+import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
 
-const OPTIONS = [['sound', 'Sound effects'], ['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
+const OPTIONS = [['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
+const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];
+const VOLUMES = [['musicVolume', 'Music volume'], ['sfxVolume', 'Effects volume']];
 
 // The Banana API connection, explained in plain words (the server fetches puzzles
 // in advance and keeps a reserve for when the API is down).
@@ -74,20 +77,50 @@ function Account({ account, onLogout, onSignedOut, onAdmin }) {
   );
 }
 
-export default function Settings({ settings, account, onToggle, onControls, onLogout, onSignedOut, onAdmin, onBack }) {
-  const apiStatus = useApiStatus();
+// One on/off switch row.
+function Toggle({ label, value, onClick }) {
   return (
-    <Panel title="Settings" subtitle="Game options are saved in this browser; your account lives on the server." footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
+    <div className="setting">
+      <span>{label}</span>
+      <button className="toggle" aria-pressed={!!value} aria-label={label} onClick={onClick}>{value ? 'On' : 'Off'}</button>
+    </div>
+  );
+}
+
+const TABS = [['game', 'Game'], ['sound', 'Sound'], ['access', 'Accessibility'], ['account', 'Account']];
+
+export default function Settings({ settings, account, onToggle, onSet, onControls, onLogout, onSignedOut, onAdmin, onBack }) {
+  const apiStatus = useApiStatus();
+  const [isFullscreen, canFullscreen] = useFullscreen();
+  const [tab, setTab] = useState('game');
+  return (
+    <Panel title="Settings" subtitle="Game options are saved in this browser; your account lives on the server."
+      footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
+      <div className="tabs" role="tablist">
+        {TABS.map(([key, label]) => <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>)}
+      </div>
       <div className="settings-list">
-        {OPTIONS.map(([key, label]) => (
-          <div className="setting" key={key}>
-            <span>{label}</span>
-            <button className="toggle" aria-pressed={settings[key]} onClick={() => onToggle(key)}>{settings[key] ? 'On' : 'Off'}</button>
-          </div>
-        ))}
-        <div className="setting"><span>Banana API</span><span className="setting-note">{apiStatus}</span></div>
-        <div className="setting"><span>Controls</span><button className="toggle" onClick={onControls}>View</button></div>
-        <Account account={account} onLogout={onLogout} onSignedOut={onSignedOut} onAdmin={onAdmin} />
+        {tab === 'game' && <>
+          {OPTIONS.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
+          {canFullscreen && <Toggle label="Fullscreen" value={isFullscreen} onClick={toggleFullscreen} />}
+          <div className="setting"><span>Controls</span><button className="toggle" onClick={onControls}>View</button></div>
+          <div className="setting"><span>Banana API</span><span className="setting-note">{apiStatus}</span></div>
+        </>}
+        {tab === 'sound' && <>
+          {VOLUMES.map(([key, label]) => (
+            <div className="setting" key={key}>
+              <label htmlFor={`set-${key}`}>{label}</label>
+              <span className="slider">
+                <input id={`set-${key}`} type="range" min="0" max="100" step="5" value={settings[key]} disabled={settings.muted}
+                  onChange={(e) => onSet(key, Number(e.target.value))} />
+                <output htmlFor={`set-${key}`}>{settings[key]}</output>
+              </span>
+            </div>
+          ))}
+          <Toggle label="Mute all sound" value={settings.muted} onClick={() => onToggle('muted')} />
+        </>}
+        {tab === 'access' && ACCESSIBILITY.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
+        {tab === 'account' && <Account account={account} onLogout={onLogout} onSignedOut={onSignedOut} onAdmin={onAdmin} />}
       </div>
     </Panel>
   );

@@ -1,17 +1,26 @@
 // Sound effects made with the Web Audio API (no audio files). Each effect is an
 // event listener: the world emits "weapon:fired" or "explosion" and this module
 // plays the matching sound. Only sounds near the player are played.
+// All effects go through one gain node (the "effects bus"), so the Effects volume
+// slider in Settings changes them all at once; music.js has its own bus.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../eventBus.js';
 
 let ctx = null;
+let effects = null;     // gain node every effect plays through
 let muted = false;
+let effectsVolume = 0.8;
 let listener = { x: 0, y: 0 };
 
 function audio() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    effects = ctx.createGain();
+    effects.gain.value = effectsVolume;
+    effects.connect(ctx.destination);
+  }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 }
@@ -23,7 +32,7 @@ function volumeAt(x, y) {
 }
 
 function noise(duration, { volume = 0.3, filter = 1800, decay = duration } = {}) {
-  if (muted || volume <= 0.01) return;
+  if (muted || effectsVolume <= 0 || volume <= 0.01) return;
   const a = audio();
   const buffer = a.createBuffer(1, Math.floor(a.sampleRate * duration), a.sampleRate);
   const data = buffer.getChannelData(0);
@@ -36,12 +45,12 @@ function noise(duration, { volume = 0.3, filter = 1800, decay = duration } = {})
   const g = a.createGain();
   g.gain.setValueAtTime(volume, a.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + decay);
-  src.connect(f).connect(g).connect(a.destination);
+  src.connect(f).connect(g).connect(effects);
   src.start();
 }
 
 function tone(freq, duration, { volume = 0.15, type = 'square', slideTo } = {}) {
-  if (muted || volume <= 0.01) return;
+  if (muted || effectsVolume <= 0 || volume <= 0.01) return;
   const a = audio();
   const o = a.createOscillator();
   o.type = type;
@@ -50,7 +59,7 @@ function tone(freq, duration, { volume = 0.15, type = 'square', slideTo } = {}) 
   const g = a.createGain();
   g.gain.setValueAtTime(volume, a.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + duration);
-  o.connect(g).connect(a.destination);
+  o.connect(g).connect(effects);
   o.start();
   o.stop(a.currentTime + duration);
 }
@@ -68,9 +77,27 @@ const GUN_SOUNDS = {
 export function setListener(x, y) { listener = { x, y }; }
 export function setMuted(value) { muted = value; }
 export const isMuted = () => muted;
+// 0..1, from the Effects volume slider.
+export function setEffectsVolume(value) {
+  effectsVolume = Math.min(1, Math.max(0, value));
+  if (effects) effects.gain.setTargetAtTime(effectsVolume, ctx.currentTime, 0.05);
+}
+// Browsers only allow sound after a click or key press, so this is called from one.
 export const unlockAudio = () => audio();
+// The shared AudioContext, or null if no gesture has unlocked sound yet (music.js uses it).
+export const audioContext = () => ctx;
+
+// Banana puzzle feedback: a rising chime when right, a low buzz when wrong or out of time.
+function chime() {
+  [784, 988, 1319].forEach((f, i) => setTimeout(() => tone(f, 0.35, { volume: 0.12, type: 'sine' }), i * 90));
+}
+function buzzer() {
+  tone(150, 0.32, { volume: 0.14, type: 'sawtooth' });
+  tone(156, 0.32, { volume: 0.08, type: 'square' });
+}
 
 export function initSound() {
+  on('banana:answered', ({ correct }) => (correct ? chime() : buzzer()));
   on('weapon:fired', ({ weapon, x, y }) => {
     const s = GUN_SOUNDS[weapon];
     if (!s) return;

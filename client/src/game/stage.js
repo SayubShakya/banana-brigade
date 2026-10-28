@@ -8,6 +8,7 @@ import { createRenderer } from './render.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { initSound } from './sound.js';
+import { initMusic } from './music.js';
 
 let stage = null;
 
@@ -38,6 +39,7 @@ export function getStage() {
     const renderer = createRenderer(canvas);
     stage = { canvas, renderer, input: createInput(canvas, renderer), hud: createHud(), meter: createMeter(document.getElementById('fps')) };
     initSound();
+    initMusic();
   }
   return stage;
 }
