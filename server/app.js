@@ -36,7 +36,7 @@ function createApp({
   sessionStore,               // MongoDB in the real server; in-memory in tests
   production = false,
   puzzleStore = createPuzzleStore(),
-  pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle }),
+  pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats }),
   achievements = createAchievements({ db }),
 }) {
   const app = express();

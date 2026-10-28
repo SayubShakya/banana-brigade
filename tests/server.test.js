@@ -109,7 +109,7 @@ test('the pool keeps puzzles ready so the next one is instant', async () => {
 test('when the Banana API goes down the pool serves reserve puzzles', async () => {
   let up = true;
   const pool = createPuzzlePool({
-    fetchPuzzle: async () => { if (!up) throw new BananaApiError('Banana API is unreachable'); return { image: IMAGE, solution: 4 }; },
+    fetchPuzzle: async () => { if (!up) throw new BananaApiError('Banana API is unreachable', { kind: 'network' }); return { image: IMAGE, solution: 4 }; },
     size: 0,
   });
   await pool.take();          // one live puzzle goes into the reserve
@@ -118,7 +118,7 @@ test('when the Banana API goes down the pool serves reserve puzzles', async () =
   assert.equal(p.source, 'reserve');
   assert.equal(p.solution, 4);
   assert.equal(pool.status().online, false);
-  assert.match(pool.status().lastError, /unreachable/);
+  assert.equal(pool.status().lastError, 'network');   // a category, never the raw message
 });
 
 test('with no reserve, an outage is reported as an error', async () => {
