@@ -8,7 +8,7 @@
 //
 //   browser → server                       server → browser
 //   rooms:list                (ack)        room:update   { code, host, players, state, ... }
-//   room:create {teamMode, isPublic}       rooms:changed (someone made / closed a room)
+//   room:create {teamMode, isPublic, difficulty}  rooms:changed (someone made / closed a room)
 //   room:join   {code}        (ack)        match:start   { matchId, me, teamMode, roster }
 //   room:leave, room:ready {ready}         match:snapshot / match:end
 //   room:start               (ack)         puzzle:offer  { purpose: 'crate' }
@@ -21,10 +21,12 @@
 
 const crypto = require('node:crypto');
 const { createMatch } = require('./match');
+const { DIFFICULTY } = require('../../client/src/game/config.js');
 
 const MAX_PLAYERS = 6;
 const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O, so codes are easy to read out
 const PUZZLE_PURPOSES = ['respawn', 'crate'];
+const DIFFICULTIES = Object.keys(DIFFICULTY);       // easy, medium, hard: the same list the engine uses
 
 const makeCode = () => Array.from(crypto.randomBytes(6), (b) => CODE_LETTERS[b % CODE_LETTERS.length]).join('');
 const ack = (cb) => (typeof cb === 'function' ? cb : () => {});
@@ -53,14 +55,14 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
   const issued = new Map();         // puzzleId -> { userId, purpose }
 
   const view = (room) => ({
-    code: room.code, host: room.host, teamMode: room.teamMode, isPublic: room.isPublic, state: room.state,
+    code: room.code, host: room.host, teamMode: room.teamMode, isPublic: room.isPublic, difficulty: room.difficulty, state: room.state,
     players: [...room.players.values()].map((p) => ({ userId: p.userId, username: p.username, ready: p.ready, team: p.team, connected: p.connected })),
   });
   const update = (room) => io.to(`room:${room.code}`).emit('room:update', view(room));
   const listChanged = () => io.emit('rooms:changed');
   const publicList = () => [...rooms.values()]
     .filter((r) => r.isPublic && r.players.size < MAX_PLAYERS)
-    .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, state: r.state }));
+    .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, difficulty: r.difficulty, state: r.state }));
 
   function nextTeam(room) {
     const blue = [...room.players.values()].filter((p) => p.team === 'blue').length;
@@ -112,6 +114,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
       ...matchOptions,
       players,
       teamMode: room.teamMode,
+      difficulty: room.difficulty,
       send: (event, payload, userId) => io.to(userId ? `user:${userId}` : `room:${room.code}`).emit(event, payload),
       onEnd: async (summary) => {
         await saveResults(summary);
@@ -154,11 +157,15 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
     socket.on('rooms:list', (cb) => ack(cb)({ rooms: publicList() }));
 
     socket.on('room:create', (opts, cb) => {
+      // The browser picks the bots' difficulty, so check it against the known list;
+      // leaving it out means medium.
+      const difficulty = opts?.difficulty ?? 'medium';
+      if (!DIFFICULTIES.includes(difficulty)) return ack(cb)({ error: 'Unknown difficulty' });
       if (roomOf.has(userId)) leaveRoom(userId, userSockets());
       let code = makeCode();
       while (rooms.has(code)) code = makeCode();
       const room = {
-        code, host: userId, teamMode: !!opts?.teamMode, isPublic: opts?.isPublic !== false, state: 'lobby', match: null,
+        code, host: userId, teamMode: !!opts?.teamMode, isPublic: opts?.isPublic !== false, difficulty, state: 'lobby', match: null,
         players: new Map([[userId, { userId, username, parts: cleanParts(opts?.parts), ready: true, team: 'blue', connected: true }]]),
       };
       rooms.set(code, room);
