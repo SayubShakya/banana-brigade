@@ -4,11 +4,15 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { io } from 'socket.io-client';
+import { emit } from '../eventBus.js';
 
 let socket = null;
 
 export function getSocket() {
-  socket ??= io({ autoConnect: false, transports: ['websocket', 'polling'] });
+  if (!socket) {
+    socket = io({ autoConnect: false, transports: ['websocket', 'polling'] });
+    socket.on('achievement:unlocked', (a) => emit('achievement:unlocked', a));   // unlocked in an online match
+  }
   if (!socket.connected) socket.connect();
   return socket;
 }
