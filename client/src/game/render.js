@@ -1,6 +1,7 @@
-// Banana Brigade renderer. Draws the world onto the canvas: sky and hills, the terrain, pickups, soldiers,
-// bullets and effects, then the crosshair. The camera follows the player and leans
-// towards where they are aiming, so you can see further in that direction.
+// Banana Brigade renderer. Draws the world onto the canvas: the map's themed sky and
+// scenery, the terrain, pickups, soldiers, bullets and effects, then the crosshair.
+// The camera follows the player and leans towards where they are aiming, so you can
+// see further in that direction.
 // Shooting effects (flashes, sparks, hit markers, shake) come from effects.js; the
 // sniper scope overlay is drawn here when the sniper is at full zoom.
 //
@@ -9,7 +10,7 @@
 import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS } from './config.js';
 import { drawSoldier } from './characters.js';
 import { activeGun } from './world.js';
-import { raycast } from './map.js';
+import { raycast, KIND } from './map.js';
 import { createEffects } from './effects.js';
 
 export function createRenderer(canvas) {
@@ -54,19 +55,126 @@ export function createRenderer(canvas) {
     cam.y += (ty - cam.y) * k;
   }
 
-  function drawBackground(time) {
+  // ---------- The battlefield, themed per map (see theme in maps.js) ----------
+  // A fixed hash per tile or building, so the scenery never flickers between frames.
+  const hash = (a, b = 0) => {
+    let h = Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return (h ^ (h >>> 16)) >>> 0;
+  };
+  const tri = (t) => 1 - 2 * Math.abs(t - Math.floor(t) - 0.5);   // 0..1..0 sawtooth peaks
+
+  // One far layer of scenery. Slower layers (small `speed`) look further away.
+  function drawLayer(layer) {
+    const { kind, speed, base, amp, color } = layer;
+    const ox = cam.x * speed;
+    const y0 = base - cam.y * speed * 0.5;
+    ctx.fillStyle = color;
+
+    if (kind === 'city') {
+      const bw = 74;
+      const first = Math.floor(ox / bw);
+      for (let i = first; i <= first + Math.ceil(VIEW.width / bw) + 1; i++) {
+        const h = hash(i, 7);
+        const height = amp * (0.35 + (h % 100) / 150);
+        const w = bw - 10 - ((h >> 8) % 22);
+        const x = i * bw - ox;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y0 - height, w, VIEW.height);
+        if (h % 3 === 0) ctx.fillRect(x + w / 2 - 1, y0 - height - 26, 2, 26);   // rooftop aerial
+        if (!layer.windows) continue;
+        ctx.fillStyle = layer.windows;
+        for (let k = 0, wy = y0 - height + 10; wy < y0 + 30; k++, wy += 16) {
+          for (let wx = 6; wx < w - 8; wx += 12) if (hash(i * 31 + wx, k) % 5 === 0) ctx.fillRect(x + wx, wy, 5, 7);
+        }
+      }
+      ctx.fillStyle = color;
+      ctx.fillRect(0, y0 + 30, VIEW.width, VIEW.height);
+      return;
+    }
+
+    const heightAt = (wx) => {
+      if (kind === 'mountains') return amp * (0.65 * tri(wx / 300) + 0.35 * tri(wx / 117 + 0.4));
+      if (kind === 'dunes') return amp * (0.6 + 0.5 * Math.sin(wx / 320) + 0.25 * Math.sin(wx / 133 + 1));
+      return Math.sin(wx / 230) * amp + Math.sin(wx / 97) * amp * 0.35;   // hills and pine slopes
+    };
+    ctx.beginPath();
+    ctx.moveTo(0, VIEW.height);
+    for (let x = 0; x <= VIEW.width; x += 16) ctx.lineTo(x, y0 - heightAt(x + ox));
+    ctx.lineTo(VIEW.width, VIEW.height);
+    ctx.closePath();
+    ctx.fill();
+
+    if (layer.caps) {
+      // Snow caps: paint the top of the same outline only.
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = layer.caps;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      for (let x = 0; x <= VIEW.width; x += 16) ctx.lineTo(x, y0 - amp * 0.62 + Math.sin((x + ox) / 23) * 5);
+      ctx.lineTo(VIEW.width, 0);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (kind === 'pines') {
+      // A row of pine trees on the slope.
+      const gap = 26;
+      const first = Math.floor(ox / gap);
+      ctx.beginPath();
+      for (let i = first; i <= first + Math.ceil(VIEW.width / gap) + 1; i++) {
+        const x = i * gap - ox;
+        const ground = y0 - heightAt(i * gap) + 6;
+        const tall = 26 + (hash(i, 3) % 30);
+        ctx.moveTo(x - 10, ground);
+        ctx.lineTo(x, ground - tall);
+        ctx.lineTo(x + 10, ground);
+      }
+      ctx.fill();
+    }
+  }
+
+  function drawBackground(time, map) {
+    const theme = map.theme;
     const g = ctx.createLinearGradient(0, 0, 0, VIEW.height);
-    g.addColorStop(0, '#6cb4e4');
-    g.addColorStop(0.65, '#bfe3f0');
-    g.addColorStop(1, '#d9eecf');
+    g.addColorStop(0, theme.sky[0]);
+    g.addColorStop(0.65, theme.sky[1]);
+    g.addColorStop(1, theme.sky[2]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, VIEW.width, VIEW.height);
 
-    ctx.fillStyle = 'rgba(255,248,200,0.9)';
-    ctx.beginPath(); ctx.arc(VIEW.width - 160 - cam.x * 0.02, 110 - cam.y * 0.02, 46, 0, Math.PI * 2); ctx.fill();
+    if (theme.stars) {
+      for (let i = 0; i < 110; i++) {
+        const h = hash(i, 11);
+        const x = (((h % 1600) - cam.x * 0.01) % 1600 + 1600) % 1600 - 160;
+        const y = ((h >> 11) % 430) - cam.y * 0.01;
+        ctx.globalAlpha = 0.45 + 0.4 * Math.sin(time * (1 + (h % 5)) + i);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, (h & 1) + 1.5, (h & 1) + 1.5);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    const orb = theme.sun ?? theme.moon;
+    if (orb) {
+      const ox = VIEW.width - 180 - cam.x * 0.02;
+      const oy = 110 - cam.y * 0.02;
+      const glow = ctx.createRadialGradient(ox, oy, orb.radius * 0.6, ox, oy, orb.radius * 3);
+      glow.addColorStop(0, theme.moon ? 'rgba(200,215,255,0.25)' : 'rgba(255,250,220,0.35)');
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(ox - orb.radius * 3, oy - orb.radius * 3, orb.radius * 6, orb.radius * 6);
+      ctx.fillStyle = orb.color;
+      ctx.beginPath(); ctx.arc(ox, oy, orb.radius, 0, Math.PI * 2); ctx.fill();
+      if (theme.moon) {
+        ctx.fillStyle = 'rgba(160,170,200,0.35)';
+        ctx.beginPath(); ctx.arc(ox - 10, oy - 6, 7, 0, Math.PI * 2); ctx.arc(ox + 9, oy + 9, 5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
 
     // Clouds drift slowly.
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillStyle = theme.clouds;
     for (let i = 0; i < 6; i++) {
       const x = ((i * 380 + time * 12 - cam.x * 0.1) % (VIEW.width + 300)) - 150;
       const y = 70 + (i % 3) * 55 - cam.y * 0.05;
@@ -76,50 +184,167 @@ export function createRenderer(canvas) {
       ctx.fill();
     }
 
-    // Two layers of hills for depth.
-    const hills = (speed, base, amp, color) => {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(0, VIEW.height);
-      for (let x = 0; x <= VIEW.width; x += 20) {
-        const wx = x + cam.x * speed;
-        ctx.lineTo(x, base - cam.y * speed * 0.5 + Math.sin(wx / 230) * amp + Math.sin(wx / 97) * amp * 0.35);
+    theme.layers.forEach(drawLayer);
+
+    if (theme.snowfall) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (let i = 0; i < 70; i++) {
+        const h = hash(i, 5);
+        const x = ((((h % 1400) + Math.sin(time + i) * 20 - cam.x * 0.4) % 1400) + 1400) % 1400 - 60;
+        const y = ((((h >> 11) % 800) + time * (35 + (h % 40)) - cam.y * 0.4) % 800 + 800) % 800 - 40;
+        ctx.fillRect(x, y, 3, 3);
       }
-      ctx.lineTo(VIEW.width, VIEW.height);
-      ctx.fill();
-    };
-    hills(0.15, 470, 50, '#9cc7a4');
-    hills(0.3, 540, 40, '#7aa874');
+    }
+  }
+
+  // Small props on top of the ground: drawn with their foot at (x, y).
+  function drawDecor(kind, x, y, h, lamps) {
+    switch (kind) {
+      case 'bush':
+        ctx.fillStyle = '#3f8a2e';
+        ctx.beginPath(); ctx.arc(x - 9, y - 6, 9, 0, Math.PI * 2); ctx.arc(x + 8, y - 6, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#56a83c';
+        ctx.beginPath(); ctx.arc(x, y - 11, 11, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'drybush':
+        ctx.strokeStyle = '#8a6a3f'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = -2; i <= 2; i++) { ctx.moveTo(x, y); ctx.lineTo(x + i * 6, y - 14 + Math.abs(i) * 3); }
+        ctx.stroke();
+        break;
+      case 'flower':
+        ctx.fillStyle = '#3f8a2e'; ctx.fillRect(x - 1, y - 12, 2, 12);
+        ctx.fillStyle = h & 1 ? '#ff6b9a' : '#ffd23f';
+        ctx.beginPath(); ctx.arc(x, y - 14, 4, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'palm': {
+        ctx.strokeStyle = '#7a5532'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 4, y - 40, x + 14, y - 72); ctx.stroke();
+        ctx.strokeStyle = '#3d9a34'; ctx.lineWidth = 5;
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI + (i / 4) * Math.PI;
+          ctx.beginPath();
+          ctx.moveTo(x + 14, y - 72);
+          ctx.quadraticCurveTo(x + 14 + Math.cos(a) * 22, y - 86 + Math.sin(a) * 4, x + 14 + Math.cos(a) * 36, y - 62 + Math.abs(Math.cos(a)) * 6);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+        break;
+      }
+      case 'rock':
+        ctx.fillStyle = '#8b8f95';
+        ctx.beginPath(); ctx.moveTo(x - 14, y); ctx.lineTo(x - 9, y - 12); ctx.lineTo(x + 4, y - 15); ctx.lineTo(x + 13, y); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.moveTo(x - 9, y - 12); ctx.lineTo(x + 4, y - 15); ctx.lineTo(x, y - 8); ctx.fill();
+        break;
+      case 'cactus':
+        ctx.fillStyle = '#4f8f3a';
+        ctx.fillRect(x - 5, y - 44, 10, 44);
+        ctx.fillRect(x - 15, y - 30, 6, 16); ctx.fillRect(x - 15, y - 18, 12, 6);
+        ctx.fillRect(x + 9, y - 36, 6, 14); ctx.fillRect(x + 3, y - 26, 12, 6);
+        break;
+      case 'pine':
+        ctx.fillStyle = '#5a3d25'; ctx.fillRect(x - 3, y - 12, 6, 12);
+        ctx.fillStyle = '#2f5a45';
+        ctx.beginPath(); ctx.moveTo(x - 18, y - 10); ctx.lineTo(x, y - 62); ctx.lineTo(x + 18, y - 10); ctx.fill();
+        ctx.fillStyle = '#f4f8fc';
+        ctx.beginPath(); ctx.moveTo(x - 7, y - 42); ctx.lineTo(x, y - 62); ctx.lineTo(x + 7, y - 42); ctx.fill();
+        break;
+      case 'snowman':
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(x, y - 11, 11, 0, Math.PI * 2); ctx.arc(x, y - 28, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f08a24'; ctx.fillRect(x + 3, y - 29, 7, 3);
+        break;
+      case 'barrel':
+        ctx.fillStyle = h & 1 ? '#a8432f' : '#5d6b3a';
+        ctx.fillRect(x - 10, y - 28, 20, 28);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x - 10, y - 21, 20, 3); ctx.fillRect(x - 10, y - 9, 20, 3);
+        break;
+      case 'antenna':
+        ctx.fillStyle = '#9aa3b5'; ctx.fillRect(x - 1, y - 60, 3, 60);
+        ctx.fillStyle = '#ff4d4d'; ctx.fillRect(x - 2, y - 64, 5, 5);
+        break;
+      case 'lamp':
+        ctx.fillStyle = '#6b7385'; ctx.fillRect(x - 2, y - 70, 4, 70); ctx.fillRect(x - 2, y - 70, 16, 4);
+        ctx.fillStyle = '#fff2c4'; ctx.fillRect(x + 8, y - 66, 10, 5);
+        lamps.push([x + 13, y - 62]);
+        break;
+      default: break;
+    }
   }
 
   function drawTerrain(map) {
-    const c0 = Math.max(0, Math.floor(cam.x / TILE));
-    const c1 = Math.min(map.cols - 1, Math.floor((cam.x + vw()) / TILE));
+    const { theme } = map;
+    const palette = [null, theme.ground, theme.platform, theme.block];
+    const c0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
+    const c1 = Math.min(map.cols - 1, Math.floor((cam.x + vw()) / TILE) + 1);
     const r0 = Math.max(0, Math.floor(cam.y / TILE));
-    const r1 = Math.min(map.rows - 1, Math.floor((cam.y + vh()) / TILE));
+    const r1 = Math.min(map.rows - 1, Math.floor((cam.y + vh()) / TILE) + 2);   // props stick up from below the view
+    const lamps = [];
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
         if (map.grid[r][c] !== 1) continue;
         const x = c * TILE - cam.x;
         const y = r * TILE - cam.y;
+        const kind = map.kinds[r][c];
+        const look = palette[kind] ?? theme.ground;
         const exposedTop = r > 0 && map.grid[r - 1][c] === 0;
-        ctx.fillStyle = '#7b5435';
+        const h = hash(c, r);
+        ctx.fillStyle = look.body;
         ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
-        // Speckles from a fixed per-tile hash, so they do not flicker.
-        const h = (c * 73856093) ^ (r * 19349663);
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.fillRect(x + (h & 15) + 6, y + ((h >> 4) & 15) + 8, 6, 4);
-        ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx.fillRect(x + ((h >> 8) & 15) + 10, y + ((h >> 12) & 15) + 14, 5, 3);
+
+        if (look.ice) {
+          ctx.fillStyle = 'rgba(255,255,255,0.45)';
+          ctx.fillRect(x + (h & 15) + 4, y + 14, 12, 3);
+        } else if (look.metal) {
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx.fillRect(x + 5, y + 20, 3, 3); ctx.fillRect(x + TILE - 8, y + 20, 3, 3);
+        } else if (look.crate) {
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 3;
+          ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
+          ctx.beginPath(); ctx.moveTo(x + 4, y + 4); ctx.lineTo(x + TILE - 4, y + TILE - 4); ctx.stroke();
+        } else {
+          // Speckles from the fixed per-tile hash.
+          ctx.fillStyle = 'rgba(0,0,0,0.18)';
+          ctx.fillRect(x + (h & 15) + 6, y + ((h >> 4) & 15) + 8, 6, 4);
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          ctx.fillRect(x + ((h >> 8) & 15) + 10, y + ((h >> 12) & 15) + 14, 5, 3);
+        }
+
         if (exposedTop) {
-          ctx.fillStyle = '#5fae3b';
+          ctx.fillStyle = look.top;
           ctx.fillRect(x, y, TILE + 0.5, 9);
-          ctx.fillStyle = '#4a8f2d';
-          ctx.fillRect(x, y + 7, TILE + 0.5, 3);
+          ctx.fillStyle = look.topEdge;
+          if (look.metal) {
+            // Yellow hazard stripes along the edge of a steel deck.
+            for (let i = 0; i < TILE; i += 10) ctx.fillRect(x + i, y + 7, 5, 3);
+          } else {
+            ctx.fillRect(x, y + 7, TILE + 0.5, 3);
+            ctx.fillStyle = look.top;        // grass tufts, snow drips, sand ripples
+            ctx.fillRect(x + (h % 30), y + 9, 5, 3 + (h >> 5) % 4);
+          }
+          // A prop on roughly one ground tile in four, where there is room above.
+          const decor = theme.decor[(h >> 7) % theme.decor.length];
+          if (decor && kind === KIND.ground && (h >> 3) % 4 === 0 && r > 2 && map.grid[r - 2][c] === 0) {
+            drawDecor(decor, x + TILE / 2, y + 2, h, lamps);
+          }
         }
         if (c > 0 && map.grid[r][c - 1] === 0) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x, y, 3, TILE); }
         if (c < map.cols - 1 && map.grid[r][c + 1] === 0) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + TILE - 3, y, 3, TILE); }
       }
+    }
+
+    // Lamp light at night: soft warm pools added on top of the terrain.
+    if (lamps.length) {
+      ctx.globalCompositeOperation = 'lighter';
+      for (const [lx, ly] of lamps) {
+        const glow = ctx.createRadialGradient(lx, ly, 2, lx, ly + 30, 120);
+        glow.addColorStop(0, 'rgba(255,214,120,0.45)');
+        glow.addColorStop(1, 'rgba(255,214,120,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(lx - 120, ly - 90, 240, 240);
+      }
+      ctx.globalCompositeOperation = 'source-over';
     }
   }
 
@@ -376,7 +601,7 @@ export function createRenderer(canvas) {
     cam.x += offset.x;
     cam.y += offset.y;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawBackground(world.time);
+    drawBackground(world.time, world.map);
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
     drawTerrain(world.map);
     drawPickups(world, world.time);

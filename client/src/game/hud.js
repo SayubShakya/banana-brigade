@@ -102,6 +102,9 @@ export function createHud() {
       el.help.classList.remove('fade');
       clearTimeout(helpTimer);
       helpTimer = setTimeout(() => el.help.classList.add('fade'), 7000);
+      // Name the battlefield; keep any message already showing (e.g. the first wave).
+      const showing = el.toast.classList.contains('show') ? el.toast.textContent : '';
+      toast(showing ? `Map: ${w.map.name} · ${showing}` : `Map: ${w.map.name}`);
     },
     setBanners(on) { banners = on; },
     hide() { world = null; el.hud.hidden = true; el.board.hidden = true; el.help.hidden = true; },

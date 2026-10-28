@@ -32,6 +32,7 @@ import Daily from './screens/Daily.jsx';
 import Difficulty from './screens/Difficulty.jsx';
 import Campaign from './screens/Campaign.jsx';
 import { chapterOf, missionById } from './game/campaign.js';
+import { mapName } from './game/maps.js';
 import { DIFFICULTY } from './game/config.js';
 import Toasts from './screens/Toasts.jsx';
 
@@ -132,7 +133,7 @@ export default function App() {
     setScreen('campaign');
     const result = await askPuzzle('deploy', {
       modeLabel: `Mission ${mission.id} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
-      title: mission.name, subtitle: `${mission.target} kills in ${Math.floor(mission.timeLimit / 60)} minutes. Solve the Banana puzzle to deploy.`,
+      title: mission.name, subtitle: `${mapName(mission.map)}: ${mission.target} kills in ${Math.floor(mission.timeLimit / 60)} minutes. Solve the Banana puzzle to deploy.`,
     });
     if (result === 'solved') startBattle('campaign');
   }, [startBattle]);

@@ -51,9 +51,9 @@ export function createNetGame() {
 
   const soldierById = (id) => view?.soldiers.find((s) => s.id === id) ?? null;
 
-  socket.on('match:start', ({ me: myId, teamMode, roster }) => {
+  socket.on('match:start', ({ me: myId, teamMode, map, roster }) => {
     view = {
-      map: createMap(), mode: teamMode ? 'team' : 'quick', cfg: MODES.online, teamMode, over: false, wave: 0,
+      map: createMap(map), mode: teamMode ? 'team' : 'quick', cfg: MODES.online, teamMode, over: false, wave: 0,
       time: 0, timeLeft: MODES.online.timeLimit, teamKills: { blue: 0, red: 0 },
       bullets: [], rockets: [], flames: [], grenades: [], particles: [], pickups: [],
       soldiers: roster.map((r) => ({

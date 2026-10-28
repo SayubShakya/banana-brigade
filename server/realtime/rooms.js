@@ -9,7 +9,7 @@
 //   browser → server                       server → browser
 //   rooms:list                (ack)        room:update   { code, host, players, state, ... }
 //   room:create {teamMode, isPublic, difficulty}  rooms:changed (someone made / closed a room)
-//   room:join   {code}        (ack)        match:start   { matchId, me, teamMode, roster }
+//   room:join   {code}        (ack)        match:start   { matchId, me, teamMode, map, roster }
 //   room:leave, room:ready {ready}         match:snapshot / match:end
 //   room:start               (ack)         puzzle:offer  { purpose: 'crate' }
 //   input       {controls}
@@ -130,7 +130,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
     });
     for (const p of players) {
       io.to(`user:${p.userId}`).emit('match:start', {
-        matchId: room.match.matchId, me: `u${p.userId}`, teamMode: room.teamMode, roster: room.match.roster(),
+        matchId: room.match.matchId, me: `u${p.userId}`, teamMode: room.teamMode, map: room.match.mapId, roster: room.match.roster(),
       });
     }
     update(room);
@@ -149,7 +149,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
       const p = existing.players.get(userId);
       p.connected = true;
       if (existing.match?.rejoin(userId)) {
-        socket.emit('match:start', { matchId: existing.match.matchId, me: `u${userId}`, teamMode: existing.teamMode, roster: existing.match.roster() });
+        socket.emit('match:start', { matchId: existing.match.matchId, me: `u${userId}`, teamMode: existing.teamMode, map: existing.match.mapId, roster: existing.match.roster() });
       }
       socket.emit('room:update', view(existing));
     }

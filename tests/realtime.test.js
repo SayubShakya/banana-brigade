@@ -64,6 +64,7 @@ test('the server runs the match, ignores faked scores and saves the results itse
     const start = await started;
     assert.equal(start.me, `u${a.me.id}`);
     assert.equal(start.roster.length, 6);                    // 2 players + 4 bots
+    assert.ok(['jungle', 'desert', 'snow', 'night'].includes(start.map), 'the server names the map');
     assert.equal(start.roster.filter((r) => r.human).length, 2);
 
     const snap = await once(b.socket, 'match:snapshot');
