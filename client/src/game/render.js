@@ -1,13 +1,16 @@
 // Banana Brigade renderer. Draws the world onto the canvas: sky and hills, the terrain, pickups, soldiers,
 // bullets and effects, then the crosshair. The camera follows the player and leans
 // towards where they are aiming, so you can see further in that direction.
+// Shooting effects (flashes, sparks, hit markers, shake) come from effects.js; the
+// sniper scope overlay is drawn here when the sniper is at full zoom.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { VIEW, TILE, WEAPONS, SOLDIER } from './config.js';
+import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS } from './config.js';
 import { drawSoldier } from './characters.js';
 import { activeGun } from './world.js';
 import { raycast } from './map.js';
+import { createEffects } from './effects.js';
 
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
@@ -33,6 +36,9 @@ export function createRenderer(canvas) {
   }
   const toWorld = (vx, vy) => ({ x: vx / scale + cam.x, y: vy / scale + cam.y });
   const toViewFromWorld = (wx, wy) => ({ x: (wx - cam.x) * scale, y: (wy - cam.y) * scale });
+  const onScreen = (wx, wy) => wx >= cam.x && wx <= cam.x + vw() && wy >= cam.y && wy <= cam.y + vh();
+  const effects = createEffects({ toViewFromWorld, onScreen });
+  let scopeT = 0;         // 0 = no scope, 1 = sniper scope fully in
 
   function updateCamera(world, mouse, dt) {
     const p = world.player;
@@ -42,7 +48,8 @@ export function createRenderer(canvas) {
     const lookY = ((mouse.y - VIEW.height / 2) / scale) * 0.35;
     const tx = Math.max(0, Math.min(world.map.width - vw(), px - vw() / 2 + lookX));
     const ty = Math.max(0, Math.min(world.map.height - vh(), py - vh() / 2 + lookY));
-    const k = Math.min(1, dt * 8);
+    // Through the scope the camera follows more slowly, so the aim feels steadier.
+    const k = Math.min(1, dt * (8 - 5 * scopeT));
     cam.x += (tx - cam.x) * k;
     cam.y += (ty - cam.y) * k;
   }
@@ -171,15 +178,8 @@ export function createRenderer(canvas) {
   function drawSoldiers(world, time) {
     for (const s of world.soldiers) {
       if (!s.alive) continue;
-      const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0 };
+      const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0, recoil: effects.recoilOf(s) };
       drawSoldier(ctx, view, s.avatar, time);
-      const gun = WEAPONS[activeGun(s).key];
-      if (gun.type !== 'flame' && s.fireCooldown > gun.rate - 0.05) {
-        const mx = view.x + s.w / 2 + Math.cos(s.aim) * 40;
-        const my = view.y + 25 + Math.sin(s.aim) * 40;
-        ctx.fillStyle = 'rgba(255,230,120,0.9)';
-        ctx.beginPath(); ctx.arc(mx, my, 6 + Math.random() * 4, 0, Math.PI * 2); ctx.fill();
-      }
       const cx = view.x + s.w / 2;
       const tagColor = s.isPlayer ? '#ffe135' : s.team === 'blue' ? '#7ec8ff' : s.team === 'red' ? '#ff8a8a' : '#ffffff';
       label(s.name, cx, view.y - 22, 12, tagColor);
@@ -192,15 +192,29 @@ export function createRenderer(canvas) {
     }
   }
 
+  // Tracers: a bright head with a tail that fades out behind the bullet.
   function drawProjectiles(world) {
     ctx.lineCap = 'round';
     for (const b of world.bullets) {
+      const x = b.x - cam.x;
+      const y = b.y - cam.y;
+      const dx = b.x - (b.px ?? b.x);
+      const dy = b.y - (b.py ?? b.y);
+      const len = Math.hypot(dx, dy) || 1;
+      const sniper = b.color === WEAPONS.sniper.color;
+      const tail = Math.min(sniper ? 160 : 90, len * 2.5);
+      const ux = dx / len;
+      const uy = dy / len;
       ctx.strokeStyle = b.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo((b.px ?? b.x) - cam.x, (b.py ?? b.y) - cam.y);
-      ctx.lineTo(b.x - cam.x, b.y - cam.y);
-      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = 0.15 + i * 0.3;
+        ctx.lineWidth = (sniper ? 2.5 : 1.5) + i * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(x - ux * tail * (1 - i / 3), y - uy * tail * (1 - i / 3));
+        ctx.lineTo(x - ux * tail * (1 - (i + 1) / 3), y - uy * tail * (1 - (i + 1) / 3));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
     }
     for (const r of world.rockets) {
       const a = Math.atan2(r.vy, r.vx);
@@ -253,7 +267,59 @@ export function createRenderer(canvas) {
     ctx.stroke();
   }
 
+  // Sniper scope: dark vignette outside a round lens, a faint lens tint and a thin
+  // reticle with mil-dots. The lens shrinks into place as the scope comes in.
+  let lensTint = null;
+  function drawScope(mouse) {
+    if (scopeT < 0.01) return;
+    const ease = 1 - (1 - scopeT) * (1 - scopeT);
+    const r = 250 + (1 - ease) * 500;
+    const { x, y } = mouse;
+    ctx.globalAlpha = ease;
+    ctx.fillStyle = 'rgba(8,10,12,0.86)';
+    ctx.beginPath();
+    ctx.rect(0, 0, VIEW.width, VIEW.height);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill('evenodd');
+    if (!lensTint) {
+      lensTint = ctx.createRadialGradient(0, 0, 0.55, 0, 0, 1);
+      lensTint.addColorStop(0, 'rgba(120,200,255,0.05)');
+      lensTint.addColorStop(1, 'rgba(0,30,40,0.45)');
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(r, r);
+    ctx.fillStyle = lensTint;
+    ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#05070a';
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    // Reticle: thick posts at the edge, thin lines to the middle, mil-dots every r/6.
+    ctx.strokeStyle = 'rgba(10,10,10,0.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - r, y); ctx.lineTo(x - r * 0.45, y); ctx.moveTo(x + r * 0.45, y); ctx.lineTo(x + r, y);
+    ctx.moveTo(x, y + r); ctx.lineTo(x, y + r * 0.45);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x - 4, y); ctx.moveTo(x + 4, y); ctx.lineTo(x + r * 0.45, y);
+    ctx.moveTo(x, y - r); ctx.lineTo(x, y - 4); ctx.moveTo(x, y + 4); ctx.lineTo(x, y + r * 0.45);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(10,10,10,0.9)';
+    for (let i = 1; i <= 3; i++) {
+      const d = (r / 6) * i * 0.9;
+      ctx.fillRect(x - d - 1.5, y - 1.5, 3, 3); ctx.fillRect(x + d - 1.5, y - 1.5, 3, 3);
+      ctx.fillRect(x - 1.5, y - d - 1.5, 3, 3); ctx.fillRect(x - 1.5, y + d - 1.5, 3, 3);
+    }
+    ctx.fillStyle = '#e63946';
+    ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   function drawCrosshair(mouse, world) {
+    if (scopeT > 0.6) return;   // the scope reticle replaces the crosshair
     const p = world.player;
     const reloading = p.reloadTimer > 0;
     ctx.strokeStyle = reloading ? '#f4a261' : '#ffffff';
@@ -271,7 +337,15 @@ export function createRenderer(canvas) {
 
   function render(world, mouse, dt, zoomTarget = 1) {
     scale += (zoomTarget - scale) * Math.min(1, dt * 6 || 1);
+    const p = world.player;
+    const scoped = p.alive && activeGun(p).key === 'sniper' && zoomTarget <= ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+    scopeT += ((scoped ? 1 : 0) - scopeT) * Math.min(1, dt * 7);
     updateCamera(world, mouse, dt);
+    effects.update(world, dt);
+    // Recoil kick and screen shake move the camera only while the world is drawn.
+    const { offset } = effects;
+    cam.x += offset.x;
+    cam.y += offset.y;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawBackground(world.time);
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
@@ -280,14 +354,24 @@ export function createRenderer(canvas) {
     drawSoldiers(world, world.time);
     drawProjectiles(world);
     drawParticles(world);
+    effects.drawWorld(ctx, cam);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (!world.player.alive) {
       ctx.fillStyle = 'rgba(80,0,0,0.25)';
       ctx.fillRect(0, 0, VIEW.width, VIEW.height);
     }
     drawLaser(mouse, world);
+    effects.drawScreen(ctx);
+    cam.x -= offset.x;
+    cam.y -= offset.y;
+    drawScope(mouse);
     drawCrosshair(mouse, world);
+    effects.drawHud(ctx, mouse);
   }
 
-  return { render, toView, toWorld, toViewFromWorld, setLaser: (on) => { laser = on; } };
+  return {
+    render, toView, toWorld, toViewFromWorld,
+    setLaser: (on) => { laser = on; },
+    setBanners: (on) => effects.setBanners(on),
+  };
 }

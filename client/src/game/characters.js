@@ -122,7 +122,7 @@ function drawGun(ctx, weaponKey) {
   if (weaponKey === 'rocket') { ctx.fillStyle = '#c0392b'; ctx.fillRect(4 + g.len - 4, -g.h / 2, 4, g.h); }
 }
 
-// s: { x, y, w, h, facing, aim, walkPhase, onGround, jetting, weapon, hurtFlash, shielded }
+// s: { x, y, w, h, facing, aim, walkPhase, onGround, jetting, weapon, hurtFlash, shielded, recoil? }
 export function drawSoldier(ctx, s, avatar, time) {
   const cx = s.x + s.w / 2;
   const top = s.y;
@@ -199,6 +199,7 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.translate(cx, top + 25);
   ctx.rotate(s.aim);
   if (Math.cos(s.aim) < 0) ctx.scale(1, -1);
+  if (s.recoil) ctx.translate(-s.recoil, 0);   // the gun kicks back after a shot
   ctx.strokeStyle = avatar.uniform;
   ctx.lineWidth = 5;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, 0); ctx.stroke();
