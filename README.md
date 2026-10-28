@@ -189,11 +189,11 @@ More detail, with sequence diagrams, is in [docs/architecture.md](docs/architect
 |---|---|
 | `server/index.js` | Entry point: reads `.env`, connects to MongoDB, starts HTTP and Socket.io |
 | `server/app.js` | Express app: session cookie, puzzle routes, status, static files |
-| `server/routes/` | `auth.js` (register, login, logout, me), `scores.js`, `campaign.js`, `daily.js`, `admin.js` |
+| `server/routes/` | `auth.js` (register, login, logout, logout-all, password, account, available, sessions, me), `scores.js`, `campaign.js`, `daily.js`, `admin.js` |
 | `server/middleware/auth.js` | `requireLogin` and `requireAdmin` (the user and role are read from the database) |
 | `server/sessions.js` | Finds and ends every session of one player; drops their live sockets |
 | `server/db.js`, `server/models.js` | All database access and the Mongoose schemas |
-| `server/services/bananaApi.js` | The only code that calls the Banana API (timeout, retry, parsing) |
+| `server/services/bananaApi.js` | The only code that calls the Banana API (timeout, retries with backoff, parsing, call statistics) |
 | `server/pool.js`, `server/puzzles.js` | Ready puzzles, reserve, deadline, in-flight limit, circuit breaker; solutions kept on the server |
 | `server/achievements.js` | Event-driven achievements (Node `EventEmitter`) |
 | `server/realtime/` | `socket.js` (login check), `rooms.js` (rooms, puzzles), `match.js` (server-run match) |
@@ -250,16 +250,16 @@ verification.
 | Event-driven | DOM events to bus events | `client/src/game/input.js:62-70` |
 | Event-driven | Server `EventEmitter` achievements | `server/achievements.js:36-94` |
 | Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:140-257`, `server/realtime/match.js:130-132` |
-| Interoperability | Calling the Banana API (timeout, retry with backoff) | `server/services/bananaApi.js:113-164` |
+| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:91-164` (`createBananaApi` to `fetchPuzzle`) |
 | Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:43-80` |
-| Interoperability | Pool, reserve, deadline, circuit breaker | `server/pool.js:65-99`, `server/pool.js:136-167` |
-| Interoperability | API health in `/api/status` | `server/pool.js:169-182` |
+| Interoperability | Pool, reserve, deadline, circuit breaker | `server/pool.js:65-99`, `server/pool.js:136-171` |
+| Interoperability | API health in `/api/status` | `server/pool.js:173-186` |
 | Interoperability | Our own REST API for the browser | `server/app.js:79-112`, `client/src/api.js:9-19` |
 | Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:25-30` |
 | Virtual identity | Session cookie settings | `server/app.js:48-60` |
 | Virtual identity | Register, hash, login, lockout, logout | `server/routes/auth.js:65-123` |
 | Virtual identity | Session regeneration, remember me | `server/routes/auth.js:33-48` |
-| Virtual identity | Log out everywhere, change password, delete account | `server/routes/auth.js:127-181`, `server/sessions.js:10-41` |
+| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:125-216`, `server/sessions.js:10-41` |
 | Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:13-46` |
 | Virtual identity | Admin roles | `server/routes/admin.js:30-45`, `client/src/screens/Admin.jsx` |
 | Virtual identity | Sessions in MongoDB | `server/index.js:45-47` |
