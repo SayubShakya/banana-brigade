@@ -30,6 +30,7 @@ function createSoldier(id, name, avatar, isPlayer, team = id) {
     x: 0, y: 0, w: SOLDIER.width, h: SOLDIER.height, vx: 0, vy: 0,
     facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, groundTime: 0,
+    jetHeld: false, jetBuffer: 0, coyote: 0, sputterCooldown: 0,
     alive: false, respawnTimer: 0, shieldTimer: 0, hurtFlash: 0,
     sidearm: newGun(SIDEARM), primary: null, current: 'primary', lastHurt: 0,
     fireCooldown: 0, reloadTimer: 0, meleeCooldown: 0, grenades: SOLDIER.grenades,
@@ -349,6 +350,11 @@ function takePickup(world, s, p) {
   return true;
 }
 
+function sputter(world, s) {
+  s.sputterCooldown = PHYSICS.sputterCooldown;
+  world.emit('jetpack:sputter', { soldier: s, x: s.x + s.w / 2, y: s.y + s.h - 10 });
+}
+
 function updateSoldier(world, s, dt) {
   if (!s.alive) {
     if (s.gone) return;
@@ -377,23 +383,51 @@ function updateSoldier(world, s, dt) {
     const target = dir * PHYSICS.walkSpeed;
     s.vx += (target - s.vx) * Math.min(1, dt * 18);
   } else {
-    s.vx += dir * PHYSICS.airAccel * dt;
-    if (!dir) s.vx *= 1 - Math.min(1, dt * 1.5);
+    const turning = dir !== 0 && Math.sign(s.vx) === -dir;
+    s.vx += dir * PHYSICS.airAccel * (turning ? PHYSICS.airTurnBoost : 1) * dt;
+    if (!dir) s.vx *= 1 - Math.min(1, dt * PHYSICS.airDrag);
     s.vx = Math.max(-PHYSICS.airSpeed * 1.6, Math.min(PHYSICS.airSpeed * 1.6, s.vx));
     if (Math.abs(s.vx) > PHYSICS.airSpeed && dir === Math.sign(s.vx)) s.vx -= Math.sign(s.vx) * PHYSICS.airAccel * dt;
   }
 
   // Jetpack and gravity.
+  // A fresh jet press is remembered for a moment (jump buffer), and walking off a
+  // ledge still counts as standing for a moment (coyote time), so a take-off pop
+  // feels reliable. The thrust is strongest while falling (quick lift-off) and eases
+  // off near the top speed, so the climb levels out smoothly instead of snapping.
+  const jetPressed = c.jet && !s.jetHeld;
+  s.jetHeld = c.jet;
+  s.jetBuffer = jetPressed ? PHYSICS.jumpBuffer : Math.max(0, s.jetBuffer - dt);
+  s.coyote = s.onGround ? PHYSICS.coyoteTime : Math.max(0, s.coyote - dt);
+  s.sputterCooldown = Math.max(0, s.sputterCooldown - dt);
+  if (s.fuelBoost > 0) { s.fuelBoost = Math.max(0, s.fuelBoost - dt); s.fuel = PHYSICS.fuelMax; }
+  if (c.jet && s.jetBuffer > 0 && s.coyote > 0 && s.fuel > PHYSICS.takeoffFuel && s.vy > -PHYSICS.takeoffKick) {
+    s.vy = -PHYSICS.takeoffKick;
+    if (!(s.fuelBoost > 0)) s.fuel -= PHYSICS.takeoffFuel;
+    s.jetBuffer = 0;
+    s.coyote = 0;
+  }
   s.jetting = c.jet && s.fuel > 0;
   if (s.jetting) {
-    s.vy -= PHYSICS.jetThrust * dt;
+    const rise = Math.max(0, -s.vy) / PHYSICS.maxRise;
+    const curve = s.vy > 0 ? PHYSICS.jetLiftBoost : 1 - PHYSICS.jetEase * rise * rise;
+    s.vy -= PHYSICS.jetThrust * curve * dt;
     if (s.vy < -PHYSICS.maxRise) s.vy = -PHYSICS.maxRise;
-    s.fuel = Math.max(0, s.fuel - PHYSICS.fuelBurn * dt);
+    if (!(s.fuelBoost > 0)) s.fuel = Math.max(0, s.fuel - PHYSICS.fuelBurn * dt);
+    if (s.fuel <= 0 && s.sputterCooldown <= 0) sputter(world, s);
+  } else if (jetPressed && s.sputterCooldown <= 0) {
+    sputter(world, s);   // pressing jet on an empty tank
   }
   s.vy = Math.min(PHYSICS.maxFall, s.vy + PHYSICS.gravity * dt);
 
+  const fallSpeed = s.vy;
+  const wasOnGround = s.onGround;
   const hit = moveBox(world.map, s, dt);
   s.onGround = hit.bottom;
+  // Landing: no fall damage, just an event for dust and a thud.
+  if (s.onGround && !wasOnGround && fallSpeed >= PHYSICS.landMinSpeed) {
+    world.emit('soldier:landed', { soldier: s, speed: Math.round(fallSpeed), x: s.x + s.w / 2, y: s.y + s.h });
+  }
   if (s.onGround) {
     s.groundTime += dt;
     if (s.groundTime > PHYSICS.fuelRegenDelay) s.fuel = Math.min(PHYSICS.fuelMax, s.fuel + PHYSICS.fuelRegen * dt);

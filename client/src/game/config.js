@@ -10,8 +10,18 @@ export const PHYSICS = {
   gravity: 1900,          // px/s²
   walkSpeed: 270,         // px/s on the ground
   airSpeed: 300,          // px/s horizontal top speed in the air
-  airAccel: 1600,         // px/s² horizontal acceleration in the air
+  airAccel: 1500,         // px/s² horizontal acceleration in the air
+  airTurnBoost: 1.7,      // extra air acceleration when steering against your drift (snappier turns)
+  airDrag: 2.2,           // how fast horizontal drift dies in the air with no key held (per second)
   jetThrust: 3300,        // px/s² upward while the jetpack fires
+  jetLiftBoost: 1.5,      // thrust multiplier while still falling: quick lift-off and catching falls
+  jetEase: 0.35,          // thrust fades by up to this share near maxRise, so top speed arrives smoothly
+  takeoffKick: 230,       // px/s instant upward pop when the jetpack starts from the ground
+  takeoffFuel: 3,         // fuel the take-off pop costs
+  coyoteTime: 0.12,       // seconds after walking off a ledge that still count as "on the ground"
+  jumpBuffer: 0.15,       // seconds a jet press is remembered before landing
+  landMinSpeed: 260,      // px/s fall speed needed for a 'soldier:landed' (dust) event; no fall damage
+  sputterCooldown: 0.5,   // seconds between 'jetpack:sputter' events when the tank is empty
   maxRise: 480,           // px/s fastest climb
   maxFall: 950,           // px/s fastest fall
   fuelMax: 100,
