@@ -157,6 +157,7 @@ export function createGameSession() {
         mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey, mission,
       });
       hud.attach(world);
+      input.resetZoom();
       input.setEnabled(true);
       setState('playing');
     },
@@ -196,7 +197,9 @@ export function createGameSession() {
     last = now;
     meter.tick(now);
     if (world) {
-      const running = state === 'playing' || state === 'over';
+      // The world keeps moving for the short pause after the match ends, then freezes
+      // behind the results screen (no shots, sounds or bots in the background).
+      const running = state === 'playing';
       if (running) {
         acc += dt;
         let steps = 0;
