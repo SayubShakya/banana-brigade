@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { rankFor, xpFor, MODE_NAMES } from '../rank.js';
-import { Panel, AvatarCanvas, RankCard } from './common.jsx';
+import { Panel, AvatarCanvas, RankCard, Icon } from './common.jsx';
 
 const playTime = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`);
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -14,7 +14,12 @@ const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeri
 export default function Profile({ account, parts, onCustomise, onBack }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  useEffect(() => { api.myRecord().then(setData).catch((e) => setError(e.message)); }, []);
+  const [badges, setBadges] = useState(null);
+  useEffect(() => {
+    api.myRecord().then(setData).catch((e) => setError(e.message));
+    api.achievements().then(setBadges).catch(() => {});
+  }, []);
+  const have = new Map((badges?.mine ?? []).map((a) => [a.id, a.at]));
 
   const t = data?.totals;
   const items = t ? [
@@ -40,12 +45,20 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
             {error && <div><dt>Record</dt><dd>Offline</dd></div>}
             {items.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
           </dl>
+          <h3 className="sub-head">Achievements {badges && `· ${have.size} / ${badges.all.length}`}</h3>
+          <div className="badges">
+            {badges?.all.map((a) => (
+              <div key={a.id} className={`badge-item${have.has(a.id) ? '' : ' locked'}`} title={`${a.text}${have.has(a.id) ? ` (unlocked ${when(have.get(a.id))})` : ''}`}>
+                <Icon id="trophy" />{a.name}
+              </div>
+            ))}
+          </div>
           <h3 className="sub-head">Recent battles</h3>
           <table className="results compact">
             <thead><tr><th>Mode</th><th>Kills</th><th>Deaths</th><th>Puzzles</th><th>Result</th><th>When</th></tr></thead>
             <tbody>
               {data && !data.recent.length && <tr className="empty-row"><td colSpan={6}>No battles yet. Deploy to start your record.</td></tr>}
-              {data?.recent.slice(0, 6).map((r) => (
+              {data?.recent.slice(0, 4).map((r) => (
                 <tr key={r.id}>
                   <td>{MODE_NAMES[r.mode]}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.puzzles_solved} / {r.puzzles_attempted}</td>
                   <td>{r.mode === 'survival' ? `Wave ${r.wave}` : r.won ? <span className="win">Won</span> : 'Lost'}</td><td>{when(r.created_at)}</td>
