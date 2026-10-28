@@ -89,7 +89,8 @@ function createApp({
   app.get('/api/status', (req, res) => res.json(pool.status()));
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
-  app.use(express.static(path.join(__dirname, '..', 'public')));
+  // The built React app (npm run build).
+  app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
 
   app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON' });

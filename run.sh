@@ -12,6 +12,10 @@ if [ ! -f .env ]; then
   sed "s/^SESSION_SECRET=.*/SESSION_SECRET=$secret/" .env.example > .env
   echo "Created .env with a random SESSION_SECRET."
 fi
+# Build the React screens when they are missing or older than the source.
+if [ ! -f client/dist/index.html ] || [ -n "$(find client/src client/index.html -newer client/dist/index.html -print -quit)" ]; then
+  echo "Building the React app…"; npm run build >/dev/null
+fi
 # MongoDB must be running (local install via Homebrew, or MONGODB_URI pointing at Atlas).
 if ! grep -q '^MONGODB_URI=mongodb+srv' .env 2>/dev/null && command -v mongosh >/dev/null 2>&1; then
   if ! mongosh --quiet --eval 'db.runCommand({ping:1}).ok' >/dev/null 2>&1; then
