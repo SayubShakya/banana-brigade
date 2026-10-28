@@ -1,6 +1,8 @@
 // Computer-controlled soldiers. Each bot "thinks" a few times a second: it picks a
 // target, decides where to move, when to use the jetpack and when to shoot, then
 // fills in the same controls object the keyboard and mouse fill for the player.
+// How well they aim, how fast they react and how they fire comes from
+// world.difficulty (config.js DIFFICULTY), so the same code plays easy or hard.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
@@ -10,12 +12,13 @@ import { center, activeGun } from './world.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
-function brainFor(bot) {
+function brainFor(bot, level) {
   if (!bot.brain) {
     bot.brain = {
       think: 0, target: null, seenFor: 0, waypoint: null, strafe: 1, strafeTimer: 0,
       jetHold: false, stuck: 0, lastX: bot.x, aimErr: { x: 0, y: 0 }, detour: 1, detourTime: 0, refuel: false, climbing: false,
-      accuracy: rand(0.55, 0.9), // lower is sloppier
+      accuracy: rand(...level.accuracy), // lower is sloppier
+      burst: rand(0, level.burst), firing: true,
     };
   }
   return bot.brain;
@@ -58,7 +61,7 @@ function think(world, bot, b) {
     const ec = center(e);
     const d = Math.hypot(ec.x - me.x, ec.y - me.y);
     const visible = d < 1400 && hasLineOfSight(world.map, me, ec);
-    const score = d + (visible ? 0 : 900) + (e.isPlayer ? -80 : 0);
+    const score = d + (visible ? 0 : 900);   // no extra focus on human players
     if (score < bestScore) { bestScore = score; target = { soldier: e, visible, d }; }
   }
   if (target?.soldier !== b.target?.soldier) b.seenFor = 0;
@@ -83,14 +86,15 @@ function think(world, bot, b) {
   }
 
   // Aim error shrinks the longer the bot has been looking at its target.
-  const spread = (1.1 - b.accuracy) * (target ? Math.min(220, target.d * 0.18) : 0);
+  const spread = (1.2 - b.accuracy) * (target ? Math.min(300, target.d * 0.26) : 0);
   b.aimErr = { x: rand(-spread, spread), y: rand(-spread, spread) };
 }
 
 export function updateBots(world, dt) {
   for (const bot of world.soldiers) {
     if (bot.isPlayer || bot.isDummy || !bot.alive) continue;
-    const b = brainFor(bot);
+    const level = world.difficulty;
+    const b = brainFor(bot, level);
     const c = bot.controls;
     const me = center(bot);
 
@@ -158,9 +162,12 @@ export function updateBots(world, dt) {
       const w = WEAPONS[gun.key];
       if (t.visible) b.seenFor += dt; else b.seenFor = 0;
       const inRange = t.d < w.range * 0.9;
-      c.fire = t.visible && inRange && b.seenFor > 0.35;
+      // Fire in bursts with short pauses, after seeing the target for a moment.
+      b.burst -= dt;
+      if (b.burst <= 0) { b.firing = !b.firing; b.burst = b.firing ? rand(0.5, 1) * level.burst : rand(0.6, 1.4) * level.pause; }
+      c.fire = t.visible && inRange && b.seenFor > level.reaction && (b.firing || level.pause === 0);
       if (t.visible && t.d < SOLDIER.meleeRange + 10) c.melee = true;
-      if (t.visible && t.d > 220 && t.d < 520 && bot.grenades > 0 && Math.random() < dt * 0.25) c.grenade = true;
+      if (t.visible && t.d > 220 && t.d < 520 && bot.grenades > 0 && Math.random() < dt * level.grenades) c.grenade = true;
       if (!t.visible && gun.ammo < WEAPONS[gun.key].mag * 0.4) c.reload = true;
       if (bot.primary && bot.current === 'sidearm' && bot.primary.ammo + bot.primary.spare > 0) c.swap = true;
     } else {
