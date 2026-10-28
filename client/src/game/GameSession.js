@@ -17,10 +17,8 @@ import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow } from './world.js';
 import { updateBots } from './bots.js';
-import { createRenderer } from './render.js';
-import { createInput } from './input.js';
-import { createHud } from './hud.js';
-import { initSound, setListener, setMuted, unlockAudio } from './sound.js';
+import { getStage } from './stage.js';
+import { setListener, setMuted, unlockAudio } from './sound.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
 
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
@@ -43,11 +41,8 @@ export function outcome({ ranking, player, reason, mode, wave, teamKills }) {
   return { won, title: won ? 'Victory!' : `${ranking[0].name} wins`, line: why };
 }
 
-export function createGameSession(canvas) {
-  const renderer = createRenderer(canvas);
-  const input = createInput(canvas, renderer);
-  const hud = createHud();
-  initSound();
+export function createGameSession() {
+  const { renderer, input, hud } = getStage();
 
   let world = null;
   let state = 'idle';

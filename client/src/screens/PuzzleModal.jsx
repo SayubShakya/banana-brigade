@@ -4,7 +4,8 @@
 // Each puzzle has a countdown; running out of time counts as a miss.
 //
 // Anything can open it with askPuzzle() (puzzleBridge.js); it resolves to
-// 'solved', 'failed' or 'cancelled'.
+// 'solved', 'failed' or 'cancelled'. Puzzles come over HTTP (/api/puzzle) by default;
+// online matches pass options.source to fetch and answer them over the WebSocket.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
@@ -56,7 +57,7 @@ export default function PuzzleModal() {
     setStatus({ text: 'Fetching a puzzle from the Banana API…', kind: '' });
     emit('banana:requested', { purpose: r.purpose });
     try {
-      const p = await api.puzzle(r.purpose);
+      const p = await (r.options.source?.get ?? api.puzzle)(r.purpose);
       await new Promise((ok, fail) => {      // wait until the picture can be shown
         const img = new Image();
         img.onload = ok;
@@ -91,7 +92,7 @@ export default function PuzzleModal() {
     setPhase('answering');
     setPicked(n);
     try {
-      const result = await api.answer(puzzle.puzzleId, n);
+      const result = await (r.options.source?.answer ?? api.answer)(puzzle.puzzleId, n);
       emit('banana:answered', { purpose: r.purpose, correct: result.correct, timedOut });
       setFlash('');
       requestAnimationFrame(() => setFlash(result.correct ? 'good' : 'bad'));
