@@ -9,7 +9,7 @@ The Banana API "may be discontinued without notice". Single calls: `server/servi
 - **Timeout per attempt (5 s, `AbortController`).** A hung request is cancelled, so it cannot block a player.
 - **Retry, at most 2 more tries.** Only network errors, timeouts, HTTP 5xx and 429 are retried, because those can pass. Bad JSON or a 404 will not change, so retrying them only adds load.
 - **Exponential backoff with jitter (300 ms, then 900 ms, plus up to 30%).** The API gets time to recover. The jitter stops clients from retrying at the same moment.
-- **Deadline on `take()` (2.5 s).** After 2.5 s the player gets a reserve puzzle. Otherwise the worst case would be two 5 s timeouts plus backoff. The late live puzzle is still kept.
+- **Deadline on `take()` (2.5 s).** After 2.5 s the player gets a reserve puzzle. Otherwise the worst case would be three attempts that each time out after 5 s, plus about 1.2–1.6 s of backoff: roughly 16 s. The late live puzzle is still kept.
 - **In-flight limit (3 calls).** When no puzzles are ready, extra requests wait for one instead of each calling the API.
 - **Circuit breaker.** After 3 failures in a row, live calls stop for 30 s and the reserve is served. One trial call then checks whether the API has recovered.
 - **Validation.** The base64 PNG and the one-digit answer are checked. Harmless format differences are normalised first.
@@ -21,7 +21,7 @@ The Banana API "may be discontinued without notice". Single calls: `server/servi
 - **No retry.** Simplest, but one dropped packet costs the player a live puzzle.
 - **Fixed-interval retry.** This is easy to predict. But clients retry in step after an outage, and that "thundering herd" can keep a recovering server down.
 - **Queue with a worker.** This handles bursts well and survives restarts, but it needs Redis or a message broker. The pool is already a small in-memory buffer, which is enough at this scale.
-- **Retries without a breaker.** During an outage each request could take about 11 s, and the API would get three times the traffic.
+- **Retries without a breaker.** During an outage each request could take about 16 s (three 5 s timeouts plus backoff), and the API would get three times the traffic.
 
 ## Trade-offs
 
