@@ -25,6 +25,16 @@ jobs:
           node-version: 22
           cache: npm
 
+      # mongodb-memory-server downloads a MongoDB binary into this folder on the
+      # first run; caching it makes later runs faster and less dependent on the download.
+      - name: Cache the MongoDB binary for the tests
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            mongodb-binaries-${{ runner.os }}-
+
       - name: Install packages
         run: npm ci
 
