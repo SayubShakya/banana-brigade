@@ -22,6 +22,7 @@ const { createAuthRouter } = require('./routes/auth');
 const { createScoresRouter } = require('./routes/scores');
 const { createAdminRouter } = require('./routes/admin');
 const { createDailyRouter } = require('./routes/daily');
+const { createCampaignRouter } = require('./routes/campaign');
 const { createAchievements } = require('./achievements');
 const { requireLogin } = require('./middleware/auth');
 
@@ -64,6 +65,7 @@ function createApp({
   app.use('/api/scores', createScoresRouter({ db, achievements }));
   app.use('/api/admin', createAdminRouter({ db }));
   app.use('/api/daily', createDailyRouter({ db, pool, achievements }));
+  app.use('/api/campaign', createCampaignRouter({ db, achievements }));
 
   // Every achievement, and which ones this player has (with the date unlocked).
   app.get('/api/achievements', requireLogin, async (req, res, next) => {

@@ -8,7 +8,7 @@
 
 const { Schema } = require('mongoose');
 
-const MODES = ['quick', 'survival', 'training', 'team', 'online'];
+const MODES = ['quick', 'survival', 'training', 'team', 'online', 'campaign'];
 const CASE_INSENSITIVE = { locale: 'en', strength: 2 };   // "Sayub" and "sayub" are the same name
 
 const userSchema = new Schema({
@@ -25,6 +25,8 @@ const userSchema = new Schema({
     streak: { type: Number, default: 0 },   // Banana puzzles correct in a row (any mode)
     crates: { type: Number, default: 0 },   // banana crates opened
   },
+  // Campaign progress: best stars and fastest win per mission.
+  campaign: [{ _id: false, mission: Number, stars: Number, bestS: Number }],
   lastLoginAt: Date,
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 userSchema.index({ username: 1 }, { unique: true, collation: CASE_INSENSITIVE });

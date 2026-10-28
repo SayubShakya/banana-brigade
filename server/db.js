@@ -70,6 +70,19 @@ async function openDatabase(uri) {
       const res = await m.User.updateOne({ _id: oid(userId), 'achievements.id': { $ne: id } }, { $push: { achievements: { id, at: new Date() } } });
       return res.modifiedCount === 1;
     },
+    async campaignProgress(userId) {
+      const u = await m.User.findById(oid(userId), { campaign: 1 }).lean();
+      return Object.fromEntries((u?.campaign ?? []).map((c) => [c.mission, { stars: c.stars, bestS: c.bestS }]));
+    },
+    // Keeps the best stars and the fastest time for a mission.
+    async saveMission(userId, mission, stars, timeS) {
+      const progress = await this.campaignProgress(userId);
+      const old = progress[mission];
+      const entry = { mission, stars: Math.max(stars, old?.stars ?? 0), bestS: stars > 0 ? Math.min(timeS, old?.bestS ?? Infinity) : (old?.bestS ?? null) };
+      await m.User.updateOne({ _id: oid(userId) }, { $pull: { campaign: { mission } } });
+      await m.User.updateOne({ _id: oid(userId) }, { $push: { campaign: entry } });
+      return { ...progress, [mission]: { stars: entry.stars, bestS: entry.bestS } };
+    },
     setDailyStreak: (userId, daily) => m.User.updateOne({ _id: oid(userId) }, { daily }),
     // Updates the puzzle counters in one atomic step and returns the new values.
     async recordPuzzle(userId, { correct, crate }) {

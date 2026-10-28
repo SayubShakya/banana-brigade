@@ -21,6 +21,8 @@ const ACHIEVEMENTS = [
   { id: 'online_victor', name: 'Online Victor', text: 'Win an online match against real players.' },
   { id: 'veteran', name: 'Veteran', text: 'Finish 25 battles.' },
   { id: 'hard_win', name: 'Hard as Nails', text: 'Win a battle on Hard.' },
+  { id: 'three_stars', name: 'Three Stars', text: 'Earn 3 stars on a campaign mission.' },
+  { id: 'campaign_clear', name: 'Campaign Hero', text: 'Complete the final campaign mission.' },
   { id: 'banana_brain', name: 'Banana Brain', text: 'Solve 5 Banana puzzles in a row.' },
   { id: 'speed_demon', name: 'Speed Demon', text: 'Solve a Banana puzzle in under 3 seconds.' },
   { id: 'clutch', name: 'Clutch', text: 'Solve a respawn or crate puzzle with 3 seconds or less left.' },
@@ -58,6 +60,13 @@ function createAchievements({ db }) {
     const left = (LIMITS[p.purpose] ?? 30) - p.ms / 1000;
     if (p.correct && p.purpose !== 'deploy' && left <= 3) ids.push('clutch');
     if (counters.crates >= 10) ids.push('crate_collector');
+    return ids;
+  });
+
+  rule('mission:finished', async (userId, r) => {
+    const ids = [];
+    if (r.stars === 3) ids.push('three_stars');
+    if (r.stars > 0 && r.mission === 9) ids.push('campaign_clear');
     return ids;
   });
 
