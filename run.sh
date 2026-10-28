@@ -12,6 +12,12 @@ if [ ! -f .env ]; then
   sed "s/^SESSION_SECRET=.*/SESSION_SECRET=$secret/" .env.example > .env
   echo "Created .env with a random SESSION_SECRET."
 fi
+# MongoDB must be running (local install via Homebrew, or MONGODB_URI pointing at Atlas).
+if ! grep -q '^MONGODB_URI=mongodb+srv' .env 2>/dev/null && command -v mongosh >/dev/null 2>&1; then
+  if ! mongosh --quiet --eval 'db.runCommand({ping:1}).ok' >/dev/null 2>&1; then
+    echo "Starting MongoDB…"; brew services start mongodb-community >/dev/null 2>&1 || true; sleep 2
+  fi
+fi
 case "${1:-}" in
   --dev)  exec npm run dev ;;
   --test) exec npm test ;;

@@ -1,15 +1,39 @@
-// Test helpers: start the app on a random port with an in-memory database and a
+// Test helpers: start the app on a random port with an in-memory MongoDB and a
 // fake Banana API, and a tiny client that keeps the session cookie like a browser.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const { after } = require('node:test');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const { createApp } = require('../server/app');
 const { openDatabase } = require('../server/db');
+
+// Use the locally installed mongod if there is one (no download); CI downloads one.
+if (!process.env.MONGOMS_SYSTEM_BINARY && fs.existsSync('/opt/homebrew/bin/mongod')) {
+  process.env.MONGOMS_SYSTEM_BINARY = '/opt/homebrew/bin/mongod';
+}
+
+// One throw-away MongoDB per test file; every server gets its own empty database.
+let mongo = null;
+const opened = [];
+async function freshDatabase() {
+  mongo ??= await MongoMemoryServer.create();
+  const db = await openDatabase(mongo.getUri(`t_${crypto.randomUUID().slice(0, 8)}`));
+  opened.push(db);
+  return db;
+}
+after(async () => {
+  for (const db of opened) await db.close();
+  if (mongo) await mongo.stop();
+});
 
 const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 const fakeApi = (solution = 7) => ({ fetchPuzzle: async () => ({ image: IMAGE, solution }) });
 
-async function startServer({ bananaApi = fakeApi(), db = openDatabase() } = {}) {
+async function startServer({ bananaApi = fakeApi(), db } = {}) {
+  db ??= await freshDatabase();
   const app = createApp({ db, bananaApi, sessionSecret: 'test-secret' });
   const server = app.listen(0);
   await new Promise((r) => server.once('listening', r));
