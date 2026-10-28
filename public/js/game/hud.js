@@ -23,6 +23,7 @@ export function createHud() {
     board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'),
   };
   let world = null;
+  let banners = true;   // kill-streak banners (Settings)
   let crateNearUntil = 0;
   let pickupText = '';
   let pickupUntil = 0;
@@ -49,7 +50,7 @@ export function createHud() {
     if (victim.isDummy) return;
     if (killer && killer !== victim) feed(`${nameTag(killer)} <span class="weapon">[${esc(weapon)}]</span> ${nameTag(victim)}`);
     else feed(`${nameTag(victim)} <span class="weapon">blew themselves up</span>`);
-    if (killer?.isPlayer && killer !== victim && killer.streak >= 3) toast(killer.streak >= 5 ? `Banana Rampage! ${killer.streak} kills` : `${killer.streak}-kill streak!`);
+    if (banners && killer?.isPlayer && killer !== victim && killer.streak >= 3) toast(killer.streak >= 5 ? `Banana Rampage! ${killer.streak} kills` : `${killer.streak}-kill streak!`);
   });
   on('soldier:damaged', ({ victim }) => {
     if (!victim.isPlayer) return;
@@ -89,6 +90,7 @@ export function createHud() {
       el.zoom.textContent = '1x';
       drawAvatarPreview(el.badge, w.player.avatar);
     },
+    setBanners(on) { banners = on; },
     hide() { world = null; el.hud.hidden = true; el.board.hidden = true; },
     update() {
       if (!world) return;
