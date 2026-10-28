@@ -21,6 +21,8 @@ const { createPuzzlePool } = require('./pool');
 const { createAuthRouter } = require('./routes/auth');
 const { createScoresRouter } = require('./routes/scores');
 const { createAdminRouter } = require('./routes/admin');
+const { createDailyRouter } = require('./routes/daily');
+const { createAchievements } = require('./achievements');
 const { requireLogin } = require('./middleware/auth');
 
 const PURPOSES = ['deploy', 'respawn', 'crate'];
@@ -34,6 +36,7 @@ function createApp({
   production = false,
   puzzleStore = createPuzzleStore(),
   pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle }),
+  achievements = createAchievements({ db }),
 }) {
   const app = express();
   app.set('sessionCookieName', SESSION_COOKIE);
@@ -55,11 +58,20 @@ function createApp({
   });
   app.use(sessionMiddleware);
   // The WebSocket server (realtime/) reuses the same sessions and puzzle store.
-  Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db });
+  Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements });
 
   app.use('/api/auth', createAuthRouter({ db }));
-  app.use('/api/scores', createScoresRouter({ db }));
+  app.use('/api/scores', createScoresRouter({ db, achievements }));
   app.use('/api/admin', createAdminRouter({ db }));
+  app.use('/api/daily', createDailyRouter({ db, pool, achievements }));
+
+  // Every achievement, and which ones this player has (with the date unlocked).
+  app.get('/api/achievements', requireLogin, async (req, res, next) => {
+    try {
+      const user = await db.findUserById(req.session.userId);
+      res.json({ all: achievements.list, mine: user?.achievements ?? [] });
+    } catch (err) { next(err); }
+  });
 
   app.get('/api/puzzle', requireLogin, async (req, res) => {
     const purpose = PURPOSES.includes(req.query.purpose) ? req.query.purpose : 'deploy';
@@ -74,7 +86,7 @@ function createApp({
     }
   });
 
-  app.post('/api/puzzle/answer', requireLogin, (req, res) => {
+  app.post('/api/puzzle/answer', requireLogin, async (req, res, next) => {
     const { puzzleId, answer } = req.body ?? {};
     if (typeof puzzleId !== 'string' || !Number.isInteger(answer)) {
       return res.status(400).json({ error: 'Send { puzzleId, answer } with a whole-number answer' });
@@ -86,7 +98,12 @@ function createApp({
     p.attempted += 1;
     if (result.correct) p.solved += 1;
     req.session.puzzles = p;
-    res.json(result);
+    try {
+      const unlocked = await achievements.emit('puzzle:answered', req.session.userId, result);
+      res.json({ correct: result.correct, solution: result.solution, purpose: result.purpose, unlocked });
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.get('/api/status', (req, res) => res.json(pool.status()));

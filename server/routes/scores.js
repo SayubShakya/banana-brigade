@@ -12,7 +12,7 @@ const MODES = ['quick', 'survival', 'training', 'team'];   // modes a browser ma
 const BOARDS = [...MODES, 'online'];                          // online scores are written by the server
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
 
-function createScoresRouter({ db }) {
+function createScoresRouter({ db, achievements }) {
   const router = express.Router();
 
   router.post('/', requireLogin, async (req, res, next) => {
@@ -36,7 +36,8 @@ function createScoresRouter({ db }) {
     req.session.puzzles = { solved: 0, attempted: 0 };
     try {
       const id = await db.addScore(score);
-      res.status(201).json({ id, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted });
+      const unlocked = score.mode === 'training' ? [] : await achievements.emit('score:saved', score.userId, { ...score, won: !!score.won });
+      res.status(201).json({ id, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted, unlocked });
     } catch (err) {
       next(err);
     }
