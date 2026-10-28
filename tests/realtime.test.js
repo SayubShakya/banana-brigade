@@ -88,3 +88,22 @@ test('the server runs the match, ignores faked scores and saves the results itse
     assert.ok(board.body.rows.every((r) => r.multiplayer === true && r.kills < 999));
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
+
+test('the host picks the bot difficulty; the server checks it and passes it to the match', async () => {
+  const s = await startServer();
+  const a = await player(s, 'hardhost');
+  const b = await player(s, 'looker');
+  try {
+    assert.equal((await call(a.socket, 'room:create', { difficulty: 'insane' })).error, 'Unknown difficulty');
+    assert.equal((await call(a.socket, 'room:create', { difficulty: { $ne: 1 } })).error, 'Unknown difficulty');
+    assert.equal((await call(a.socket, 'room:create', {})).room.difficulty, 'medium');   // default
+
+    const { room } = await call(a.socket, 'room:create', { difficulty: 'hard' });
+    assert.equal(room.difficulty, 'hard');
+    assert.equal((await call(b.socket, 'rooms:list')).rooms.find((r) => r.code === room.code).difficulty, 'hard');
+
+    assert.deepEqual(await call(a.socket, 'room:start'), { ok: true });
+    assert.equal(s.realtime.rooms.room(room.code).match.botLevel, 'Hard');
+    s.realtime.rooms.endMatch(room.code);
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});

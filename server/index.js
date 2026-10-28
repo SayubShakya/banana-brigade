@@ -46,7 +46,7 @@ async function main() {
     client: db.connection.getClient(), collectionName: 'sessions', ttl: 2 * 60 * 60, stringify: false,
   });
   const bananaApi = createBananaApi({ baseUrl, timeoutMs: Number(process.env.BANANA_API_TIMEOUT_MS) || 5000 });
-  const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle });
+  const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats });
   const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production });
 
   // One HTTP server for the web pages, the JSON API and the WebSocket (Socket.io).

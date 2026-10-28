@@ -34,10 +34,11 @@ function soldierState(s) {
  * @param {object} o
  * @param {Array<{userId:string, username:string, parts:object, team:string}>} o.players
  * @param {boolean} o.teamMode
+ * @param {'easy'|'medium'|'hard'} [o.difficulty]  how good the bots are (checked by rooms.js)
  * @param {(event:string, payload:object, userId?:string) => void} o.send  to everyone, or to one player
  * @param {(result:object) => void} o.onEnd
  */
-function createMatch({ players, teamMode, send, onEnd, timeLimit }) {
+function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, timeLimit }) {
   const matchId = crypto.randomUUID();
   const outbox = [];                          // events for this tick, sent with the snapshot
   const near = new Set();                     // players standing at a banana crate this tick
@@ -67,7 +68,7 @@ function createMatch({ players, teamMode, send, onEnd, timeLimit }) {
   };
 
   const world = createWorld({
-    mode: 'online', teamMode, emit,
+    mode: 'online', teamMode, difficulty, emit,
     humans: players.map((p) => ({ id: sid(p.userId), name: p.username, avatar: { parts: p.parts }, team: p.team })),
     botAvatars: Array.from({ length: 8 }, (_, i) => ({ bot: i })),
     botNames: [...BOT_NAMES].sort(() => Math.random() - 0.5),
@@ -161,6 +162,7 @@ function createMatch({ players, teamMode, send, onEnd, timeLimit }) {
   return {
     matchId,
     roster,
+    botLevel: world.difficulty.name,          // what the engine actually uses, e.g. 'Hard'
     setControls,
     countPuzzle(userId, correct) {
       const p = puzzles.get(userId) ?? { solved: 0, attempted: 0 };
