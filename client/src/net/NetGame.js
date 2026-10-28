@@ -19,7 +19,7 @@ import { emptyControls, activeGun } from '../game/world.js';
 import { getStage } from '../game/stage.js';
 import { setListener, updateSound } from '../game/sound.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
-import { askPower } from '../powerBridge.js';
+import { askPower, isPowerOpen, closePower } from '../powerBridge.js';
 import { getSocket, request } from './socket.js';
 
 const DELAY_MS = 60;             // how far in the past soldiers are shown (about two snapshots)
@@ -88,6 +88,7 @@ export function createNetGame() {
 
   socket.on('match:end', (summary) => {
     if (!view) return;
+    closePower();
     active = false;
     input.setEnabled(false);
     const myTeam = me.team;
@@ -149,7 +150,7 @@ export function createNetGame() {
 
   // An online match cannot be paused for everyone; the menu opens over the live game.
   on('input:pause', () => {
-    if (!active || isPuzzleOpen()) return;
+    if (!active || isPuzzleOpen() || isPowerOpen()) return;
     if (paused) net.resume();
     else { paused = true; input.setEnabled(false); emit('game:state', { state: 'paused', online: true }); }
   });

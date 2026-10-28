@@ -16,7 +16,7 @@ import { on, emit } from '../eventBus.js';
 import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices } from './world.js';
-import { askPower } from '../powerBridge.js';
+import { askPower, closePower } from '../powerBridge.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
 import { setEffectsVolume, setListener, setMuted, unlockAudio, updateSound } from './sound.js';
@@ -176,6 +176,7 @@ export function createGameSession() {
     resume() { if (state !== 'paused') return; input.setEnabled(true); setState('playing'); },
     endNow() { if (!world) return; session.resume(); endMatchNow(world, 'quit'); },
     quit() {
+      closePower();
       world = null;
       stats = null;
       input.setEnabled(false);

@@ -4,11 +4,18 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 let opener = null;
+let closer = null;
 let open = false;
 
-export function registerPowerOpener(fn) {
+export function registerPowerOpener(fn, close) {
   opener = fn;
-  return () => { if (opener === fn) opener = null; };
+  closer = close;
+  return () => { if (opener === fn) { opener = null; closer = null; } };
+}
+
+// Closes an open picker (the match ended or the player left); it counts as Random.
+export function closePower() {
+  if (open) closer?.();
 }
 
 export const isPowerOpen = () => open;

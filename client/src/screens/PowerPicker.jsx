@@ -15,11 +15,13 @@ export default function PowerPicker() {
   const [left, setLeft] = useState(0);
   const deadline = useRef(0);
 
+  const opened = useRef(0);
   useEffect(() => registerPowerOpener((choices, seconds = BANANA_CRATE.pickSeconds) => new Promise((resolve) => {
     deadline.current = performance.now() + seconds * 1000;
+    opened.current = performance.now();
     setLeft(seconds);
     setReq({ choices, seconds, resolve });
-  })), []);
+  }), () => setReq((r) => { r?.resolve('random'); return null; })), []);
 
   const choose = useCallback((id) => {
     setReq((r) => { r?.resolve(id); return null; });
@@ -33,6 +35,8 @@ export default function PowerPicker() {
       if (s <= 0) choose('random');
     }, 100);
     const onKey = (e) => {
+      // Ignore a key still held from answering the puzzle (auto-repeat, or the first moment).
+      if (e.repeat || performance.now() - opened.current < 300) return;
       const n = /^(Digit|Numpad)([1-3])$/.exec(e.code);
       if (n && req.choices[Number(n[2]) - 1]) choose(req.choices[Number(n[2]) - 1]);
       else if (e.code === 'KeyR') choose('random');
