@@ -4,74 +4,72 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createApp } = require('../server/app');
 const { createPuzzleStore } = require('../server/puzzles');
 const { parsePuzzle, BananaApiError } = require('../server/services/bananaApi');
 const { createPuzzlePool } = require('../server/pool');
 
 const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 
-async function withServer(bananaApi, fn) {
-  const server = createApp({ bananaApi }).listen(0);
-  await new Promise((r) => server.once('listening', r));
-  const base = `http://localhost:${server.address().port}`;
-  try { await fn(base); } finally { server.close(); }
+const { startServer, client, fakeApi, IMAGE: IMG } = require('./helpers');
+
+// Starts the app and returns a client that is already logged in.
+async function withPlayer(bananaApi, fn) {
+  const s = await startServer({ bananaApi });
+  try {
+    const c = client(s.base);
+    await c.post('/api/auth/register', { username: 'tester', password: 'bananas123' });
+    await fn(c);
+  } finally { await s.close(); }
 }
 
-const fakeApi = (solution = 7) => ({ fetchPuzzle: async () => ({ image: IMAGE, solution }) });
-const post = (base, body) => fetch(`${base}/api/puzzle/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-
 test('GET /api/puzzle returns the image but never the solution', async () => {
-  await withServer(fakeApi(7), async (base) => {
-    const res = await fetch(`${base}/api/puzzle?purpose=crate`);
+  await withPlayer(fakeApi(7), async (c) => {
+    const res = await c.get('/api/puzzle?purpose=crate');
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.image, IMAGE);
-    assert.equal(body.purpose, 'crate');
-    assert.equal(body.source, 'live');
-    assert.equal(typeof body.puzzleId, 'string');
-    assert.equal('solution' in body, false);
+    assert.equal(res.body.image, IMG);
+    assert.equal(res.body.purpose, 'crate');
+    assert.equal(res.body.source, 'live');
+    assert.equal(typeof res.body.puzzleId, 'string');
+    assert.equal('solution' in res.body, false);
   });
 });
 
 test('a correct answer is accepted and the puzzle cannot be reused', async () => {
-  await withServer(fakeApi(7), async (base) => {
-    const { puzzleId } = await (await fetch(`${base}/api/puzzle`)).json();
-    const first = await (await post(base, { puzzleId, answer: 7 })).json();
-    assert.deepEqual(first, { correct: true, solution: 7, purpose: 'deploy' });
-    const again = await post(base, { puzzleId, answer: 7 });
-    assert.equal(again.status, 404);
+  await withPlayer(fakeApi(7), async (c) => {
+    const { puzzleId } = (await c.get('/api/puzzle')).body;
+    const first = await c.post('/api/puzzle/answer', { puzzleId, answer: 7 });
+    assert.deepEqual(first.body, { correct: true, solution: 7, purpose: 'deploy' });
+    assert.equal((await c.post('/api/puzzle/answer', { puzzleId, answer: 7 })).status, 404);
   });
 });
 
 test('a wrong answer is rejected and the solution is revealed', async () => {
-  await withServer(fakeApi(3), async (base) => {
-    const { puzzleId } = await (await fetch(`${base}/api/puzzle?purpose=respawn`)).json();
-    const body = await (await post(base, { puzzleId, answer: 5 })).json();
-    assert.deepEqual(body, { correct: false, solution: 3, purpose: 'respawn' });
+  await withPlayer(fakeApi(3), async (c) => {
+    const { puzzleId } = (await c.get('/api/puzzle?purpose=respawn')).body;
+    const res = await c.post('/api/puzzle/answer', { puzzleId, answer: 5 });
+    assert.deepEqual(res.body, { correct: false, solution: 3, purpose: 'respawn' });
   });
 });
 
 test('bad answers are refused with 400', async () => {
-  await withServer(fakeApi(), async (base) => {
-    assert.equal((await post(base, { puzzleId: 'x', answer: '7' })).status, 400);
-    assert.equal((await post(base, { answer: 7 })).status, 400);
+  await withPlayer(fakeApi(), async (c) => {
+    assert.equal((await c.post('/api/puzzle/answer', { puzzleId: 'x', answer: '7' })).status, 400);
+    assert.equal((await c.post('/api/puzzle/answer', { answer: 7 })).status, 400);
   });
 });
 
 test('an unknown purpose falls back to deploy', async () => {
-  await withServer(fakeApi(), async (base) => {
-    const body = await (await fetch(`${base}/api/puzzle?purpose=hack`)).json();
-    assert.equal(body.purpose, 'deploy');
+  await withPlayer(fakeApi(), async (c) => {
+    assert.equal((await c.get('/api/puzzle?purpose=hack')).body.purpose, 'deploy');
   });
 });
 
 test('a Banana API failure becomes a 502 with a friendly message', async () => {
   const broken = { fetchPuzzle: async () => { throw new BananaApiError('Banana API is unreachable'); } };
-  await withServer(broken, async (base) => {
-    const res = await fetch(`${base}/api/puzzle`);
+  await withPlayer(broken, async (c) => {
+    const res = await c.get('/api/puzzle');
     assert.equal(res.status, 502);
-    assert.match((await res.json()).error, /not responding/);
+    assert.match(res.body.error, /not responding/);
   });
 });
 
@@ -125,9 +123,9 @@ test('with no reserve, an outage is reported as an error', async () => {
 });
 
 test('GET /api/status reports the API state', async () => {
-  await withServer(fakeApi(), async (base) => {
-    await fetch(`${base}/api/puzzle`);
-    const status = await (await fetch(`${base}/api/status`)).json();
+  await withPlayer(fakeApi(), async (c) => {
+    await c.get('/api/puzzle');
+    const status = (await c.get('/api/status')).body;
     assert.equal(status.online, true);
     assert.equal(typeof status.reserve, 'number');
   });
