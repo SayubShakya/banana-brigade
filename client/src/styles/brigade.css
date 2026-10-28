@@ -339,7 +339,12 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .timer-ring circle { fill: none; stroke-width: 5; }
 .timer-ring .track { stroke: rgba(255,255,255,0.12); }
 .timer-ring .ring { stroke: var(--banana); stroke-linecap: round; transition: stroke-dashoffset 0.2s linear, stroke 0.3s; }
-.timer-ring .ring[data-low="true"] { stroke: var(--bad); }
+.timer-ring[data-level="warn"] .ring { stroke: var(--warn); }
+.timer-ring[data-level="danger"] .ring { stroke: var(--bad); }
+.timer-ring[data-level="warn"] #puzzle-time { color: var(--warn); }
+.timer-ring[data-level="danger"] #puzzle-time { color: var(--bad); }
+.timer-ring[data-level="danger"] { animation: timer-pulse 0.8s ease-in-out infinite; }
+@keyframes timer-pulse { 50% { transform: scale(1.1); } }
 #puzzle-time { position: absolute; inset: 0; display: grid; place-items: center; font: 400 3.2cqh 'Black Ops One', sans-serif; }
 
 .puzzle-body { display: grid; grid-template-columns: 1.55fr 1fr; gap: 2.4cqh; align-items: stretch; }
