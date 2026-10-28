@@ -1,8 +1,8 @@
 // Plays an online match in the browser. The server runs the world; this file only:
-//   - sends the player's controls about 30 times a second ("input"),
+//   - sends the player's controls as soon as they change (and at least 20 times a second),
 //   - turns server snapshots into a world the normal renderer and HUD can draw,
-//     showing other players 100 ms in the past and blending between snapshots so
-//     they move smoothly even though snapshots arrive 15 times a second,
+//     showing everyone 60 ms in the past and blending between the two snapshots
+//     around that moment, so movement is smooth at any screen refresh rate,
 //   - turns server events back into the usual event-bus events (kill feed, sounds),
 //   - opens Banana puzzles that are fetched and checked over the WebSocket.
 //
@@ -21,8 +21,8 @@ import { setListener } from '../game/sound.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
 import { getSocket, request } from './socket.js';
 
-const DELAY_MS = 100;            // how far in the past other players are shown
-const SEND_EVERY_MS = 33;        // about 30 control messages a second
+const DELAY_MS = 60;             // how far in the past soldiers are shown (about two snapshots)
+const RESEND_MS = 50;            // send controls at least this often, even if nothing changed
 const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup'];
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -37,13 +37,14 @@ const socketPuzzles = {
 
 export function createNetGame() {
   const socket = getSocket();
-  const { renderer, input, hud } = getStage();
+  const { renderer, input, hud, meter } = getStage();
   let view = null;              // the world as drawn in this browser
   let me = null;                // this player's soldier in `view`
   let snaps = [];               // recent snapshots with their arrival time
   let active = false;
   let paused = false;
   let lastSend = 0;
+  let lastSent = '';
   let stats = null;
   let started = 0;
   let near = false;
@@ -78,7 +79,7 @@ export function createNetGame() {
     if (!view) return;
     snap.at = performance.now();
     snaps.push(snap);
-    if (snaps.length > 4) snaps.shift();
+    if (snaps.length > 8) snaps.shift();
     near = snap.near.includes(me.id);
     for (const [type, e] of snap.events) relay(type, e);
   });
@@ -170,7 +171,7 @@ export function createNetGame() {
     }
   }
 
-  // Puts the snapshots into `view`: others are blended 100 ms behind, you are shown as of the newest snapshot.
+  // Puts the snapshots into `view`: every soldier is blended between the two snapshots around (now - 60 ms).
   function applySnapshots(now) {
     if (!snaps.length) return;
     const latest = snaps[snaps.length - 1];
@@ -187,12 +188,10 @@ export function createNetGame() {
       if (!s) continue;
       const wasAlive = s.alive;
       Object.assign(s, st, { primary: fromGun(st.primary), sidearm: fromGun(st.sidearm), lastAttacker: soldierById(st.lastAttacker), respawnTimer: st.alive ? 0 : st.respawnTimer });
-      if (s !== me) {
-        const p0 = before.get(st.id);
-        const p1 = b.soldiers.find((x) => x.id === st.id);
-        if (p0 && p1 && p0.alive && p1.alive) { s.x = lerp(p0.x, p1.x, t); s.y = lerp(p0.y, p1.y, t); }
-        else if (p1) { s.x = p1.x; s.y = p1.y; }
-      }
+      const p0 = before.get(st.id);
+      const p1 = b.soldiers.find((x) => x.id === st.id);
+      if (p0 && p1 && p0.alive && p1.alive) { s.x = lerp(p0.x, p1.x, t); s.y = lerp(p0.y, p1.y, t); }
+      else if (p1) { s.x = p1.x; s.y = p1.y; }
       if (!wasAlive && s.alive) s.walkPhase = 0;
     }
     Object.assign(view, {
@@ -211,20 +210,26 @@ export function createNetGame() {
     });
   }
 
+  // Sends the controls the moment they change (a key press reaches the server one
+  // frame later instead of waiting for a timer), and repeats them every 50 ms.
   function sendControls(now) {
-    if (now - lastSend < SEND_EVERY_MS) return;
-    lastSend = now;
-    if (me.alive && !paused && !isPuzzleOpen()) input.apply(me);
     const c = me.controls;
-    socket.volatile.emit('input', { left: c.left, right: c.right, jet: c.jet, fire: c.fire, aimX: Math.round(c.aimX), aimY: Math.round(c.aimY), ...Object.fromEntries(ACTIONS.map((k) => [k, c[k]])) });
+    if (me.alive && !paused && !isPuzzleOpen()) input.apply(me);
+    else Object.assign(c, { left: false, right: false, jet: false, fire: false });
+    const msg = { left: c.left, right: c.right, jet: c.jet, fire: c.fire, aimX: Math.round(c.aimX / 4) * 4, aimY: Math.round(c.aimY / 4) * 4, ...Object.fromEntries(ACTIONS.map((k) => [k, c[k]])) };
+    const key = JSON.stringify(msg);
+    if (key === lastSent && now - lastSend < RESEND_MS) return;
+    socket.emit('input', msg);
+    lastSent = key;
+    lastSend = now;
     for (const k of ACTIONS) c[k] = false;
-    if (!me.alive || paused || isPuzzleOpen()) Object.assign(c, { left: false, right: false, jet: false, fire: false });
   }
 
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    meter.tick(now);
     if (view) {
       applySnapshots(now);
       if (active) sendControls(now);

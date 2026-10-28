@@ -1,6 +1,6 @@
 // One online match, run by the server. It uses the very same engine files as the
 // browser (client/src/game/world.js and bots.js), ticks the world 30 times a second
-// and sends every player a snapshot 15 times a second.
+// and sends every player a snapshot after each tick.
 //
 // Players only send their controls (keys held, where they aim). Movement, hits,
 // kills and the final scores are all worked out here, so a modified browser cannot
@@ -14,7 +14,7 @@ const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
 
 const TICK_HZ = 30;
-const SNAPSHOT_EVERY = 2;                  // 30 Hz world, 15 Hz snapshots
+const SNAPSHOT_EVERY = 1;                  // a snapshot after every 30 Hz tick, for smooth movement
 const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup'];
 const round = (n) => Math.round(n * 10) / 10;
 const gun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === Infinity ? -1 : g.spare };   // JSON has no Infinity
