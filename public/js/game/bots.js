@@ -1,0 +1,172 @@
+// Computer-controlled soldiers. Each bot "thinks" a few times a second: it picks a
+// target, decides where to move, when to use the jetpack and when to shoot, then
+// fills in the same controls object the keyboard and mouse fill for the player.
+//
+// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+
+import { WEAPONS, SOLDIER, TILE } from './config.js';
+import { hasLineOfSight, isSolid } from './map.js';
+import { center, activeGun } from './world.js';
+
+const rand = (a, b) => a + Math.random() * (b - a);
+
+function brainFor(bot) {
+  if (!bot.brain) {
+    bot.brain = {
+      think: 0, target: null, seenFor: 0, waypoint: null, strafe: 1, strafeTimer: 0,
+      jetHold: false, stuck: 0, lastX: bot.x, aimErr: { x: 0, y: 0 }, detour: 1, detourTime: 0, refuel: false, climbing: false,
+      accuracy: rand(0.55, 0.9), // lower is sloppier
+    };
+  }
+  return bot.brain;
+}
+
+function nearestPickup(world, bot, kind) {
+  let best = null;
+  let bestD = Infinity;
+  const c = center(bot);
+  for (const p of world.pickups) {
+    if (!p.active || p.kind !== kind) continue;
+    const d = Math.hypot(p.x - c.x, p.y - c.y);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best;
+}
+
+// Which way is the nearest opening in the ceiling? Ties go towards the waypoint.
+function gapSide(map, bot, wp) {
+  const y = bot.y - 8;
+  const col = Math.floor((bot.x + bot.w / 2) / TILE);
+  let left = Infinity;
+  let right = Infinity;
+  for (let i = 1; i <= 14; i++) {
+    if (left === Infinity && !isSolid(map, (col - i) * TILE + TILE / 2, y) && !isSolid(map, (col - i) * TILE + TILE / 2, y + TILE)) left = i;
+    if (right === Infinity && !isSolid(map, (col + i) * TILE + TILE / 2, y) && !isSolid(map, (col + i) * TILE + TILE / 2, y + TILE)) right = i;
+  }
+  if (left === right) return wp.x < bot.x ? -1 : 1;
+  return left < right ? -1 : 1;
+}
+
+function think(world, bot, b) {
+  const me = center(bot);
+  const enemies = world.soldiers.filter((s) => s !== bot && s.alive && s.shieldTimer <= 0 && s.team !== bot.team);
+
+  // Prefer a visible enemy; otherwise remember the closest one.
+  let target = null;
+  let bestScore = Infinity;
+  for (const e of enemies) {
+    const ec = center(e);
+    const d = Math.hypot(ec.x - me.x, ec.y - me.y);
+    const visible = d < 1400 && hasLineOfSight(world.map, me, ec);
+    const score = d + (visible ? 0 : 900) + (e.isPlayer ? -80 : 0);
+    if (score < bestScore) { bestScore = score; target = { soldier: e, visible, d }; }
+  }
+  if (target?.soldier !== b.target?.soldier) b.seenFor = 0;
+  b.target = target;
+
+  // Where to go: health when hurt, a weapon when only holding the pistol, else the enemy or a wander point.
+  const hurt = bot.health < 40 ? nearestPickup(world, bot, 'health') : null;
+  const crate = !bot.primary ? nearestPickup(world, bot, 'weapon') : null;
+  if (hurt) b.waypoint = { x: hurt.x, y: hurt.y };
+  else if (crate && !(target && target.visible && target.d < 450)) b.waypoint = { x: crate.x, y: crate.y };
+  else if (target && target.visible) {
+    const gun = WEAPONS[activeGun(bot).key];
+    const ideal = gun.range < 300 ? 120 : gun.range < 500 ? 180 : 380;
+    const tc = center(target.soldier);
+    const away = Math.sign(me.x - tc.x) || 1;
+    b.waypoint = { x: tc.x + away * ideal + b.strafe * 60, y: tc.y - 40 };
+  } else if (target) {
+    b.waypoint = center(target.soldier);
+  } else if (!b.waypoint || Math.random() < 0.02) {
+    const p = world.map.spawns[Math.floor(Math.random() * world.map.spawns.length)];
+    b.waypoint = { x: p.x, y: p.y };
+  }
+
+  // Aim error shrinks the longer the bot has been looking at its target.
+  const spread = (1.1 - b.accuracy) * (target ? Math.min(220, target.d * 0.18) : 0);
+  b.aimErr = { x: rand(-spread, spread), y: rand(-spread, spread) };
+}
+
+export function updateBots(world, dt) {
+  for (const bot of world.soldiers) {
+    if (bot.isPlayer || bot.isDummy || !bot.alive) continue;
+    const b = brainFor(bot);
+    const c = bot.controls;
+    const me = center(bot);
+
+    b.think -= dt;
+    if (b.think <= 0) { b.think = rand(0.12, 0.22); think(world, bot, b); }
+    b.strafeTimer -= dt;
+    if (b.strafeTimer <= 0) { b.strafeTimer = rand(0.6, 1.6); b.strafe = Math.random() < 0.5 ? -1 : 1; }
+
+    // Movement toward the waypoint.
+    const wp = b.waypoint ?? me;
+    const dx = wp.x - me.x;
+    c.left = dx < -24;
+    c.right = dx > 24;
+
+    // Climbing to something high up: refuel on the ground first, slip out from under
+    // any platform in the way, then rise straight up beside it.
+    const climbNeeded = wp.y < bot.y - 60;
+    const roofAbove = (rows) => {
+      for (let i = 1; i <= rows; i++) {
+        const y = bot.y - i * TILE + TILE / 2;
+        if (isSolid(world.map, bot.x + 2, y) || isSolid(world.map, bot.x + bot.w - 2, y)) return true;
+      }
+      return false;
+    };
+    const visible = b.target?.visible;
+    if (!visible && climbNeeded && bot.onGround && bot.fuel < 55) b.refuel = true;
+    if (b.refuel && (bot.fuel >= 95 || visible)) b.refuel = false;
+
+    if (b.refuel) {
+      c.left = c.right = false;
+    } else if (!visible && climbNeeded && roofAbove(3)) {
+      if (b.detourTime <= 0) { b.detour = gapSide(world.map, bot, wp); b.detourTime = 2.5; }
+      b.detourTime -= dt;
+      c.left = b.detour < 0;
+      c.right = b.detour > 0;
+      b.climbing = true;
+    } else if (b.climbing && climbNeeded && !visible) {
+      c.left = c.right = false;   // clear of the roof: go straight up
+    } else {
+      b.climbing = false;
+      b.detourTime = 0;
+    }
+    const dir = c.right ? 1 : c.left ? -1 : 0;
+
+    // Jetpack: climb to targets above, over walls, and to stop long falls; keep a fuel reserve.
+    const wallAhead = dir !== 0 && (isSolid(world.map, me.x + dir * 26, bot.y + bot.h - 8) || isSolid(world.map, me.x + dir * 26, bot.y + 10));
+    const wantUp = !b.refuel && (wp.y < bot.y - 30 || wallAhead || b.stuck > 0.5 || (!bot.onGround && bot.vy > 650));
+    if (bot.fuel < 4) b.jetHold = false;
+    else if (wantUp && (bot.fuel > 25 || !bot.onGround)) b.jetHold = true;
+    else if (!wantUp) b.jetHold = false;
+    c.jet = b.jetHold && !(b.climbing && roofAbove(1));
+
+    // Stuck detection.
+    if (dir !== 0 && Math.abs(bot.x - b.lastX) < 0.5) b.stuck += dt; else b.stuck = Math.max(0, b.stuck - dt * 2);
+    b.lastX = bot.x;
+
+    // Aim and shoot.
+    const t = b.target;
+    if (t && t.soldier.alive) {
+      const tc = center(t.soldier);
+      const lead = Math.min(0.25, t.d / 1600);
+      c.aimX = tc.x + t.soldier.vx * lead + b.aimErr.x;
+      c.aimY = tc.y - 6 + t.soldier.vy * lead * 0.5 + b.aimErr.y;
+      const gun = activeGun(bot);
+      const w = WEAPONS[gun.key];
+      if (t.visible) b.seenFor += dt; else b.seenFor = 0;
+      const inRange = t.d < w.range * 0.9;
+      c.fire = t.visible && inRange && b.seenFor > 0.35;
+      if (t.visible && t.d < SOLDIER.meleeRange + 10) c.melee = true;
+      if (t.visible && t.d > 220 && t.d < 520 && bot.grenades > 0 && Math.random() < dt * 0.25) c.grenade = true;
+      if (!t.visible && gun.ammo < WEAPONS[gun.key].mag * 0.4) c.reload = true;
+      if (bot.primary && bot.current === 'sidearm' && bot.primary.ammo + bot.primary.spare > 0) c.swap = true;
+    } else {
+      c.fire = false;
+      c.aimX = me.x + (dir || bot.facing) * 200;
+      c.aimY = me.y;
+    }
+  }
+}
