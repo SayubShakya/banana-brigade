@@ -106,14 +106,20 @@ async function openDatabase(uri) {
     // Registers today's single attempt; returns false if the player already started one.
     async startDailyAttempt(userId, date) {
       try {
-        await m.DailyResult.create({ user: oid(userId), date, score: 0, solved: 0 });
+        await m.DailyResult.create({ user: oid(userId), date, score: 0, solved: 0, index: 0, bonus: 1, issuedAt: new Date() });
         return true;
       } catch (err) {
         if (err.code === 11000) return false;
         throw err;
       }
     },
-    finishDailyAttempt: (userId, date, score, solved) => m.DailyResult.updateOne({ user: oid(userId), date }, { score, solved }),
+    // Moves the run on by one puzzle, but only if it is still at `fromIndex`; returns
+    // null when another request already answered that puzzle.
+    advanceDaily: (userId, date, fromIndex, set) => m.DailyResult.findOneAndUpdate(
+      { user: oid(userId), date, index: fromIndex, finished: false },
+      { $set: set, $inc: { index: 1 } },
+      { new: true },
+    ).lean(),
     dailyResult: (userId, date) => m.DailyResult.findOne({ user: oid(userId), date }).lean(),
     async dailyLeaderboard(date, limit = 10) {
       const rows = await m.DailyResult.aggregate([
