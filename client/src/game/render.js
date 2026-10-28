@@ -143,6 +143,35 @@ export function createRenderer(canvas) {
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x, y - 16, 12, 0.3 * Math.PI, 0.7 * Math.PI); ctx.stroke();
         label('BANANA CRATE', x, y - 26, 11, '#ffe135');
+      } else if (p.kind === 'shield') {
+        // a blue shield badge
+        ctx.fillStyle = '#4cc9f0';
+        ctx.strokeStyle = '#0b3d5c';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 15); ctx.lineTo(x + 13, y - 10); ctx.lineTo(x + 11, y + 2); ctx.lineTo(x, y + 10); ctx.lineTo(x - 11, y + 2); ctx.lineTo(x - 13, y - 10);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#e0f7ff';
+        ctx.fillRect(x - 2, y - 9, 4, 13);
+        label('SHIELD', x, y - 22, 11, '#4cc9f0');
+      } else if (p.kind === 'fuel') {
+        // a green jerry can
+        ctx.fillStyle = '#2a9d8f';
+        ctx.strokeStyle = '#123f3a';
+        ctx.lineWidth = 2;
+        ctx.fillRect(x - 11, y - 14, 22, 24); ctx.strokeRect(x - 11, y - 14, 22, 24);
+        ctx.fillRect(x + 3, y - 19, 7, 5);
+        ctx.beginPath(); ctx.moveTo(x - 7, y - 10); ctx.lineTo(x + 7, y + 6); ctx.moveTo(x + 7, y - 10); ctx.lineTo(x - 7, y + 6); ctx.stroke();
+        label('JET FUEL', x, y - 25, 11, '#7be0c3');
+      } else if (p.kind === 'ammo') {
+        // an olive ammo box with bullets on top
+        ctx.fillStyle = '#6b705c';
+        ctx.strokeStyle = '#2f3127';
+        ctx.lineWidth = 2;
+        ctx.fillRect(x - 15, y - 8, 30, 18); ctx.strokeRect(x - 15, y - 8, 30, 18);
+        ctx.fillStyle = '#e9c46a';
+        for (let i = -1; i <= 1; i++) ctx.fillRect(x + i * 8 - 2, y - 15, 4, 7);
+        label('AMMO', x, y - 22, 11, '#e9c46a');
       } else if (p.dropped) {
         ctx.fillStyle = '#333';
         ctx.fillRect(x - 14, y + 2, 28, 7);

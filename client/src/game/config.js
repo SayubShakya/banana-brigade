@@ -84,6 +84,13 @@ export const PICKUPS = {
   healthAmount: 50,
   healthRespawn: 20,      // seconds
   weaponRespawn: 15,
+  // Power-ups that sometimes appear at weapon crate spots instead of a weapon
+  // (rolled every time a crate spot respawns, so they follow weaponRespawn).
+  powerupChance: 0.3,
+  powerups: ['shield', 'fuel', 'ammo'],
+  shieldAmount: 50,       // damage the shield absorbs
+  shieldTime: 10,         // seconds before an unused shield fades
+  fuelBoostTime: 6,       // seconds of infinite jet fuel (after an instant refill)
 };
 
 export const MATCH = {
