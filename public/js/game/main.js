@@ -15,9 +15,10 @@ import { PARTS, DEFAULT_AVATAR, BOT_AVATARS, makeAvatar, drawSoldier, drawAvatar
 import { drawScene } from './scene.js';
 import { createHud } from './hud.js';
 import { openPuzzle, isPuzzleOpen } from './puzzle.js';
+import { fetchMe, logout, initLoginScreen } from './auth.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['menu', 'avatar', 'controls', 'battle', 'pause', 'results'];
+const SCREENS = ['login', 'menu', 'avatar', 'controls', 'battle', 'pause', 'results'];
 const ZOOMS = [1, 0.8, 0.65];
 
 const store = {
@@ -42,7 +43,24 @@ function show(name) {
   hud.hide();
 }
 
-const playerName = () => $('player-name').value.trim().slice(0, 14) || 'You';
+let account = null; // { id, username, role } from the server session
+const playerName = () => account?.username ?? 'You';
+
+// ---------- Virtual identity: who is playing ----------
+function setAccount(user, isNew = false) {
+  account = user;
+  $('menu-name').textContent = user.username;
+  $('menu-role').textContent = user.role;
+  $('menu-role').dataset.role = user.role;
+  $('menu-welcome').textContent = isNew ? `Welcome to the Brigade, ${user.username}!` : `Welcome back, ${user.username}.`;
+  show('menu');
+  refreshApiStatus();
+}
+
+on('auth:login', ({ user, isNew }) => setAccount(user, isNew));
+$('btn-logout').addEventListener('click', async () => {
+  try { await logout(); } finally { account = null; session = null; show('login'); }
+});
 
 // ---------- Puzzle stats ----------
 const newSession = () => ({
@@ -98,7 +116,6 @@ async function puzzle(purpose, options) {
 async function deploy(m) {
   if (isPuzzleOpen()) return;
   mode = m;
-  store.set('name', $('player-name').value.trim());
   session = newSession();
   const result = await puzzle('deploy', {
     modeLabel: MODES[m].name,
@@ -262,7 +279,6 @@ $('btn-end').addEventListener('click', endBattle);
 $('btn-quit').addEventListener('click', () => { session = null; show('menu'); });
 $('btn-again').addEventListener('click', () => { show('menu'); deploy(mode); });
 $('btn-menu').addEventListener('click', () => { show('menu'); refreshApiStatus(); });
-$('player-name').addEventListener('input', () => { $('menu-name').textContent = playerName(); });
 
 // ---------- Animation loop (backdrop, HUD bars, avatar preview) ----------
 const canvas = $('battle-canvas');
@@ -289,12 +305,16 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-$('player-name').value = store.get('name', '');
-$('menu-name').textContent = playerName();
+initLoginScreen();
 drawAvatarPreview($('menu-avatar'), makeAvatar(parts));
 renderMenuStats();
-show('menu');
+show('login');
 requestAnimationFrame(frame);
+
+// Already logged in (the session cookie is still valid)? Skip the login screen.
+fetchMe().then(({ user }) => {
+  if (user) { setAccount(user); openPreview(); }
+}).catch(() => { /* server unreachable: stay on the login screen */ });
 
 // Design preview links, e.g. index.html#battle-team or #results, open a screen directly
 // without solving a puzzle first, so each screen can be reviewed on its own.
@@ -316,4 +336,3 @@ function openPreview() {
   } else if (name === 'avatar') { buildAvatarScreen(); show('avatar'); }
   else if (name === 'controls') show('controls');
 }
-openPreview();
