@@ -35,7 +35,9 @@ export default function PuzzleModal() {
     setReq({ purpose, options, resolve, key: Math.random() });
   })), []);
 
-  const rules = req ? PUZZLE_RULES[req.purpose] : null;
+  // options.seconds (from the chosen difficulty) overrides the default time.
+  const rules = req ? { ...PUZZLE_RULES[req.purpose], seconds: req.options.seconds ?? PUZZLE_RULES[req.purpose].seconds } : null;
+  const secondsFor = (r) => r.options.seconds ?? PUZZLE_RULES[r.purpose].seconds;
 
   const finish = useCallback((result) => {
     const r = live.current;
@@ -53,7 +55,7 @@ export default function PuzzleModal() {
     setPicked(null);
     setShowRetry('');
     setPhase('loading');
-    setLeft(PUZZLE_RULES[r.purpose].seconds);
+    setLeft(secondsFor(r));
     setStatus({ text: 'Fetching a puzzle from the Banana API…', kind: '' });
     emit('banana:requested', { purpose: r.purpose });
     try {
@@ -68,7 +70,7 @@ export default function PuzzleModal() {
       setPuzzle(p);
       setPhase('ready');
       setStatus({ text: 'Enter the missing digit hidden by the banana.', kind: '' });
-      deadline.current = performance.now() + PUZZLE_RULES[r.purpose].seconds * 1000;
+      deadline.current = performance.now() + secondsFor(r) * 1000;
       emit('banana:loaded', { purpose: r.purpose });
     } catch (err) {
       if (live.current !== r) return;
