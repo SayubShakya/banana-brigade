@@ -28,6 +28,8 @@ export function createHud() {
   let crateNearUntil = 0;
   let pickupText = '';
   let pickupUntil = 0;
+  let zoomLevel = 0;    // 0, 1 or 2 from the Z key / mouse wheel
+  let zoomText = '';
 
   function toast(text) {
     el.toast.textContent = text;
@@ -74,7 +76,7 @@ export function createHud() {
   on('survival:cleared', ({ wave }) => toast(`Wave ${wave} cleared!`));
   on('campaign:ramp', () => toast('The bots are getting sharper!'));
   on('soldier:respawned', ({ soldier }) => { if (soldier.isPlayer) toast('Back in the fight'); });
-  on('input:zoom', ({ level }) => { el.zoom.textContent = ['1x', '2x', '3x'][level]; });
+  on('input:zoom', ({ level }) => { zoomLevel = level; });
   on('input:scoreboard', ({ show }) => { if (world) el.board.hidden = !show; });
 
   function renderBoard() {
@@ -90,6 +92,7 @@ export function createHud() {
       el.hud.hidden = false;
       el.hud.dataset.mode = w.mode;
       el.zoom.textContent = '1x';
+      zoomText = '1x';
       drawAvatarPreview(el.badge, w.player.avatar);
       // The controls, shown for the first seconds of every battle.
       el.help.hidden = false;
@@ -112,6 +115,10 @@ export function createHud() {
       el.weapon.textContent = w.name;
       el.ammo.textContent = `${gun.ammo} / ${gun.spare === Infinity ? '∞' : gun.spare}`;
       el.grenades.textContent = p.grenades;
+      // Only the sniper reaches 3x, which is the scope; other guns stop at 2x.
+      const scoped = w.zoom ? zoomLevel >= w.zoom - 1 : false;
+      const z = w.zoom ? (scoped ? '3x · SCOPE' : `${zoomLevel + 1}x · Z for scope`) : `${Math.min(zoomLevel, 1) + 1}x`;
+      if (z !== zoomText) { zoomText = z; el.zoom.textContent = z; }
       el.reloadBar.style.visibility = p.reloadTimer > 0 ? 'visible' : 'hidden';
       el.reload.style.width = p.reloadTimer > 0 ? `${(1 - p.reloadTimer / w.reload) * 100}%` : '0%';
 
