@@ -243,7 +243,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 
 /* ---------- Battle HUD ---------- */
 .battle { background: #6cb4e4; }
-#battle-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+#battle-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: none; touch-action: none; }
 #hud { position: absolute; inset: 0; pointer-events: none; font-weight: 800; text-shadow: 0 0.3cqh 0 rgba(0,0,0,0.6); }
 #hud button, #hud [role="button"] { pointer-events: auto; }
 
@@ -378,3 +378,9 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; transition-duration: 0.01s !important; }
 }
+
+/* Results: why the match ended and whether the score was saved */
+.results-reason { margin: 4px 0 0; color: var(--khaki); font-size: 0.95rem; }
+.results-saved { margin: 6px 0 0; font-size: 0.85rem; color: var(--khaki); text-align: center; }
+.results-saved[data-state="ok"] { color: var(--good); }
+.results-saved[data-state="error"] { color: var(--red); }

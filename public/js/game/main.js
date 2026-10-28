@@ -1,25 +1,31 @@
-// Banana Brigade screens: main menu, Banana API puzzles, battle HUD, pause, avatar,
-// controls and results. There is no gameplay; the battle screen shows the HUD over a
-// posed battlefield so the interface can be designed and tried out.
+// Starts Banana Brigade: login, menus, the Banana API puzzles, the avatar customiser
+// and the game loop. Screen changes, puzzles and match events travel over the
+// event bus, so the world never needs to know about the HUD, sound or menus.
 //
 // Banana API puzzles appear when you:
 //   - press any mode button (solve it to deploy),
-//   - go down in battle (solve it for a Banana respawn),
+//   - go down (solve it for an instant respawn; in Survival it is your only revive),
 //   - open a banana crate (solve it for a power weapon).
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../eventBus.js';
-import { MODES, WEAPONS, CRATE_REWARDS, BOT_NAMES, VIEW } from './config.js';
+import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS } from './config.js';
 import { PARTS, DEFAULT_AVATAR, BOT_AVATARS, makeAvatar, drawSoldier, drawAvatarPreview } from './characters.js';
-import { drawScene } from './scene.js';
+import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow } from './world.js';
+import { updateBots } from './bots.js';
+import { createRenderer } from './render.js';
+import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { openPuzzle, isPuzzleOpen } from './puzzle.js';
+import { initSound, setListener, setMuted, isMuted, unlockAudio } from './sound.js';
 import { fetchMe, logout, initLoginScreen } from './auth.js';
 
 const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 const SCREENS = ['login', 'menu', 'avatar', 'controls', 'battle', 'pause', 'results'];
-const ZOOMS = [1, 0.8, 0.65];
+const WEAPON_KEYS = Object.keys(WEAPONS);
 
 const store = {
   get(key, fallback) { try { return localStorage.getItem(`brigade.${key}`) ?? fallback; } catch { return fallback; } },
@@ -27,23 +33,27 @@ const store = {
 };
 const readJson = (key, fallback) => { try { return { ...fallback, ...JSON.parse(store.get(key, '{}')) }; } catch { return { ...fallback }; } };
 
+const canvas = $('battle-canvas');
+const renderer = createRenderer(canvas);
+const input = createInput(canvas, renderer);
+const hud = createHud();
+initSound();
+
 let parts = readJson('avatar', DEFAULT_AVATAR);
 const stats = readJson('stats', { solved: 0, attempts: 0, streak: 0, best: 0 });
-let session = null;   // stats for the current deployment
+let account = null;   // { id, username, role } from the server session
+let world = null;
+let session = null;   // puzzle stats and start time for the current deployment
+let state = 'menu';   // menu | playing | puzzle | paused | over
 let mode = 'quick';
-let cast = [];
-let screen = 'menu';
+let screen = 'login';
 let previewTime = 0;
-const hud = createHud();
 
 function show(name) {
   screen = name;
   for (const s of SCREENS) $(`screen-${s}`).hidden = s !== name && !(name === 'pause' && s === 'battle');
-  if (name === 'battle' || name === 'pause') return;
-  hud.hide();
 }
 
-let account = null; // { id, username, role } from the server session
 const playerName = () => account?.username ?? 'You';
 
 // ---------- Virtual identity: who is playing ----------
@@ -53,19 +63,12 @@ function setAccount(user, isNew = false) {
   $('menu-role').textContent = user.role;
   $('menu-role').dataset.role = user.role;
   $('menu-welcome').textContent = isNew ? `Welcome to the Brigade, ${user.username}!` : `Welcome back, ${user.username}.`;
-  show('menu');
-  refreshApiStatus();
+  toMenu();
 }
 
 on('auth:login', ({ user, isNew }) => setAccount(user, isNew));
 $('btn-logout').addEventListener('click', async () => {
-  try { await logout(); } finally { account = null; session = null; show('login'); }
-});
-
-// ---------- Puzzle stats ----------
-const newSession = () => ({
-  solved: 0, attempts: 0, streak: 0, best: 0, started: 0,
-  byPurpose: { deploy: { solved: 0, attempts: 0 }, respawn: { solved: 0, attempts: 0 }, crate: { solved: 0, attempts: 0 } },
+  try { await logout(); } finally { account = null; leaveBattle(); show('login'); }
 });
 
 // ---------- Banana API status (menu chip) ----------
@@ -73,18 +76,24 @@ async function refreshApiStatus() {
   const chip = $('api-status');
   try {
     const s = await (await fetch('/api/status')).json();
-    const state = s.online === false ? 'offline' : s.online ? 'online' : 'unknown';
-    chip.dataset.state = state;
-    $('api-status-text').textContent = state === 'offline'
+    const st = s.online === false ? 'offline' : s.online ? 'online' : 'unknown';
+    chip.dataset.state = st;
+    $('api-status-text').textContent = st === 'offline'
       ? `Banana API offline${s.reserve ? ` · ${s.reserve} reserve puzzles` : ''}`
-      : state === 'online' ? `Banana API online · ${s.ready} ready` : 'Banana API: checking…';
+      : st === 'online' ? `Banana API online · ${s.ready} ready` : 'Banana API: checking…';
   } catch {
     chip.dataset.state = 'offline';
     $('api-status-text').textContent = 'Server unreachable';
   }
 }
-refreshApiStatus();
 setInterval(() => { if (screen === 'menu') refreshApiStatus(); }, 10000);
+
+// ---------- Puzzle stats ----------
+const newSession = () => ({
+  solved: 0, attempts: 0, streak: 0, best: 0, started: performance.now(),
+  byPurpose: { deploy: { solved: 0, attempts: 0 }, respawn: { solved: 0, attempts: 0 }, crate: { solved: 0, attempts: 0 } },
+});
+
 on('banana:answered', ({ correct, purpose }) => {
   stats.attempts += 1;
   if (correct) { stats.solved += 1; stats.streak += 1; stats.best = Math.max(stats.best, stats.streak); } else stats.streak = 0;
@@ -92,9 +101,8 @@ on('banana:answered', ({ correct, purpose }) => {
   if (session) {
     const p = session.byPurpose[purpose];
     p.attempts += 1;
-    if (correct) p.solved += 1;
     session.attempts += 1;
-    if (correct) { session.solved += 1; session.streak += 1; session.best = Math.max(session.best, session.streak); } else session.streak = 0;
+    if (correct) { p.solved += 1; session.solved += 1; session.streak += 1; session.best = Math.max(session.best, session.streak); } else session.streak = 0;
   }
   renderMenuStats();
 });
@@ -107,7 +115,7 @@ function renderMenuStats() {
 
 async function puzzle(purpose, options) {
   document.body.dataset.overlay = 'puzzle';
-  const result = await openPuzzle(purpose, { ...options, stats });
+  const result = await openPuzzle(purpose, { modeLabel: MODES[mode].name, ...options, stats });
   delete document.body.dataset.overlay;
   return result;
 }
@@ -115,97 +123,156 @@ async function puzzle(purpose, options) {
 // ---------- Deploying: Banana puzzle first ----------
 async function deploy(m) {
   if (isPuzzleOpen()) return;
+  unlockAudio();
   mode = m;
   session = newSession();
-  const result = await puzzle('deploy', {
-    modeLabel: MODES[m].name,
-    title: 'Deploy',
-    subtitle: 'Solve the Banana puzzle to drop into battle.',
-  });
+  const result = await puzzle('deploy', { title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.' });
   if (result === 'solved') startBattle();
   else session = null;
 }
 
-// Soldiers posed on the battlefield around the player (world pixels, feet position).
-const SPOTS = [
-  { x: 1540, y: 1040, facing: 1 },
-  { x: 1060, y: 840, facing: 1 },
-  { x: 1960, y: 880, facing: -1, flying: true },
-  { x: 1760, y: 960, facing: -1, flying: true },
-  { x: 1250, y: 1280, facing: 1 },
-  { x: 1900, y: 1160, facing: -1 },
-];
-const WEAPON_KEYS = Object.keys(WEAPONS);
-
-function buildCast() {
-  const player = { name: playerName(), avatar: makeAvatar(parts), isPlayer: true, weapon: 'rifle', team: mode === 'team' ? 'blue' : 'me', ...SPOTS[0] };
+function startBattle() {
   const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
   const looks = [...BOT_AVATARS].sort(() => Math.random() - 0.5);
-  let bots = SPOTS.slice(1).map((spot, i) => ({ name: names[i], avatar: looks[i], weapon: WEAPON_KEYS[(i + 1) % WEAPON_KEYS.length], team: 'enemy', ...spot }));
-  if (mode === 'team') bots.forEach((b, i) => { b.team = i === 0 || i === 3 ? 'blue' : 'red'; });
-  if (mode === 'survival') bots = bots.slice(1, 3);
-  if (mode === 'training') bots = [bots[0], bots[1], bots[3]].map((b) => ({ ...b, name: 'Dummy', weapon: 'magnum', flying: false }));
-  return [player, ...bots];
-}
-
-function startBattle() {
-  cast = buildCast();
+  world = createWorld({ mode, playerName: playerName(), playerAvatar: makeAvatar(parts), botAvatars: looks, botNames: names });
+  session ??= newSession();
   session.started = performance.now();
+  hud.attach(world);
+  state = 'playing';
+  input.setEnabled(true);
   show('battle');
-  hud.show({ mode, player: cast[0], cast });
 }
 
-// ---------- In-battle Banana puzzles ----------
-on('hud:respawn', async () => {
-  if (screen !== 'battle' || isPuzzleOpen()) return;
-  const survival = mode === 'survival';
-  const result = await puzzle('respawn', {
-    modeLabel: MODES[mode].name,
+function leaveBattle() {
+  world = null;
+  session = null;
+  state = 'menu';
+  input.setEnabled(false);
+  hud.hide();
+}
+
+function toMenu() {
+  leaveBattle();
+  drawAvatarPreview($('menu-avatar'), makeAvatar(parts));
+  renderMenuStats();
+  show('menu');
+  refreshApiStatus();
+}
+
+function resume() {
+  if (state !== 'paused') return;
+  state = 'playing';
+  input.setEnabled(true);
+  show('battle');
+}
+
+// Freezes the world while an in-battle puzzle is open, then hands control back.
+async function inGamePuzzle(purpose, options) {
+  if (!world || isPuzzleOpen() || state !== 'playing') return null;
+  state = 'puzzle';
+  input.setEnabled(false);
+  const result = await puzzle(purpose, options);
+  if (world && !world.over && state === 'puzzle') { state = 'playing'; input.setEnabled(true); }
+  return result;
+}
+
+// ---------- Banana respawn ----------
+async function bananaRespawn() {
+  if (!world || world.player.alive || world.over) return;
+  const survival = world.mode === 'survival';
+  const result = await inGamePuzzle('respawn', {
     title: survival ? 'Banana revive' : 'Banana respawn',
     subtitle: survival ? 'Solve it to get back in the fight. Miss and the run is over.' : 'Solve it to respawn right now instead of waiting.',
     cancelText: survival ? 'Give up' : 'Wait instead',
   });
-  if (result === 'solved') hud.setDown(false);
-  else if (survival) endBattle();
-});
+  if (!world || result === null) return;
+  if (result === 'solved') revive(world, world.player);
+  else if (survival) endMatchNow(world, 'down');
+}
 
-on('hud:crate', async () => {
-  if (screen !== 'battle' || isPuzzleOpen() || hud.crateOpen) return;
-  const result = await puzzle('crate', {
-    modeLabel: MODES[mode].name,
+on('input:banana', bananaRespawn);
+$('center-msg').addEventListener('click', bananaRespawn);
+on('player:down', () => setTimeout(bananaRespawn, 1200));
+
+// ---------- Banana crates ----------
+on('banana:crate', async ({ pickup }) => {
+  if (!pickup.active) return;
+  const result = await inGamePuzzle('crate', {
     title: 'Banana crate',
     subtitle: 'Solve it for a power weapon, full health and +2 grenades.',
     cancelText: 'Leave it',
   });
-  if (result === 'solved') hud.rewardCrate(CRATE_REWARDS[Math.floor(Math.random() * CRATE_REWARDS.length)]);
-  else if (result === 'failed') hud.closeCrate();
+  if (!world || result === null || result === 'cancelled') return;
+  if (result === 'solved') rewardBananaCrate(world, world.player);
+  closeBananaCrate(pickup);
 });
 
-on('hud:pause', () => {
+// ---------- Pause ----------
+on('input:pause', () => {
   if (isPuzzleOpen()) return;
-  if (screen === 'battle') show('pause');
-  else if (screen === 'pause') show('battle');
+  if (state === 'playing') { state = 'paused'; input.setEnabled(false); show('pause'); }
+  else if (state === 'paused') resume();
 });
 
-// ---------- Results ----------
-function endBattle() {
-  const s = session ?? { ...newSession(), started: performance.now() };
+// ---------- Results and saving the score ----------
+function outcome({ ranking, player, reason, mode: m, wave, teamKills }) {
+  if (m === 'survival') return { won: false, title: `Wave ${wave}`, line: `You held out until wave ${wave} with ${player.kills} kills.` };
+  if (m === 'training') return { won: false, title: 'Training over', line: `${player.kills} dummies down. Training is not ranked.` };
+  const why = reason === 'time' ? 'Time is up.' : reason === 'quit' ? 'You ended the battle.' : 'Kill limit reached.';
+  if (m === 'team') {
+    const won = teamKills.blue > teamKills.red;
+    return { won, title: won ? 'Blue team wins!' : teamKills.blue === teamKills.red ? 'Draw' : 'Red team wins', line: `Blue ${teamKills.blue} – ${teamKills.red} Red · ${why}` };
+  }
+  const won = ranking[0] === player;
+  return { won, title: won ? 'Victory!' : `${ranking[0].name} wins`, line: why };
+}
+
+async function saveScore(result, won, durationS) {
+  const note = $('results-saved');
+  if (result.mode === 'training') { note.textContent = ''; return; }
+  note.dataset.state = '';
+  note.textContent = 'Saving your score…';
+  try {
+    const res = await fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: result.mode, kills: result.player.kills, deaths: result.player.deaths,
+        wave: result.wave, won, durationS: Math.min(3600, durationS),
+      }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
+    note.dataset.state = 'ok';
+    note.textContent = `Score saved to ${playerName()}'s record.`;
+  } catch (err) {
+    note.dataset.state = 'error';
+    note.textContent = `Score not saved: ${err.message}`;
+  }
+}
+
+function showResults(result) {
+  state = 'over';
+  input.setEnabled(false);
+  const s = session ?? newSession();
   const secs = Math.round((performance.now() - s.started) / 1000);
-  $('results-mode').textContent = MODES[mode].name;
-  $('results-title').textContent = s.attempts && s.solved === s.attempts ? 'Perfect run!' : 'Battle over';
+  const { won, title, line } = outcome(result);
+  $('results-mode').textContent = MODES[result.mode].name;
+  $('results-title').textContent = title;
+  $('results-reason').textContent = line;
   $('res-solved').textContent = `${s.solved} / ${s.attempts}`;
   $('res-accuracy').textContent = s.attempts ? `${Math.round((s.solved / s.attempts) * 100)}%` : '—';
   $('res-streak').textContent = s.best;
-  $('res-time').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-  const by = s.byPurpose ?? newSession().byPurpose;
+  $('res-time').textContent = fmtTime(secs);
   $('res-purposes').innerHTML = [['deploy', 'Deploy'], ['respawn', 'Respawn'], ['crate', 'Crates']]
-    .map(([k, label]) => `<div>${label}<b>${by[k].solved} / ${by[k].attempts}</b></div>`).join('');
-  const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-  $('results-body').innerHTML = cast.filter((c) => c.name !== 'Dummy').map((c, i) =>
-    `<tr class="${c.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(c.name)}${mode === 'team' ? ` <small class="team-${c.team}">${c.team}</small>` : ''}</td><td>0</td><td>0</td></tr>`).join('');
-  session = null;
+    .map(([k, label]) => `<div>${label}<b>${s.byPurpose[k].solved} / ${s.byPurpose[k].attempts}</b></div>`).join('');
+  $('results-body').innerHTML = result.ranking.map((r, i) =>
+    `<tr class="${r.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}${result.mode === 'team' ? ` <small class="team-${r.team}">${r.team}</small>` : ''}</td><td>${r.kills}</td><td>${r.deaths}</td></tr>`).join('');
+  hud.hide();
   show('results');
+  saveScore(result, won, secs);
 }
+
+on('match:ended', (result) => setTimeout(() => { if (world?.over) showResults(result); }, 1500));
 
 // ---------- Avatar customiser ----------
 function swatchRow(container, values, current, onPick, label = (v) => v) {
@@ -272,33 +339,35 @@ function animatePreview(dt) {
 document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => deploy(b.dataset.mode)));
 $('btn-avatar').addEventListener('click', () => { buildAvatarScreen(); show('avatar'); });
 $('btn-controls').addEventListener('click', () => show('controls'));
-document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => show('menu')));
-$('btn-resume').addEventListener('click', () => show('battle'));
-$('btn-test-down').addEventListener('click', () => { show('battle'); hud.setDown(true); });
-$('btn-end').addEventListener('click', endBattle);
-$('btn-quit').addEventListener('click', () => { session = null; show('menu'); });
-$('btn-again').addEventListener('click', () => { show('menu'); deploy(mode); });
-$('btn-menu').addEventListener('click', () => { show('menu'); refreshApiStatus(); });
+document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', toMenu));
+$('btn-resume').addEventListener('click', resume);
+$('btn-end').addEventListener('click', () => { if (world) { resume(); endMatchNow(world, 'quit'); } });
+$('btn-quit').addEventListener('click', toMenu);
+$('btn-again').addEventListener('click', () => { const m = mode; toMenu(); deploy(m); });
+$('btn-menu').addEventListener('click', toMenu);
+$('btn-mute').addEventListener('click', () => {
+  setMuted(!isMuted());
+  $('btn-mute').textContent = isMuted() ? 'Sound: Off' : 'Sound: On';
+});
 
-// ---------- Animation loop (backdrop, HUD bars, avatar preview) ----------
-const canvas = $('battle-canvas');
-function resizeCanvas() {
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = VIEW.width * dpr;
-  canvas.height = VIEW.height * dpr;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
+// ---------- Game loop ----------
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
-  if (screen === 'battle' || screen === 'pause') {
-    const zoom = ZOOMS[Number($('hud').dataset.zoom || 0)];
-    const shown = hud.down ? cast.slice(1) : cast;
-    drawScene(canvas, { cast: shown, focus: { x: cast[0].x, y: cast[0].y - 25 }, time: now / 1000, crateOpen: hud.crateOpen, zoom });
-    if (screen === 'battle') hud.update(dt);
+  if (world) {
+    const running = state === 'playing' || state === 'over';
+    if (running) {
+      if (state === 'playing' && world.player.alive) input.apply(world.player);
+      updateBots(world, dt);
+      updateWorld(world, dt);
+      const c = center(world.player);
+      setListener(c.x, c.y);
+    }
+    // 3x zoom only with a scoped weapon (the sniper); everything else stops at 2x.
+    const maxZoom = (WEAPONS[activeGun(world.player).key].zoom ?? 2) - 1;
+    renderer.render(world, input.mouse, running ? dt : 0, ZOOM_LEVELS[Math.min(input.zoom, maxZoom)]);
+    hud.update();
   } else if (screen === 'avatar') {
     animatePreview(dt);
   }
@@ -316,23 +385,19 @@ fetchMe().then(({ user }) => {
   if (user) { setAccount(user); openPreview(); }
 }).catch(() => { /* server unreachable: stay on the login screen */ });
 
-// Design preview links, e.g. index.html#battle-team or #results, open a screen directly
-// without solving a puzzle first, so each screen can be reviewed on its own.
+// Preview links, e.g. index.html#battle-team or #puzzle-crate, open a screen directly
+// without solving a puzzle first, so each screen can be reviewed and screenshotted.
 function openPreview() {
   const [name, arg] = location.hash.slice(1).split('-');
-  if (name === 'battle' || name === 'pause' || name === 'results') {
+  if (name === 'battle' || name === 'pause') {
     mode = MODES[arg] ? arg : 'quick';
-    session = { ...newSession(), solved: 1, attempts: 1, streak: 1, best: 1 };
-    session.byPurpose.deploy = { solved: 1, attempts: 1 };
+    session = newSession();
     startBattle();
-    session.started = performance.now() - 95000;
-    if (name === 'pause') show('pause');
-    if (name === 'results') endBattle();
-    if (arg === 'down') hud.setDown(true);
+    if (name === 'pause') { state = 'paused'; input.setEnabled(false); show('pause'); }
   } else if (name === 'puzzle') {
     const purpose = ['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy';
     const titles = { deploy: 'Deploy', respawn: 'Banana respawn', crate: 'Banana crate' };
-    puzzle(purpose, { modeLabel: 'Quick Play', title: titles[purpose], subtitle: 'Design preview of the puzzle screen.' });
+    puzzle(purpose, { modeLabel: 'Quick Play', title: titles[purpose], subtitle: 'Preview of the puzzle screen.' });
   } else if (name === 'avatar') { buildAvatarScreen(); show('avatar'); }
   else if (name === 'controls') show('controls');
 }
