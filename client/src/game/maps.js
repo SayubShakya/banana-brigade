@@ -81,7 +81,7 @@ export const MAPS = {
       ground: { body: '#c99a5b', top: '#e8c483', topEdge: '#d2a764' },
       platform: { body: '#9b7653', top: '#b48c63', topEdge: '#8a6847' },
       block: { body: '#9a958c', top: '#b9b4aa', topEdge: '#7f7a72' },
-      decor: ['cactus', 'rock', 'rock', 'skull', null],
+      decor: ['cactus', 'rock', 'cactus', 'drybush', null],
     },
   },
 
