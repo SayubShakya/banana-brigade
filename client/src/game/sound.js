@@ -217,7 +217,83 @@ function buzzer() {
   tone(v, 156, 0.32, { volume: 0.08, type: 'square' });
 }
 
+// ---------- Impacts ----------
+const mid = (s) => (s ? { x: s.x + (s.w ?? 0) / 2, y: s.y + (s.h ?? 0) / 2 } : {});
+
+function explosion(x, y) {
+  const v = voice(x, y, 1, 1.4, { priority: true });
+  tone(v, 62, 0.9, { volume: 0.55, type: 'sine', slideTo: 24 });                         // sub-bass
+  noise(v, { dur: 1.0, volume: 0.6, type: 'lowpass', freq: 900, freqTo: 150, brown: true });
+  noise(v, { dur: 0.25, volume: 0.35, type: 'lowpass', freq: 2500 });                    // initial blast
+  for (let i = 0; i < 6; i++) {                                                           // debris crackle
+    noise(v, { dur: 0.03, volume: 0.08 + Math.random() * 0.08, type: 'highpass', freq: 2500 + Math.random() * 2500, delay: 0.12 + Math.random() * 0.6 });
+  }
+}
+
+function fleshHit(victim) {
+  if (!allow(`flesh:${victim.id}`, 40)) return;
+  const p = mid(victim);
+  const v = voice(p.x, p.y, 0.8, 0.15);
+  noise(v, { dur: 0.08, volume: 0.35, type: 'lowpass', freq: 450 });
+  tone(v, 120, 0.08, { volume: 0.2, type: 'sine', slideTo: 60 });
+}
+
+function ricochet(x, y) {
+  if (!allow('ricochet', 70)) return;
+  const v = voice(x, y, 0.5, 0.2);
+  noise(v, { dur: 0.025, volume: 0.3, type: 'highpass', freq: 3500 });
+  if (Math.random() < 0.3) tone(v, 2400 + Math.random() * 800, 0.15, { volume: 0.04, type: 'sine', slideTo: 1300 });   // occasional whine
+}
+
+// ---------- Player feedback ----------
+const hitMarker = () => { if (allow('hitmarker', 50)) tone(ui(0.05), 2400, 0.035, { volume: 0.07, type: 'sine' }); };
+function headshotDing() {
+  const v = ui(0.5);
+  tone(v, 1760, 0.4, { volume: 0.1, type: 'sine' });
+  tone(v, 2637, 0.3, { volume: 0.05, type: 'sine', delay: 0.01 });
+}
+function killChord() {
+  const v = ui(0.45);
+  [659, 831, 988].forEach((f, i) => tone(v, f, 0.35 - i * 0.05, { volume: 0.08, type: 'triangle', delay: i * 0.04 }));
+  tone(v, 1319, 0.2, { volume: 0.05, type: 'sine', delay: 0.12 });
+}
+function hurt() {
+  if (!allow('hurt', 80)) return;
+  const v = ui(0.15);
+  noise(v, { dur: 0.1, volume: 0.25, type: 'lowpass', freq: 350 });
+  tone(v, 140, 0.09, { volume: 0.1, type: 'sawtooth', slideTo: 90 });
+}
+const click = (v, freq, delay = 0, volume = 0.18) => {
+  noise(v, { dur: 0.02, volume, type: 'bandpass', freq, q: 2, delay });
+  tone(v, freq / 2, 0.02, { volume: volume / 3, type: 'square', delay });
+};
+
+// One sound per pickup kind (shield, fuel and ammo crates may not exist yet; unknown kinds get the default).
+const PICKUPS = {
+  banana(v) { [523, 659, 784, 1047].forEach((f, i) => tone(v, f, 0.18, { volume: 0.09, type: 'triangle', delay: i * 0.06 })); },
+  health(v) { tone(v, 440, 0.3, { volume: 0.1, type: 'sine', slideTo: 660 }); tone(v, 880, 0.25, { volume: 0.06, type: 'sine', delay: 0.1 }); },
+  weapon(v) { click(v, 1800); click(v, 1200, 0.09); noise(v, { dur: 0.08, volume: 0.1, type: 'bandpass', freq: 900, delay: 0.04 }); },
+  shield(v) { tone(v, 600, 0.45, { volume: 0.08, type: 'sine', slideTo: 1800 }); tone(v, 900, 0.4, { volume: 0.05, type: 'triangle', slideTo: 2400, delay: 0.05 }); },
+  fuel(v) { noise(v, { dur: 0.35, volume: 0.2, type: 'bandpass', freq: 250, freqTo: 900, q: 4, brown: true }); [0, 0.08, 0.17].forEach((d) => tone(v, 300 + d * 2000, 0.06, { volume: 0.06, type: 'sine', slideTo: 700, delay: d })); },
+  ammo(v) { [0, 0.06, 0.12].forEach((d, i) => click(v, 1500 + i * 300, d, 0.14)); },
+  default(v) { tone(v, 660, 0.08, { volume: 0.1, type: 'triangle' }); tone(v, 990, 0.1, { volume: 0.1, type: 'triangle', delay: 0.07 }); },
+};
+
+const lastSwing = new Map();   // soldier id → time of their last melee swing (a hit right after it is a melee hit)
+let landedEvents = false;      // true once the world sends 'soldier:landed' itself
+
+function landing(soldier, speed) {
+  const p = mid(soldier);
+  const k = Math.min(1, (speed - 250) / 700);
+  if (k <= 0) return;
+  const v = voice(p.x, p.y, soldier.isPlayer ? 0.9 : 0.5, 0.3, { priority: soldier.isPlayer });
+  noise(v, { dur: 0.15, volume: 0.2 + 0.3 * k, type: 'lowpass', freq: 380, brown: true });
+  tone(v, 90, 0.15, { volume: 0.15 + 0.2 * k, type: 'sine', slideTo: 45 });
+}
+
 export function initSound() {
+  // If the frame loop stops calling updateSound (menu, pause), fade out any loops left playing.
+  setInterval(() => { if (ctx && loops.size && performance.now() - lastUpdate > 250) reapLoops(-1); }, 250);
   on('banana:answered', ({ correct }) => (correct ? chime() : buzzer()));
   on('weapon:fired', ({ soldier, weapon, x, y }) => {
     const gun = GUNS[weapon];
@@ -225,31 +301,191 @@ export function initSound() {
     const mine = !!soldier?.isPlayer;
     if (gun.gap && !allow(`gun:${soldier?.id ?? weapon}`, gun.gap)) return;
     gun.play(voice(x, y, mine ? 1 : 0.8, gun.length, { priority: mine }));
+    if (weapon === 'flamer' && soldier) flaming.set(soldier, performance.now());
   });
-  on('explosion', ({ x, y }) => {
-    const v = voice(x, y, 1, 1);
-    noise(v, { dur: 0.9, volume: 0.6, freq: 500 });
-    tone(v, 90, 0.5, { volume: 0.25, type: 'sine', slideTo: 35 });
+  on('explosion', ({ x, y }) => explosion(x, y));
+  on('bullet:wall', ({ x, y }) => ricochet(x, y));
+  on('grenade:bounce', ({ x, y } = {}) => {
+    if (!allow('clink', 60)) return;
+    const v = x === undefined ? ui(0.15, 0.6) : voice(x, y, 0.7, 0.15);
+    tone(v, 1900, 0.08, { volume: 0.08, type: 'triangle' });
+    tone(v, 2800, 0.05, { volume: 0.05, type: 'sine', delay: 0.005 });
+    noise(v, { dur: 0.02, volume: 0.1, type: 'highpass', freq: 4000 });
   });
-  on('weapon:reloading', ({ soldier }) => { if (soldier?.isPlayer) tone(ui(0.1), 320, 0.08, { volume: 0.08 }); });
-  on('weapon:reloaded', ({ soldier }) => { if (soldier?.isPlayer) tone(ui(0.1), 520, 0.08, { volume: 0.08 }); });
-  on('weapon:empty', ({ soldier }) => { if (soldier?.isPlayer) tone(ui(0.1), 180, 0.05, { volume: 0.08 }); });
-  on('pickup:taken', ({ soldier }) => {
+  on('melee:swing', ({ soldier }) => {
+    if (!soldier) return;
+    lastSwing.set(soldier.id, performance.now());
+    const p = mid(soldier);
+    noise(voice(p.x, p.y, soldier.isPlayer ? 1 : 0.7, 0.2, { priority: soldier.isPlayer }), { dur: 0.16, volume: 0.25, type: 'bandpass', freq: 500, freqTo: 1900, q: 1.5, attack: 0.04 });
+  });
+  on('grenade:thrown', ({ soldier }) => {
+    if (!soldier) return;
+    const p = mid(soldier);
+    const v = voice(p.x, p.y, soldier.isPlayer ? 1 : 0.6, 0.25, { priority: soldier.isPlayer });
+    click(v, 2500, 0, 0.1);                                                                    // pin
+    noise(v, { dur: 0.15, volume: 0.12, type: 'bandpass', freq: 700, freqTo: 1400, q: 1.2, delay: 0.05, attack: 0.03 });
+  });
+
+  on('weapon:reloading', ({ soldier }) => {
     if (!soldier?.isPlayer) return;
-    const v = ui(0.2);
-    tone(v, 660, 0.08, { volume: 0.1, type: 'triangle' });
-    tone(v, 990, 0.1, { volume: 0.1, type: 'triangle', delay: 0.07 });
-  });
-  on('soldier:damaged', ({ victim, attacker }) => {
-    if (victim?.isPlayer) tone(ui(0.1), 140, 0.08, { volume: 0.12, type: 'sawtooth' });
-    else if (attacker?.isPlayer) tone(ui(0.05), 1200, 0.04, { volume: 0.06, type: 'square' }); // hit marker
-  });
-  on('soldier:killed', ({ killer }) => {
-    if (!killer?.isPlayer) return;
     const v = ui(0.3);
-    tone(v, 880, 0.1, { volume: 0.12, type: 'triangle' });
-    tone(v, 1320, 0.14, { volume: 0.12, type: 'triangle', delay: 0.09 });
+    click(v, 1400);                                                                            // mag release
+    noise(v, { dur: 0.12, volume: 0.08, type: 'bandpass', freq: 700, delay: 0.05 });            // mag sliding out
   });
-  on('grenade:thrown', ({ soldier }) => { if (soldier?.isPlayer) tone(ui(0.1), 400, 0.1, { volume: 0.06, type: 'sine', slideTo: 250 }); });
-  on('melee:swing', ({ soldier }) => noise(voice(soldier?.x, soldier?.y, 1, 0.1), { dur: 0.08, volume: 0.15, freq: 900 }));
+  on('weapon:reloaded', ({ soldier }) => {
+    if (!soldier?.isPlayer) return;
+    const v = ui(0.3);
+    click(v, 900, 0, 0.22);                                                                    // mag in
+    click(v, 1700, 0.12, 0.16);                                                                // slide rack
+  });
+  on('weapon:empty', ({ soldier }) => {
+    if (soldier?.isPlayer && allow('empty', 150)) click(ui(0.05), 2200, 0, 0.12);
+  });
+  on('pickup:taken', ({ soldier, kind }) => {
+    if (!soldier?.isPlayer) return;
+    (PICKUPS[kind] ?? PICKUPS.default)(ui(0.6));
+  });
+
+  on('soldier:damaged', ({ victim, attacker, headshot }) => {
+    if (!victim) return;
+    if (victim.isPlayer) hurt();
+    else fleshHit(victim);
+    if (attacker && performance.now() - (lastSwing.get(attacker.id) ?? -1e9) < 250) {
+      lastSwing.delete(attacker.id);                                                           // melee connected
+      const p = mid(victim);
+      const v = voice(p.x, p.y, 1, 0.2, { priority: !!attacker.isPlayer });
+      noise(v, { dur: 0.1, volume: 0.4, type: 'lowpass', freq: 700 });
+      tone(v, 160, 0.1, { volume: 0.25, type: 'sine', slideTo: 70 });
+    }
+    if (attacker?.isPlayer && !victim.isPlayer) (headshot ? headshotDing() : hitMarker());
+  });
+  on('soldier:killed', ({ victim, killer, headshot }) => {
+    if (killer?.isPlayer && !victim?.isPlayer) { killChord(); if (headshot) headshotDing(); }
+    if (victim?.isPlayer) {
+      const v = ui(0.8);
+      tone(v, 330, 0.6, { volume: 0.1, type: 'triangle', slideTo: 110 });
+      noise(v, { dur: 0.4, volume: 0.15, type: 'lowpass', freq: 300, brown: true });
+    }
+  });
+
+  on('soldier:landed', ({ soldier, speed }) => {
+    landedEvents = true;
+    if (soldier && speed) landing(soldier, speed);
+  });
+  on('jet:empty', ({ soldier } = {}) => {
+    if (soldier && !soldier.isPlayer) return;
+    if (!allow('sputter', 400)) return;
+    const v = ui(0.5, 0.8);
+    [0, 0.09, 0.2, 0.34].forEach((d, i) => noise(v, { dur: 0.05, volume: 0.25 - i * 0.04, type: 'bandpass', freq: 500, q: 2, delay: d, brown: true }));
+  });
+}
+
+// ---------- Continuous sounds (called every frame) ----------
+// Jetpack roars, the flamethrower hiss, footsteps, landings and the low-health
+// heartbeat depend on what soldiers are doing right now rather than on one event,
+// so GameSession and NetGame call updateSound() once per frame with the soldiers.
+const flaming = new Map();   // soldier → time of their last flamer shot
+const loops = new Map();     // `${kind}:${soldier id}` → { src, gain, pan, filter, seen }
+const tracks = new Map();    // soldier id → { x, y, vy, onGround, step } from the last frame
+const JET_BOTS = 3;          // only the nearest few bots get a jetpack loop
+let lastUpdate = 0;
+let nextBeat = 0;
+
+// A looping noise source with its own filter, gain and panner, faded in from silence.
+function startLoop(kind) {
+  const a = audio();
+  const src = a.createBufferSource();
+  src.buffer = kind === 'jet' ? brownNoise : whiteNoise;
+  src.loop = true;
+  const filter = a.createBiquadFilter();
+  filter.type = kind === 'jet' ? 'bandpass' : 'highpass';
+  filter.frequency.value = kind === 'jet' ? 420 : 1800;
+  filter.Q.value = kind === 'jet' ? 0.6 : 0.5;
+  const gain = a.createGain();
+  gain.gain.value = 0;
+  let last = src.connect(filter).connect(gain);
+  const pan = a.createStereoPanner ? a.createStereoPanner() : null;
+  if (pan) last = last.connect(pan);
+  last.connect(effects);
+  src.start(a.currentTime, Math.random() * 1.5);
+  return { src, gain, pan, filter, seen: 0 };
+}
+
+function setLoop(key, kind, x, y, volume, frame) {
+  let l = loops.get(key);
+  if (!l) { l = startLoop(kind); loops.set(key, l); }
+  l.seen = frame;
+  const t = ctx.currentTime;
+  l.gain.gain.setTargetAtTime(volume * volumeAt(x, y), t, 0.06);
+  if (l.pan) l.pan.pan.setTargetAtTime(panAt(x), t, 0.05);
+  if (kind === 'jet') l.filter.frequency.setTargetAtTime(380 + Math.random() * 120, t, 0.03);   // a little flutter
+}
+
+// Fades out and stops loops nobody asked for this frame.
+function reapLoops(frame) {
+  for (const [key, l] of loops) {
+    if (l.seen === frame) continue;
+    l.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.08);
+    l.src.stop(ctx.currentTime + 0.5);
+    loops.delete(key);
+  }
+}
+
+function footstep(s, p) {
+  const v = voice(p.x, p.y + 20, s.isPlayer ? 0.6 : 0.3, 0.08, { priority: s.isPlayer });
+  noise(v, { dur: 0.04, volume: 0.18, type: 'lowpass', freq: 600 + Math.random() * 300 });
+  tone(v, 85 + Math.random() * 20, 0.04, { volume: 0.06, type: 'sine' });
+}
+
+function heartbeat() {
+  const v = ui(0.5, 0.9);
+  tone(v, 62, 0.12, { volume: 0.35, type: 'sine', slideTo: 45 });
+  tone(v, 55, 0.12, { volume: 0.25, type: 'sine', slideTo: 40, delay: 0.16 });
+}
+
+let frameNo = 0;
+export function updateSound(soldiers = [], player = null) {
+  if (!ctx) return;
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - (lastUpdate || now)) / 1000);
+  lastUpdate = now;
+  frameNo += 1;
+  if (silent() || !soldiers.length) { reapLoops(frameNo); return; }
+
+  // Jetpacks: the player's own loop is loud and centred, the nearest bots are quieter.
+  const jetting = soldiers.filter((s) => s.alive && s.jetting && (s.isPlayer || volumeAt(mid(s).x, mid(s).y) > 0.05));
+  jetting.sort((a, b) => (b.isPlayer - a.isPlayer) || volumeAt(mid(b).x, mid(b).y) - volumeAt(mid(a).x, mid(a).y));
+  jetting.slice(0, JET_BOTS + 1).forEach((s) => { const p = mid(s); setLoop(`jet:${s.id}`, 'jet', p.x, p.y, s.isPlayer ? 0.3 : 0.12, frameNo); });
+
+  // Flamethrower hiss: lasts while shots keep coming (a gap of 150 ms ends it).
+  for (const [s, at] of flaming) {
+    if (now - at > 150 || !s.alive) { flaming.delete(s); continue; }
+    const p = mid(s);
+    setLoop(`flame:${s.id}`, 'flame', p.x, p.y, s.isPlayer ? 0.16 : 0.1, frameNo);
+  }
+  reapLoops(frameNo);
+
+  // Footsteps and landings come from how each nearby soldier moved since the last frame.
+  for (const s of soldiers) {
+    const p = mid(s);
+    const near = s.isPlayer || volumeAt(p.x, p.y) > 0.6;
+    const prev = tracks.get(s.id);
+    const vy = prev && dt > 0 ? (p.y - prev.y) / dt : 0;
+    if (!s.alive || !near) { tracks.set(s.id, { x: p.x, y: p.y, vy, onGround: s.onGround, step: 0 }); continue; }
+    let step = prev?.step ?? 0;
+    if (prev && s.onGround && prev.onGround) {
+      const speed = Math.abs(p.x - prev.x) / (dt || 1);
+      if (speed > 40 && speed < 2000) {
+        step += speed * dt;
+        if (step > 52) { step = 0; footstep(s, p); }
+      }
+    } else if (prev && s.onGround && !prev.onGround && !landedEvents) landing(s, prev.vy);
+    tracks.set(s.id, { x: p.x, y: p.y, vy, onGround: s.onGround, step });
+  }
+
+  // Heartbeat while the player is badly hurt: faster as health drops.
+  if (player?.alive && player.health < 30 && player.health > 0) {
+    const t = ctx.currentTime;
+    if (t >= nextBeat) { heartbeat(); nextBeat = t + 0.55 + (player.health / 30) * 0.45; }
+  } else nextBeat = 0;
 }
