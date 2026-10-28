@@ -86,7 +86,8 @@ function think(world, bot, b) {
   }
 
   // Aim error shrinks the longer the bot has been looking at its target.
-  const spread = (1.2 - b.accuracy) * (target ? Math.min(300, target.d * 0.26) : 0);
+  const accuracy = Math.min(0.95, b.accuracy + (world.rampBonus ?? 0));   // campaign bots sharpen over time
+  const spread = (1.2 - accuracy) * (target ? Math.min(300, target.d * 0.26) : 0);
   b.aimErr = { x: rand(-spread, spread), y: rand(-spread, spread) };
 }
 
