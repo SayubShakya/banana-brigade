@@ -9,7 +9,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../eventBus.js';
-import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE } from './config.js';
+import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY } from './config.js';
 import { createMap, moveBox, raycast, isSolid } from './map.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -64,7 +64,7 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
 // mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
 // Online worlds take `humans` ([{ id, name, avatar, team }]) instead of one player,
 // `teamMode` for Blue vs Red, and are topped up with bots to cfg.size soldiers.
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false }) {
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'normal' }) {
   const cfg = MODES[mode];
   const map = createMap();
   const online = mode === 'online';
@@ -72,6 +72,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
   const soldiers = online ? humans.map((h) => createSoldier(h.id, h.name, h.avatar, true, teamMode ? h.team : h.id)) : [player];
   const world = {
     emit, map, soldiers, mode, cfg, player, teamMode: mode === 'team' || (online && teamMode),
+    difficulty: DIFFICULTY[difficulty] ?? DIFFICULTY.normal,
     training: mode === 'training',
     looks: { avatars: botAvatars, names: botNames, next: 0 },
     bullets: [], rockets: [], flames: [], grenades: [], particles: [],
@@ -152,6 +153,8 @@ function spawn(world, s, initial = false) {
 export function damage(world, victim, amount, attacker, weaponName) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
   if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
+  // Bots hit human players softer, depending on the difficulty.
+  if (attacker && !attacker.isPlayer && victim.isPlayer) amount *= world.difficulty.damage;
   victim.health -= amount;
   victim.hurtFlash = 0.12;
   victim.lastHurt = world.time;

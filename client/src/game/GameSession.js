@@ -120,11 +120,11 @@ export function createGameSession() {
     // Call before the deploy puzzle, so it counts in this deployment's stats.
     prepare(nextMode) { mode = nextMode; stats = newStats(); unlockAudio(); },
 
-    start({ playerName, parts }) {
+    start({ playerName, parts, difficulty }) {
       stats ??= newStats();
       stats.started = performance.now();
       world = createWorld({
-        mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES),
+        mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty,
       });
       hud.attach(world);
       input.setEnabled(true);

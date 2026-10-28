@@ -76,6 +76,15 @@ export const MODES = {
 // Banana crates open a Banana API puzzle; solving it gives a power weapon.
 export const BANANA_CRATE = { respawn: 25, weapons: ['rocket', 'sniper', 'flamer'], bonusGrenades: 2 };
 
+// How strong the bots are (Settings → Bot difficulty). Accuracy is a range per bot
+// (higher aims better); reaction is how long a bot must see you before it fires;
+// damage scales what bots do to human players; burst/pause make bots fire in bursts.
+export const DIFFICULTY = {
+  easy:   { accuracy: [0.10, 0.35], reaction: 1.2,  damage: 0.4,  burst: 0.5, pause: 1.1, grenades: 0.03 },
+  normal: { accuracy: [0.30, 0.55], reaction: 0.75, damage: 0.65, burst: 0.7, pause: 0.7, grenades: 0.08 },
+  hard:   { accuracy: [0.55, 0.90], reaction: 0.35, damage: 1,    burst: 9,   pause: 0,   grenades: 0.25 },
+};
+
 export const BOT_NAMES = ['Rex', 'Viper', 'Ghost', 'Blaze', 'Tank', 'Shadow', 'Ace', 'Bolt'];
 
 // How each kind of Banana puzzle works. Deploying is relaxed (new puzzle after a miss);
