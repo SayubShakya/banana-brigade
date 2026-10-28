@@ -347,6 +347,18 @@ export function initSound() {
     if (!soldier?.isPlayer) return;
     (PICKUPS[kind] ?? PICKUPS.default)(ui(0.6));
   });
+  // Banana Powers: a rising fanfare when one starts, ticks near the end, a fall when it ends.
+  on('power:start', ({ soldier }) => {
+    if (!soldier?.isPlayer) return;
+    const v = ui(0.7);
+    [523, 659, 784, 1046].forEach((f, i) => tone(v, f, 0.14, { volume: 0.12, type: 'triangle', delay: i * 0.07 }));
+  });
+  on('power:warning', ({ soldier }) => {
+    if (soldier?.isPlayer) [0, 0.25].forEach((d) => tone(ui(0.5), 880, 0.07, { volume: 0.09, type: 'square', delay: d }));
+  });
+  on('power:end', ({ soldier }) => {
+    if (soldier?.isPlayer) tone(ui(0.6), 700, 0.35, { volume: 0.1, type: 'sawtooth', slideTo: 180 });
+  });
   // Your shield is used up: a falling glassy tone.
   on('shield:broken', ({ soldier }) => {
     if (soldier?.isPlayer) tone(ui(0.5), 1400, 0.25, { volume: 0.12, type: 'triangle', slideTo: 380 });

@@ -4,6 +4,22 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
+## [1.2.0] - 2026-10-28
+
+Merged from `feature/banana-powers`.
+
+### Added
+- **Banana Powers.** Solving a banana crate puzzle now opens "Choose your Banana Power": three random powers
+  or Random (+3 s). Banana Rage (×2 damage, 8 s), Jet Overdrive (endless fuel, +40% speed, 10 s),
+  Banana Bubble (no damage, 6 s), Rapid Fire (×2 fire rate, no ammo, 8 s), Banana Juice (full health and
+  fast healing, 8 s). Shown as a HUD chip, a coloured glow round the soldier, toasts and sounds.
+- Five banana crates on every map (was two); a taken crate returns after 40 s and shows a ghost countdown.
+- Online: the server offers the powers, checks the choice and picks at random after 7 s.
+- "Power Hungry" achievement for using all five powers.
+
+### Changed
+- Banana crates no longer give a power weapon, full health and grenades.
+
 ## [1.1.0] - 2026-10-28
 
 Gameplay quality round. Merged from `feature/game-audio`, `feature/shooting-feel`, `feature/combat-feel`,
@@ -153,6 +169,7 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 - SQLite schema, registration, login and sessions with bcrypt.
 - Game, scores and admin routes; first pages and event bus; automated tests.
 
+[1.2.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.2.0
 [1.1.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.1.0
 [1.0.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.0.0
 

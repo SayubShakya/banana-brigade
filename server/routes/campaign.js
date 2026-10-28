@@ -11,6 +11,7 @@
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
+const { cleanPowers } = require('../achievements');
 const { CHAPTERS, MISSIONS, missionById, isUnlocked, starsFor, totalStars, chapterOf } = require('../../client/src/game/campaign.js');
 
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
@@ -50,6 +51,8 @@ function createCampaignRouter({ db, achievements }) {
       });
       const next = missionById(mission.id + 1);
       const unlocked = await achievements.emit('mission:finished', req.session.userId, { mission: mission.id, stars });
+      const powers = cleanPowers(b.powers);
+      if (powers.length) unlocked.push(...await achievements.emit('power:used', req.session.userId, { powers }));
       res.json({
         stars, best: progress[mission.id].stars, progress, totalStars: totalStars(progress),
         unlockedNext: !!next && !isUnlocked(next, before) && isUnlocked(next, progress), unlocked,

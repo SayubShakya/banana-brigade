@@ -110,7 +110,18 @@ export const MODES = {
 };
 
 // Banana crates open a Banana API puzzle; solving it gives a power weapon.
-export const BANANA_CRATE = { respawn: 25, weapons: ['rocket', 'sniper', 'flamer'], bonusGrenades: 2 };
+// Banana crates: solve the puzzle, then choose one of `choices` random powers (or
+// take a random one for `randomBonus` extra seconds). A taken crate returns after `respawn` s.
+export const BANANA_CRATE = { respawn: 40, choices: 3, pickSeconds: 6, randomBonus: 3 };
+
+// Banana Powers: short super powers from banana crates. Only one is active at a time.
+export const POWERS = {
+  rage:      { name: 'Banana Rage',   icon: '💥', color: '#ff5d3a', seconds: 8,  text: 'Double damage', damage: 2 },
+  overdrive: { name: 'Jet Overdrive', icon: '🚀', color: '#4cc9f0', seconds: 10, text: 'Endless jet fuel and 40% more speed', speed: 1.4 },
+  bubble:    { name: 'Banana Bubble', icon: '🛡️', color: '#ffe135', seconds: 6,  text: 'No damage at all' },
+  rapid:     { name: 'Rapid Fire',    icon: '⚡', color: '#c77dff', seconds: 8,  text: 'Twice the fire rate, no ammo used', fireRate: 0.5 },
+  heal:      { name: 'Banana Juice',  icon: '💚', color: '#52b788', seconds: 8,  text: 'Full health and fast healing', regen: 30 },
+};
 
 // Difficulty, chosen before every battle. It changes the bots and the Banana puzzle
 // timers. Bots: accuracy is a range per bot (higher aims better); reaction is how

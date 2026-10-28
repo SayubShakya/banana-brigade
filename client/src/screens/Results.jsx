@@ -25,7 +25,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
 
   useEffect(() => {
     if (mission) {
-      api.campaignResult({ mission: mission.id, won: outcome.won, kills: result.player.kills, deaths: result.player.deaths, continues: result.continues ?? 0, timeS: Math.min(3600, durationS) })
+      api.campaignResult({ powers: [...(game.session?.powers ?? [])], mission: mission.id, won: outcome.won, kills: result.player.kills, deaths: result.player.deaths, continues: result.continues ?? 0, timeS: Math.min(3600, durationS) })
         .then((r) => { setCamp(r); setSaved({ state: 'ok', text: r.unlockedNext ? `Mission ${mission.id + 1} unlocked!` : 'Progress saved.' }); })
         .catch((err) => setSaved({ state: 'error', text: `Progress not saved: ${err.message}` }));
       return;
@@ -34,6 +34,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
     api.saveScore({
       mode: result.mode, kills: result.player.kills, deaths: result.player.deaths,
       wave: result.wave, won: outcome.won, durationS: Math.min(3600, durationS), difficulty: game.difficulty,
+      powers: [...(game.session?.powers ?? [])],
     })
       .then(() => setSaved({ state: 'ok', text: `Score saved to ${me}'s record.` }))
       .catch((err) => setSaved({ state: 'error', text: `Score not saved: ${err.message}` }));

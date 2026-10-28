@@ -83,6 +83,11 @@ async function openDatabase(uri) {
       await m.User.updateOne({ _id: oid(userId) }, { $push: { campaign: entry } });
       return { ...progress, [mission]: { stars: entry.stars, bestS: entry.bestS } };
     },
+    // Adds Banana Powers to the player's set and returns the whole set.
+    async addPowersUsed(userId, powers) {
+      const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, { $addToSet: { powersUsed: { $each: powers } } }, { new: true, projection: { powersUsed: 1 } }).lean();
+      return u?.powersUsed ?? [];
+    },
     setDailyStreak: (userId, daily) => m.User.updateOne({ _id: oid(userId) }, { daily }),
     // Updates the puzzle counters in one atomic step and returns the new values.
     async recordPuzzle(userId, { correct, crate }) {

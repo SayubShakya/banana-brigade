@@ -9,7 +9,8 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 const crypto = require('node:crypto');
-const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls } = require('../../client/src/game/world.js');
+const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls, powerChoices } = require('../../client/src/game/world.js');
+const { BANANA_CRATE } = require('../../client/src/game/config.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
 const { randomMapId } = require('../../client/src/game/map.js');
@@ -25,7 +26,7 @@ function soldierState(s) {
   return {
     id: s.id, x: round(s.x), y: round(s.y), aim: round(s.aim), facing: s.facing, walkPhase: round(s.walkPhase),
     onGround: s.onGround, jetting: s.jetting, alive: s.alive, health: Math.ceil(s.health), fuel: Math.round(s.fuel),
-    hurtFlash: round(s.hurtFlash), shieldTimer: round(s.shieldTimer), armor: Math.round(s.armor), fuelBoost: round(s.fuelBoost), fireCooldown: round(s.fireCooldown), reloadTimer: round(s.reloadTimer),
+    hurtFlash: round(s.hurtFlash), shieldTimer: round(s.shieldTimer), armor: Math.round(s.armor), fuelBoost: round(s.fuelBoost), power: s.power ? { id: s.power.id, timer: round(s.power.timer) } : null, fireCooldown: round(s.fireCooldown), reloadTimer: round(s.reloadTimer),
     respawnTimer: s.alive ? 0 : round(Math.min(99, s.respawnTimer)), grenades: s.grenades, kills: s.kills, deaths: s.deaths, streak: s.streak,
     current: s.current, primary: gun(s.primary), sidearm: gun(s.sidearm), lastAttacker: s.lastAttacker?.id ?? null, busy: !!s.busy,
   };
@@ -39,11 +40,12 @@ function soldierState(s) {
  * @param {(event:string, payload:object, userId?:string) => void} o.send  to everyone, or to one player
  * @param {(result:object) => void} o.onEnd
  */
-function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, timeLimit }) {
+function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, timeLimit }) {
   const matchId = crypto.randomUUID();
   const outbox = [];                          // events for this tick, sent with the snapshot
   const near = new Set();                     // players standing at a banana crate this tick
   const crates = new Map();                   // userId -> the banana crate they are opening
+  const offers = new Map();                   // userId -> { choices, timer } while choosing a Banana Power
   const puzzles = new Map();                  // userId -> { solved, attempted }
   const pending = new Map();                  // userId -> latest controls (one-shot actions are OR-ed)
   const startedAt = Date.now();
@@ -56,6 +58,9 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
       case 'soldier:killed': outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon, headshot: !!p.headshot }]); break;
       case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount), headshot: !!p.headshot }]); break;
       case 'soldier:respawned': outbox.push(['respawned', { soldier: p.soldier.id }]); break;
+      case 'power:start': case 'power:warning': case 'power:end':
+        outbox.push(['fx', { name: event, soldier: p.soldier.id, power: p.power, seconds: p.seconds, random: p.random }]);
+        break;
       case 'pickup:taken': outbox.push(['pickup', { soldier: p.soldier.id, kind: p.kind, weapon: p.weapon }]); break;
       case 'weapon:fired': outbox.push(['fired', { soldier: p.soldier.id, weapon: p.weapon, x: round(p.x), y: round(p.y) }]); break;
       case 'weapon:reloading': case 'weapon:reloaded': case 'weapon:empty':
@@ -131,7 +136,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
       rockets: world.rockets.map((r) => ({ x: round(r.x), y: round(r.y), vx: round(r.vx), vy: round(r.vy) })),
       flames: world.flames.map((f) => ({ x: round(f.x), y: round(f.y), age: round(f.age), life: f.life })),
       grenades: world.grenades.map((g) => ({ x: round(g.x), y: round(g.y), w: g.w, h: g.h, fuse: round(g.fuse) })),
-      pickups: world.pickups.map((p) => ({ kind: p.kind, x: p.x, y: p.y, active: p.active, weapon: p.weapon, dropped: p.dropped })),
+      pickups: world.pickups.map((p) => ({ kind: p.kind, x: p.x, y: p.y, active: p.active, weapon: p.weapon, dropped: p.dropped, timer: p.active ? 0 : round(p.timer ?? 0) })),
       near: [...near],
       events: outbox.splice(0),
     });
@@ -169,7 +174,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
     });
   }
 
-  return {
+  const api = {
     matchId,
     mapId,
     roster,
@@ -197,15 +202,37 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
       if (purpose === 'crate') {
         const pickup = crates.get(userId);
         crates.delete(userId);
-        s.busy = false;
-        s.shieldTimer = 0.5;
-        if (correct && pickup?.active) rewardBananaCrate(world, s);
+        const offer = correct && pickup?.active;
         if (pickup) closeBananaCrate(pickup);
+        if (!offer) { s.busy = false; s.shieldTimer = 0.5; return; }
+        // Solved: the player stays frozen and protected while choosing a Banana Power.
+        // If no choice arrives in time, the server picks a random one.
+        const choices = powerChoices();
+        const timer = setTimeout(() => api.choosePower(userId, 'random'), (BANANA_CRATE.pickSeconds + 1) * 1000);
+        offers.set(userId, { choices, timer });
+        send('power:offer', { choices, seconds: BANANA_CRATE.pickSeconds }, userId);
       }
+    },
+    // The player's power choice; anything not offered counts as 'random'. Returns the power given.
+    choosePower(userId, choice) {
+      const offer = offers.get(userId);
+      const s = byUser(userId);
+      if (!offer || !s) return null;
+      clearTimeout(offer.timer);
+      offers.delete(userId);
+      s.busy = false;
+      s.shieldTimer = 0.5;
+      if (ended) return null;
+      const power = rewardBananaCrate(world, s, offer.choices.includes(choice) ? choice : 'random');
+      onPower?.(userId, power);
+      return power;
     },
     cancelCrate(userId) {
       const s = byUser(userId);
       crates.delete(userId);
+      // A player who leaves while choosing a power gets nothing (no power for the bot).
+      const offer = offers.get(userId);
+      if (offer) { clearTimeout(offer.timer); offers.delete(userId); }
       if (s) { s.busy = false; s.shieldTimer = 0.5; }
     },
     // A player left: a bot takes over their soldier so the match stays fair for the others.
@@ -226,9 +253,10 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
       return true;
     },
     end(reason = 'host') { endMatchNow(world, reason); },
-    stop() { ended = true; clearInterval(timer); },
+    stop() { ended = true; clearInterval(timer); for (const o of offers.values()) clearTimeout(o.timer); offers.clear(); },
     get over() { return ended; },
   };
+  return api;
 }
 
 module.exports = { createMatch, TICK_HZ };

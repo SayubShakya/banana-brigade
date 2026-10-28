@@ -15,7 +15,8 @@
 import { on, emit } from '../eventBus.js';
 import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
-import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission } from './world.js';
+import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices } from './world.js';
+import { askPower, closePower } from '../powerBridge.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
 import { setEffectsVolume, setListener, setMuted, unlockAudio, updateSound } from './sound.js';
@@ -27,6 +28,7 @@ const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 const newStats = () => ({
   solved: 0, attempts: 0, streak: 0, best: 0, started: performance.now(),
   byPurpose: { deploy: { solved: 0, attempts: 0 }, respawn: { solved: 0, attempts: 0 }, crate: { solved: 0, attempts: 0 } },
+  powers: new Set(),   // Banana Powers used in this battle
 });
 
 // Title and one line for the results screen; `won` is saved with the score.
@@ -112,12 +114,21 @@ export function createGameSession() {
     if (!pickup.active) return;
     const result = await inGamePuzzle('crate', {
       title: 'Banana crate',
-      subtitle: 'Solve it for a power weapon, full health and +2 grenades.',
+      subtitle: 'Solve it to choose a Banana Power for a few seconds.',
       cancelText: 'Leave it',
     });
     if (!world || result === null || result === 'cancelled') return;
-    if (result === 'solved') rewardBananaCrate(world, world.player);
     closeBananaCrate(pickup);
+    if (result !== 'solved' || world.over) return;
+    // The battle stays frozen while the player picks a power.
+    setState('puzzle');
+    input.setEnabled(false);
+    const choice = await askPower(powerChoices());
+    if (!world || world.over) return;
+    const power = rewardBananaCrate(world, world.player, choice);
+    stats?.powers.add(power);
+    setState('playing');
+    input.setEnabled(true);
   });
 
   on('input:pause', () => {
@@ -165,6 +176,7 @@ export function createGameSession() {
     resume() { if (state !== 'paused') return; input.setEnabled(true); setState('playing'); },
     endNow() { if (!world) return; session.resume(); endMatchNow(world, 'quit'); },
     quit() {
+      closePower();
       world = null;
       stats = null;
       input.setEnabled(false);

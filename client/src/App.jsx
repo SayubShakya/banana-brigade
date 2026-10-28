@@ -26,6 +26,9 @@ import Controls from './screens/Controls.jsx';
 import Pause from './screens/Pause.jsx';
 import Results from './screens/Results.jsx';
 import PuzzleModal from './screens/PuzzleModal.jsx';
+import PowerPicker from './screens/PowerPicker.jsx';
+import { askPower } from './powerBridge.js';
+import { powerChoices } from './game/world.js';
 import Lobby from './screens/Lobby.jsx';
 import Modes from './screens/Modes.jsx';
 import Daily from './screens/Daily.jsx';
@@ -169,6 +172,7 @@ export default function App() {
       game().prepare('campaign', chapterOf(m).difficulty, m);
       startBattle('campaign');
     }
+    else if (name === 'power') askPower(powerChoices());
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
     else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
@@ -197,6 +201,7 @@ export default function App() {
       {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu} onMission={playMission} onMap={() => { game().quit(); setOver(null); setScreen('campaign'); }}
         onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deployWith(m, settings.difficulty); }} />}
       <PuzzleModal />
+      <PowerPicker />
       <Toasts />
     </>
   );

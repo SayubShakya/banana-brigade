@@ -27,6 +27,7 @@ const userSchema = new Schema({
   },
   // Campaign progress: best stars and fastest win per mission.
   campaign: [{ _id: false, mission: Number, stars: Number, bestS: Number }],
+  powersUsed: [String],   // Banana Powers this player has used at least once
   lastLoginAt: Date,
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 userSchema.index({ username: 1 }, { unique: true, collation: CASE_INSENSITIVE });
