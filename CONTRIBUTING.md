@@ -93,7 +93,7 @@ git push origin v1.0.0
 ```
 
 Milestones from before 1.0.0 can be tagged on their merge commits in the same way, for example
-`git tag -a v0.5.0 b8b4252 -m "Online multiplayer"`. List tags with `git tag -n`.
+`git tag -a v0.4-multiplayer b8b4252 -m "Online rooms over Socket.io, run by the server"` (already done for v0.1 to v0.5). List tags with `git tag -n`.
 
 ## AI-assisted code
 

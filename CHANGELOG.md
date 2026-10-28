@@ -48,7 +48,7 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 #### Added
 - `INCOMPLETE_TASKS.md`: what is done and what is left, theme by theme.
 
-### Campaign - 2026-10-28 (`feature/campaign`, b97fb75)
+### Campaign - 2026-10-28 (`feature/campaign`, b97fb75, tag `v0.5-campaign`)
 #### Added
 - 9 missions in 3 chapters with lives, kill targets, Banana continues and a difficulty ramp.
 - Server-checked unlocks and stars, saved per player.
@@ -81,14 +81,14 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 - Controls shown at the start of a battle, key letters on buttons, an FPS option.
 - Menu simplified to three choices with an icon rail and a More Modes screen.
 
-### Online multiplayer - 2026-10-28 (`feature/multiplayer`, b8b4252)
+### Online multiplayer - 2026-10-28 (`feature/multiplayer`, b8b4252, tag `v0.4-multiplayer`)
 #### Added
 - Socket.io server that only accepts logged-in sessions.
 - Online matches run on the server with the shared engine.
 - Rooms with codes, ready checks and server-checked Banana puzzles; lobby screen.
 - Tests: socket login, rooms, faked scores ignored.
 
-### React screens - 2026-10-28 (`feature/react-screens`, 7cfa490)
+### React screens - 2026-10-28 (`feature/react-screens`, 7cfa490, tag `v0.3-mongo-react`)
 #### Changed
 - Vite and React set up; the engine moved into `client/`; the server serves the build.
 - Game loop split into `GameSession`, with event-bus hooks for React.
@@ -104,13 +104,13 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 - Today's leaders, play time and wins; rank and XP; Profile, Scores and Settings screens.
 - Sight laser and a switch for kill-streak banners.
 
-### Gameplay - 2026-10-28 (`feature/gameplay`, f4e4b23)
+### Gameplay - 2026-10-28 (`feature/gameplay`, f4e4b23, tag `v0.2-gameplay`)
 #### Added
 - Game engine: jetpack physics, weapons, bots and four modes.
 - Canvas renderer, keyboard/mouse/touch input and Web Audio sounds.
 - Live game loop with Banana respawns, crates and saved scores.
 
-### Login - 2026-10-28 (`feature/login`, 3b4994b)
+### Login - 2026-10-28 (`feature/login`, 3b4994b, tag `v0.1-login`)
 #### Added
 - Register, login and logout with bcrypt and sessions; score saving, leaderboard and admin API.
 - SQLite storage for players, scores and login attempts.
