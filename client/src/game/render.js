@@ -7,7 +7,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS } from './config.js';
+import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS, POWERS } from './config.js';
 import { drawSoldier } from './characters.js';
 import { activeGun } from './world.js';
 import { raycast, KIND } from './map.js';
@@ -350,6 +350,22 @@ export function createRenderer(canvas) {
 
   function drawPickups(world, time) {
     for (const p of world.pickups) {
+      // A taken banana crate shows as a faint ghost with its countdown, so players
+      // learn where crates are and when they come back.
+      if (!p.active && p.kind === 'banana' && p.timer > 0) {
+        const x = p.x - cam.x;
+        const y = p.y - cam.y;
+        ctx.globalAlpha = 0.28;
+        ctx.strokeStyle = '#ffe135';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(x - 18, y - 18, 36, 28);
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        const t = Math.ceil(p.timer);
+        label(`${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, x, y - 1, 12, 'rgba(255,225,53,0.85)');
+        continue;
+      }
       if (!p.active) continue;
       const bob = Math.sin(time * 3 + p.x) * 3;
       const x = p.x - cam.x;
@@ -433,6 +449,22 @@ export function createRenderer(canvas) {
     for (const s of world.soldiers) {
       if (!s.alive) continue;
       const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0, recoil: effects.recoilOf(s) };
+      // A Banana Power makes the soldier glow in the power's colour (it flickers near the end).
+      const pw = s.power && POWERS[s.power.id ?? s.power];
+      if (pw && !(s.power.timer < 2 && Math.floor(time * 8) % 2)) {
+        const gx = view.x + s.w / 2;
+        const gy = view.y + s.h / 2;
+        const glow = ctx.createRadialGradient(gx, gy, 6, gx, gy, 46);
+        glow.addColorStop(0, `${pw.color}aa`);
+        glow.addColorStop(1, `${pw.color}00`);
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(gx, gy, 46, 0, Math.PI * 2); ctx.fill();
+        if (s.power.id === 'bubble' || s.power === 'bubble') {
+          ctx.strokeStyle = 'rgba(255,240,150,0.8)';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(gx, gy, 36 + Math.sin(time * 6) * 2, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
       drawSoldier(ctx, view, s.avatar, time);
       const cx = view.x + s.w / 2;
       const tagColor = s.isPlayer ? '#ffe135' : s.team === 'blue' ? '#7ec8ff' : s.team === 'red' ? '#ff8a8a' : '#ffffff';

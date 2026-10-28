@@ -731,3 +731,17 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .buff { padding: 0.2cqh 0.9cqh; border-radius: 1cqh; font: 800 1.5cqh 'Rubik', sans-serif; letter-spacing: 0.08cqh; color: var(--ink); box-shadow: 0 0.2cqh 0 rgba(0,0,0,0.3); }
 .buff.shield { background: #7ec8ff; }
 .buff.fuel { background: var(--fuel); }
+
+/* Banana Power picker */
+.power-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4cqh; }
+.power-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.8cqh; padding: 2cqh 1.4cqh; border-radius: 1.6cqh; cursor: pointer; text-align: center;
+  border: 0.4cqh solid var(--power, var(--banana)); background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--power, var(--banana)) 35%, transparent), rgba(0,0,0,0.35) 70%); color: var(--paper);
+  transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.power-card:hover, .power-card:focus-visible { transform: translateY(-0.6cqh) scale(1.03); box-shadow: 0 0 3cqh var(--power, var(--banana)); outline: none; }
+.power-card kbd { position: absolute; top: 1cqh; left: 1cqh; font-size: 1.6cqh; }
+.power-card .power-icon { font-size: 6cqh; line-height: 1; filter: drop-shadow(0 0.5cqh 0 rgba(0,0,0,0.3)); }
+.power-card b { font: 400 2.6cqh 'Black Ops One', sans-serif; color: var(--power, var(--banana)); }
+.power-card span { font-size: 1.8cqh; }
+.power-card small { font-size: 1.6cqh; color: var(--khaki); }
+.power-card.random { --power: #f4a261; }
+.buff.power { color: var(--ink); background: var(--power); }

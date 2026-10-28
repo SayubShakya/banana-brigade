@@ -6,7 +6,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../eventBus.js';
-import { WEAPONS, SOLDIER, PHYSICS, PICKUPS } from './config.js';
+import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS } from './config.js';
 import { activeGun } from './world.js';
 import { drawAvatarPreview } from './characters.js';
 
@@ -72,10 +72,15 @@ export function createHud() {
     else if (kind === 'shield') toast(`Shield: absorbs ${PICKUPS.shieldAmount} damage for ${PICKUPS.shieldTime} s`);
     else if (kind === 'fuel') toast(`Jet fuel: full tank, unlimited for ${PICKUPS.fuelBoostTime} s`);
     else if (kind === 'ammo') toast('Ammo box: spare ammo refilled');
-    else if (kind === 'banana') toast(`Banana crate: ${WEAPONS[weapon].name}, full health, +2 grenades`);
+    else if (kind === 'banana') { /* the power:start toast says which power */ }
     else toast(`Picked up ${WEAPONS[weapon].name}`);
   });
   on('survival:wave', ({ wave, count }) => toast(`Wave ${wave}: ${count} enemies incoming`));
+  on('power:start', ({ soldier, power, seconds, random }) => {
+    if (soldier?.isPlayer) toast(`${POWERS[power].icon} ${POWERS[power].name}${random ? ' (random +bonus)' : ''}: ${POWERS[power].text} for ${seconds} s!`);
+  });
+  on('power:warning', ({ soldier, power }) => { if (soldier?.isPlayer) toast(`${POWERS[power].name} is running out!`); });
+  on('power:end', ({ soldier, power }) => { if (soldier?.isPlayer) toast(`${POWERS[power].name} has worn off`); });
   on('survival:cleared', ({ wave }) => toast(`Wave ${wave} cleared!`));
   on('campaign:ramp', () => toast('The bots are getting sharper!'));
   on('soldier:respawned', ({ soldier }) => { if (soldier.isPlayer) toast('Back in the fight'); });
@@ -116,7 +121,8 @@ export function createHud() {
       el.hpText.textContent = Math.ceil(p.health);
       el.fuel.style.width = `${(p.fuel / PHYSICS.fuelMax) * 100}%`;
       // Active power-ups (shield points, infinite jet fuel), only rewritten when they change.
-      const buffs = `${p.armor > 0 ? `<span class="buff shield">SHIELD ${Math.ceil(p.armor)}</span>` : ''}${p.fuelBoost > 0 ? `<span class="buff fuel">JET ∞ ${Math.ceil(p.fuelBoost)}s</span>` : ''}`;
+      const pw = p.power && POWERS[p.power.id];
+      const buffs = `${pw ? `<span class="buff power" style="--power:${pw.color}">${pw.icon} ${pw.name.toUpperCase()} ${Math.ceil(p.power.timer)}s</span>` : ''}${p.armor > 0 ? `<span class="buff shield">SHIELD ${Math.ceil(p.armor)}</span>` : ''}${p.fuelBoost > 0 ? `<span class="buff fuel">JET ∞ ${Math.ceil(p.fuelBoost)}s</span>` : ''}`;
       if (buffs !== el.buffs.dataset.last) { el.buffs.innerHTML = buffs; el.buffs.dataset.last = buffs; }
 
       const gun = activeGun(p);

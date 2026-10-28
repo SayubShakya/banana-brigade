@@ -7,7 +7,7 @@ import { Panel } from './common.jsx';
 const KEYS = [
   [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim'], [['Click'], 'Shoot'],
   [['Q'], 'Switch weapon'], [['R'], 'Reload'], [['G'], 'Grenade'], [['F'], 'Melee'], [['Z'], 'Zoom'],
-  [['E'], 'Open banana crate', true], [['B'], 'Banana respawn', true], [['0', '9'], 'Answer a puzzle', true],
+  [['E'], 'Banana crate: solve, then pick a power', true], [['B'], 'Banana respawn', true], [['0', '9'], 'Answer a puzzle', true],
   [['Tab'], 'Scoreboard'], [['Esc'], 'Pause'],
 ];
 
