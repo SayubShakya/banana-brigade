@@ -25,4 +25,4 @@ export function rankFor(xp) {
   return { name: RANKS[i].name, xp, floor: RANKS[i].xp, next: next?.xp ?? null };
 }
 
-export const MODE_NAMES = { quick: 'Quick Play', survival: 'Survival', training: 'Training', team: 'Team Battle', online: 'Online' };
+export const MODE_NAMES = { quick: 'Quick Play', survival: 'Survival', training: 'Training', team: 'Team Battle', online: 'Online', campaign: 'Campaign' };
