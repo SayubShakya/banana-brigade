@@ -70,6 +70,7 @@ export const MODES = {
   survival: { name: 'Survival',    firstWave: 2, maxBots: 7, waveBreak: 4 },
   training: { name: 'Training',    dummies: 4, respawn: 1.5 },
   team:     { name: 'Team Battle', perTeam: 3, killLimit: 30, timeLimit: 300, respawn: 6 },
+  online:   { name: 'Online',      size: 6, killLimit: 20, timeLimit: 300, respawn: 6 },   // humans first, bots fill up to size
 };
 
 // Banana crates open a Banana API puzzle; solving it gives a power weapon.
