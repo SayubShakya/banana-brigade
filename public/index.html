@@ -195,12 +195,12 @@
           <button class="hud-btn round" data-action="pause" aria-label="Pause">II</button>
         </div>
 
-        <button id="crate-prompt" class="crate-prompt"><svg class="ico"><use href="#i-banana"/></svg>Banana crate nearby · <b>E</b> to open</button>
+        <button id="crate-prompt" class="crate-prompt" data-action="pickup" hidden></button>
 
         <div class="hud-weapons">
           <div class="weapon-panel">
-            <div id="weapon-name">Assault Rifle</div>
-            <div id="ammo">30 / 90</div>
+            <div id="weapon-name">Magnum</div>
+            <div id="ammo">8 / ∞</div>
             <div class="reload-bar" id="reload-bar"><div id="reload-fill"></div></div>
           </div>
           <div class="action-buttons">
@@ -212,13 +212,12 @@
           </div>
         </div>
 
-        <div class="stick left" aria-hidden="true"><div class="knob"></div></div>
-        <div class="stick right" aria-hidden="true"><div class="knob"></div></div>
+        <div id="stick-move" class="stick left" aria-hidden="true"><div class="knob"></div></div>
+        <div id="stick-aim" class="stick right" aria-hidden="true"><div class="knob"></div></div>
 
         <div id="center-msg" role="button" tabindex="0" hidden></div>
         <div id="hud-toast" role="status"></div>
         <div id="hit-flash"></div>
-        <div class="preview-tag">UI preview · no gameplay yet</div>
 
         <div id="scoreboard" hidden>
           <h3>Scoreboard</h3>
@@ -232,7 +231,7 @@
       <div class="panel narrow">
         <header class="panel-head"><h2>Paused</h2></header>
         <button id="btn-resume" class="mbtn primary">Resume</button>
-        <button id="btn-test-down" class="mbtn"><svg class="ico"><use href="#i-banana"/></svg>Try a Banana respawn</button>
+        <button id="btn-mute" class="mbtn">Sound: On</button>
         <button id="btn-end" class="mbtn">End battle</button>
         <button id="btn-quit" class="mbtn ghost">Quit to menu</button>
       </div>
@@ -241,7 +240,7 @@
     <!-- ============ Results ============ -->
     <section id="screen-results" class="screen panel-screen" hidden>
       <div class="panel wide">
-        <header class="panel-head"><span class="mode-chip" id="results-mode">Quick Play</span><h2 id="results-title">Battle over</h2></header>
+        <header class="panel-head"><span class="mode-chip" id="results-mode">Quick Play</span><h2 id="results-title">Battle over</h2><p id="results-reason" class="results-reason"></p></header>
         <div class="result-cards">
           <div class="result-card"><svg class="ico big"><use href="#i-banana"/></svg><b id="res-solved">0 / 0</b><span>Puzzles solved</span></div>
           <div class="result-card"><b id="res-accuracy">—</b><span>Accuracy</span></div>
@@ -250,6 +249,7 @@
         </div>
         <div class="purpose-row" id="res-purposes" aria-label="Puzzles by type"></div>
         <table class="results"><thead><tr><th>#</th><th>Soldier</th><th>Kills</th><th>Deaths</th></tr></thead><tbody id="results-body"></tbody></table>
+        <p id="results-saved" class="results-saved"></p>
         <footer class="panel-foot">
           <button id="btn-menu" class="mbtn ghost">Menu</button>
           <button id="btn-again" class="mbtn primary">Deploy again</button>
