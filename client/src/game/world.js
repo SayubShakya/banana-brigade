@@ -272,6 +272,10 @@ function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
     const c = center(s);
     const d = Math.hypot(c.x - x, c.y - y);
     if (d > radius) continue;
+    // Walls and floors shelter you from the blast. The blast point can sit right on a
+    // wall's surface, so only count a wall that is more than a few pixels away.
+    const wall = raycast(world.map, x, y, c.x, c.y, 6);
+    if (wall && Math.hypot(wall.x - x, wall.y - y) > 14) continue;
     const falloff = 1 - d / radius;
     const push = 600 * falloff;
     s.vx += ((c.x - x) / (d || 1)) * push;
@@ -338,7 +342,7 @@ function melee(world, s) {
   const c = center(s);
   world.emit('melee:swing', { soldier: s });
   for (const o of world.soldiers) {
-    if (o === s || !o.alive) continue;
+    if (o === s || !o.alive || o.team === s.team) continue;   // teammates are not in the way
     const oc = center(o);
     const ahead = (oc.x - c.x) * s.facing;
     if (ahead > -6 && ahead < SOLDIER.meleeRange + 14 && Math.abs(oc.y - c.y) < 40) {
@@ -491,7 +495,10 @@ function updateSoldier(world, s, dt) {
   if (c.melee && s.meleeCooldown <= 0) melee(world, s);
 
   // Pickups: health is automatic; weapons on the pickup key (bots grab them automatically).
-  for (const p of world.pickups) {
+  // Only the pickups that existed at the start of this step are checked: taking a gun
+  // drops the old one into world.pickups, and it must not be picked straight back up.
+  for (let i = 0, n = world.pickups.length; i < n; i++) {
+    const p = world.pickups[i];
     if (!p.active || p.gone) continue;
     if (Math.abs(p.x - (s.x + s.w / 2)) > 26 || Math.abs(p.y - (s.y + s.h / 2)) > 36) continue;
     if (p.kind === 'banana') {
@@ -500,7 +507,9 @@ function updateSoldier(world, s, dt) {
       continue;
     }
     if (p.kind === 'health' || POWERUP_KINDS.has(p.kind)) takePickup(world, s, p);
-    else if (c.pickup || (!s.isPlayer && (!s.primary || s.primary.ammo + s.primary.spare < 4))) takePickup(world, s, p);
+    else if (c.pickup || (!s.isPlayer && (!s.primary || s.primary.ammo + s.primary.spare < 4))) {
+      if (takePickup(world, s, p)) c.pickup = false;   // one gun per key press
+    }
     else if (s.isPlayer) world.emit('pickup:available', { weapon: p.weapon, soldier: s });
   }
 

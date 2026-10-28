@@ -61,6 +61,12 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
       case 'weapon:reloading': case 'weapon:reloaded': case 'weapon:empty':
         outbox.push([event.slice(7), { soldier: p.soldier.id, weapon: p.weapon }]); break;
       case 'explosion': outbox.push(['explosion', { x: round(p.x), y: round(p.y), radius: p.radius }]); break;
+      // Small effects (landing dust, ricochets, grenade and melee sounds, shield breaks)
+      // are passed on by name, with the soldier's id instead of the object.
+      case 'soldier:landed': case 'bullet:wall': case 'grenade:thrown': case 'grenade:bounce':
+      case 'melee:swing': case 'jetpack:sputter': case 'shield:broken':
+        outbox.push(['fx', { name: event, soldier: p.soldier?.id ?? null, x: p.x == null ? undefined : round(p.x), y: p.y == null ? undefined : round(p.y), speed: p.speed }]);
+        break;
       case 'pickup:available': if (p.banana) near.add(p.soldier.id); break;
       case 'banana:crate': offerCrate(p.soldier, p.pickup); break;
       case 'match:ended': finish(p); break;

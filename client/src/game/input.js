@@ -107,6 +107,8 @@ export function createInput(canvas, renderer) {
   return {
     mouse,
     get zoom() { return zoom; },
+    // A new battle starts unzoomed.
+    resetZoom() { zoom = 0; emit('input:zoom', { level: 0 }); },
     setEnabled(on) {
       enabled = on;
       if (!on) Object.keys(held).forEach((k) => { held[k] = false; });

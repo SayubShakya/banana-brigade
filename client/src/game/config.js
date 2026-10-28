@@ -37,9 +37,9 @@ export const SOLDIER = {
   respawnDelay: 3,        // seconds
   spawnShield: 2,         // seconds of invulnerability after respawn
   grenades: 3,
-  meleeDamage: 35,
+  meleeDamage: 25,
   meleeRange: 48,
-  meleeCooldown: 0.6,
+  meleeCooldown: 0.8,
 };
 
 // type: 'bullet' (tracer), 'rocket' (slow, explodes) or 'flame' (short-lived fire puffs)

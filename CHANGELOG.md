@@ -4,6 +4,30 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
+## [1.1.0] - 2026-10-28
+
+Gameplay quality round. Merged from `feature/game-audio`, `feature/shooting-feel`, `feature/combat-feel`,
+`fix/buff-hud-and-dust`, `feature/maps`, `feature/logo` and `fix/qa-gameplay`.
+
+### Added
+- Four maps with their own look: Jungle Ridge, Desert Outpost, Snow Peak and Night Base (random in quick modes,
+  fixed per campaign mission, chosen by the server online), with tests that every spawn and pickup can be reached.
+- Shooting feel: sniper scope overlay, hit markers, floating damage numbers, damage-direction arrows, recoil,
+  muzzle flashes per weapon, tracers, wall sparks, shell casings, screen shake (off with reduced motion).
+- Combat: smoother jetpack take-off, coyote time and jump buffer, sniper headshots, shotgun falloff, shield /
+  jet fuel / ammo pickups (shown as HUD chips), smarter bots (retreat, dodge, spread targets).
+- Game audio: a sound per weapon with stereo panning and distance, jetpack loop, impacts, footsteps, landings,
+  headshot ding, kill chord, low-health heartbeat.
+- The Banana Brigade emblem (tab icon, login, menu, README).
+
+### Fixed
+- One press of E could pick the old gun straight back up.
+- Explosions hurt soldiers through walls and floors.
+- The battle kept running (and making noise) behind the results screen.
+- Melee was stronger than guns; it is now 25 damage every 0.8 s and skips teammates.
+- Online players were missing landing dust, ricochets, grenade, melee and shield sounds.
+- A new battle could start already zoomed in.
+
 ## [1.0.0] - 2026-10-28
 
 Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `feature/polish` (ccb8657),
@@ -129,6 +153,7 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 - SQLite schema, registration, login and sessions with bcrypt.
 - Game, scores and admin routes; first pages and event bus; automated tests.
 
+[1.1.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.1.0
 [1.0.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.0.0
 
 _Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._

@@ -128,7 +128,9 @@ function noise(v, { dur = 0.1, volume = 0.3, type = 'lowpass', freq = 1800, freq
   g.gain.exponentialRampToValueAtTime(volume, t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   src.connect(f).connect(g).connect(v.out);
-  src.start(t, Math.random() * 1.5);   // a random slice of the shared buffer, so repeats differ
+  // A random slice of the shared 2 s buffer, so repeats differ, but never so late
+  // that a long sound (explosion rumble, sniper tail) runs off the end of it.
+  src.start(t, Math.random() * Math.max(0, 2 - dur - 0.05));
   src.stop(t + dur + 0.02);
 }
 
@@ -345,6 +347,10 @@ export function initSound() {
     if (!soldier?.isPlayer) return;
     (PICKUPS[kind] ?? PICKUPS.default)(ui(0.6));
   });
+  // Your shield is used up: a falling glassy tone.
+  on('shield:broken', ({ soldier }) => {
+    if (soldier?.isPlayer) tone(ui(0.5), 1400, 0.25, { volume: 0.12, type: 'triangle', slideTo: 380 });
+  });
 
   on('soldier:damaged', ({ victim, attacker, headshot }) => {
     if (!victim) return;
@@ -372,7 +378,7 @@ export function initSound() {
     landedEvents = true;
     if (soldier && speed) landing(soldier, speed);
   });
-  on('jet:empty', ({ soldier } = {}) => {
+  on('jetpack:sputter', ({ soldier } = {}) => {
     if (soldier && !soldier.isPlayer) return;
     if (!allow('sputter', 400)) return;
     const v = ui(0.5, 0.8);

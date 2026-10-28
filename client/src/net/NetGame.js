@@ -71,6 +71,7 @@ export function createNetGame() {
     active = true;
     paused = false;
     hud.attach(view);
+    input.resetZoom();
     input.setEnabled(true);
     emit('game:state', { state: 'playing', online: true });
   });
@@ -158,6 +159,7 @@ export function createNetGame() {
       case 'pickup': emit('pickup:taken', { soldier: s(e.soldier), kind: e.kind, weapon: e.weapon }); break;
       case 'fired': emit('weapon:fired', { soldier: s(e.soldier), weapon: e.weapon, x: e.x, y: e.y }); break;
       case 'reloading': case 'reloaded': case 'empty': emit(`weapon:${type}`, { soldier: s(e.soldier), weapon: e.weapon }); break;
+      case 'fx': emit(e.name, { ...e, soldier: s(e.soldier) }); break;
       case 'explosion':
         for (let i = 0; i < 26; i++) {
           const a = rand(0, Math.PI * 2);
