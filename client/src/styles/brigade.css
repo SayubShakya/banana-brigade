@@ -677,3 +677,26 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
   .puzzle-card.bad { border-color: var(--bad); }
   .puzzle-card.good { border-color: var(--good); }
 }
+
+/* ---------- Fullscreen and phones ---------- */
+/* Fullscreen keeps the stage 16:9 and centred, with dark bars around it. */
+#stage:fullscreen {
+  position: fixed !important; inset: 0 !important; margin: auto !important;
+  width: min(100vw, calc(100vh * 16 / 9)) !important; height: min(100vh, calc(100vw * 9 / 16)) !important;
+}
+#stage::backdrop { background: #10130a; }
+
+/* Rotate hint: covers the page on a phone held upright. */
+#rotate-hint { display: none; }
+@media (orientation: portrait) and (max-width: 760px) {
+  #rotate-hint {
+    position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 5vw;
+    padding: 0 16px; background: #10130a; color: var(--paper); text-align: center; font: 600 4.4vw 'Rubik', sans-serif;
+  }
+  #rotate-hint b { display: block; margin-bottom: 1.5vw; font: 400 7vw 'Black Ops One', sans-serif; color: var(--banana); }
+  #rotate-hint p { margin: 0; }
+  .rotate-phone { width: 18vw; height: 30vw; border: 1.6vw solid var(--banana); border-radius: 3vw; animation: rotate-phone 2.4s ease-in-out infinite; }
+  body.a11y-calm .rotate-phone { animation: none !important; transform: rotate(90deg); }
+}
+@keyframes rotate-phone { 0%, 25% { transform: none; } 55%, 100% { transform: rotate(90deg); } }
+@media (prefers-reduced-motion: reduce) { .rotate-phone { animation: none !important; transform: rotate(90deg); } }

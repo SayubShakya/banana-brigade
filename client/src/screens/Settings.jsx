@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Panel } from './common.jsx';
+import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
 
 const OPTIONS = [['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
 const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];
@@ -32,6 +33,7 @@ function Toggle({ label, value, onClick }) {
 
 export default function Settings({ settings, onToggle, onSet, onControls, onLogout, onBack }) {
   const apiStatus = useApiStatus();
+  const [isFullscreen, canFullscreen] = useFullscreen();
   return (
     <Panel wide title="Settings" subtitle="Saved in this browser." footer={<>
       <button className="mbtn ghost" onClick={onLogout}>Log out</button>
@@ -55,6 +57,7 @@ export default function Settings({ settings, onToggle, onSet, onControls, onLogo
         <h3 className="settings-group">Accessibility</h3>
         {ACCESSIBILITY.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
         <h3 className="settings-group">More</h3>
+        {canFullscreen && <Toggle label="Fullscreen" value={isFullscreen} onClick={toggleFullscreen} />}
         <div className="setting"><span>Banana API</span><span className="setting-note">{apiStatus}</span></div>
         <div className="setting"><span>Controls</span><button className="toggle" onClick={onControls}>View</button></div>
       </div>
