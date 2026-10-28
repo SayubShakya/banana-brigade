@@ -20,10 +20,11 @@ export function createHud() {
     timer: $('timer'), feed: $('killfeed'), score: $('score'), rank: $('rank'),
     weapon: $('weapon-name'), ammo: $('ammo'), reload: $('reload-fill'), reloadBar: $('reload-bar'),
     grenades: $('grenades'), zoom: $('zoom-label'), msg: $('center-msg'), crate: $('crate-prompt'),
-    board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'),
+    board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'), help: $('hud-help'),
   };
   let world = null;
   let banners = true;   // kill-streak banners (Settings)
+  let helpTimer = 0;
   let crateNearUntil = 0;
   let pickupText = '';
   let pickupUntil = 0;
@@ -89,9 +90,14 @@ export function createHud() {
       el.hud.dataset.mode = w.mode;
       el.zoom.textContent = '1x';
       drawAvatarPreview(el.badge, w.player.avatar);
+      // The controls, shown for the first seconds of every battle.
+      el.help.hidden = false;
+      el.help.classList.remove('fade');
+      clearTimeout(helpTimer);
+      helpTimer = setTimeout(() => el.help.classList.add('fade'), 7000);
     },
     setBanners(on) { banners = on; },
-    hide() { world = null; el.hud.hidden = true; el.board.hidden = true; },
+    hide() { world = null; el.hud.hidden = true; el.board.hidden = true; el.help.hidden = true; },
     update() {
       if (!world) return;
       const p = world.player;

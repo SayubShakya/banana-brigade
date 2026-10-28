@@ -42,7 +42,7 @@ export function outcome({ ranking, player, reason, mode, wave, teamKills }) {
 }
 
 export function createGameSession() {
-  const { renderer, input, hud } = getStage();
+  const { renderer, input, hud, meter } = getStage();
 
   let world = null;
   let state = 'idle';
@@ -140,7 +140,8 @@ export function createGameSession() {
       hud.hide();
       setState('idle');
     },
-    applySettings({ sound, laser, banners }) {
+    applySettings({ sound, laser, banners, fps }) {
+      meter.setVisible(!!fps);
       setMuted(!sound);
       renderer.setLaser(laser);
       hud.setBanners(banners);
@@ -148,19 +149,33 @@ export function createGameSession() {
   };
 
   // ---------- Game loop ----------
+  // The world moves in fixed 1/60 s steps, however fast the screen refreshes. A slow
+  // frame runs a few steps to catch up, so the game never turns into slow motion and
+  // behaves the same on a 60 Hz laptop and a 120 Hz screen.
+  const STEP = 1 / 60;
+  const MAX_STEPS = 5;
   let last = performance.now();
+  let acc = 0;
   function frame(now) {
-    const dt = Math.min(0.033, (now - last) / 1000);
+    const dt = Math.min(0.25, (now - last) / 1000);
     last = now;
+    meter.tick(now);
     if (world) {
       const running = state === 'playing' || state === 'over';
       if (running) {
-        if (state === 'playing' && world.player.alive) input.apply(world.player);
-        updateBots(world, dt);
-        updateWorld(world, dt);
+        acc += dt;
+        let steps = 0;
+        while (acc >= STEP && steps < MAX_STEPS) {
+          if (state === 'playing' && world.player.alive) input.apply(world.player);
+          updateBots(world, STEP);
+          updateWorld(world, STEP);
+          acc -= STEP;
+          steps += 1;
+        }
+        if (steps === MAX_STEPS) acc = 0;   // far behind (tab was hidden): skip ahead instead of racing
         const c = center(world.player);
         setListener(c.x, c.y);
-      }
+      } else acc = 0;
       // 3x zoom only with a scoped weapon (the sniper); everything else stops at 2x.
       const maxZoom = (WEAPONS[activeGun(world.player).key].zoom ?? 2) - 1;
       renderer.render(world, input.mouse, running ? dt : 0, ZOOM_LEVELS[Math.min(input.zoom, maxZoom)]);

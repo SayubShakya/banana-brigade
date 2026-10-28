@@ -26,6 +26,7 @@ import Pause from './screens/Pause.jsx';
 import Results from './screens/Results.jsx';
 import PuzzleModal from './screens/PuzzleModal.jsx';
 import Lobby from './screens/Lobby.jsx';
+import Modes from './screens/Modes.jsx';
 
 // One game session for the whole page; it owns the battle canvas and HUD.
 let gameSession = null;
@@ -39,7 +40,7 @@ export default function App() {
   const [account, setAccount] = useState(null);
   const [isNew, setIsNew] = useState(false);
   const [parts, setPartsState] = useState(() => readJson('avatar', DEFAULT_AVATAR));
-  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true }));
+  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true, fps: false }));
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
@@ -103,7 +104,7 @@ export default function App() {
     if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick'); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
-    else if (['profile', 'scores', 'settings', 'avatar', 'controls'].includes(name)) setScreen(name);
+    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes'].includes(name)) setScreen(name);
   }
 
   const back = () => setScreen('menu');
@@ -116,6 +117,7 @@ export default function App() {
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
       {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
+      {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={toMenu} />}
       {screen === 'pause' && <Pause sound={settings.sound} online={online} onResume={() => (online ? net().resume() : game().resume())}
         onToggleSound={() => toggle('sound')} onEnd={() => game().endNow()} onQuit={toMenu} />}
