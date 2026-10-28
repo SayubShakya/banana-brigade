@@ -27,6 +27,8 @@ import Results from './screens/Results.jsx';
 import PuzzleModal from './screens/PuzzleModal.jsx';
 import Lobby from './screens/Lobby.jsx';
 import Modes from './screens/Modes.jsx';
+import Daily from './screens/Daily.jsx';
+import Toasts from './screens/Toasts.jsx';
 
 // One game session for the whole page; it owns the battle canvas and HUD.
 let gameSession = null;
@@ -104,7 +106,7 @@ export default function App() {
     if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick'); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
-    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes'].includes(name)) setScreen(name);
+    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily'].includes(name)) setScreen(name);
   }
 
   const back = () => setScreen('menu');
@@ -118,12 +120,14 @@ export default function App() {
       {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
+      {screen === 'daily' && <Daily me={account.username} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={toMenu} />}
       {screen === 'pause' && <Pause sound={settings.sound} online={online} onResume={() => (online ? net().resume() : game().resume())}
         onToggleSound={() => toggle('sound')} onEnd={() => game().endNow()} onQuit={toMenu} />}
       {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu}
         onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deploy(m); }} />}
       <PuzzleModal />
+      <Toasts />
     </>
   );
 }

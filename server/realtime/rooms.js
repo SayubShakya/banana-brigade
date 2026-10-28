@@ -38,7 +38,16 @@ function cleanParts(p) {
   return out;
 }
 
-function createRooms({ io, db, pool, puzzleStore, matchOptions = {} }) {
+function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {} }) {
+  // Achievement unlocks are pushed to the player straight away.
+  const award = async (userId, eventName, data) => {
+    try {
+      for (const a of await achievements.emit(eventName, userId, data)) io.to(`user:${userId}`).emit('achievement:unlocked', a);
+    } catch (err) {
+      console.error('Achievement check failed:', err.message);
+    }
+  };
+
   const rooms = new Map();          // code -> room
   const roomOf = new Map();         // userId -> code
   const issued = new Map();         // puzzleId -> { userId, purpose }
@@ -89,6 +98,7 @@ function createRooms({ io, db, pool, puzzleStore, matchOptions = {} }) {
           puzzlesSolved: r.puzzlesSolved, puzzlesAttempted: r.puzzlesAttempted, durationS: Math.min(3600, summary.durationS),
           matchId: summary.matchId, multiplayer: true,
         });
+        await award(r.userId, 'score:saved', { mode: 'online', kills: r.kills, wave: 0, won: r.won, teamMode: summary.teamMode });
       } catch (err) {
         console.error('Could not save an online score:', err.message);
       }
@@ -225,6 +235,7 @@ function createRooms({ io, db, pool, puzzleStore, matchOptions = {} }) {
       const room = rooms.get(roomOf.get(userId));
       room?.match?.countPuzzle(userId, result.correct);
       room?.match?.applyPuzzle(userId, owner.purpose, result.correct);
+      award(userId, 'puzzle:answered', result);
       ack(cb)({ correct: result.correct, solution: result.solution, purpose: owner.purpose });
     });
 

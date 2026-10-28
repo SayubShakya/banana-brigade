@@ -11,7 +11,7 @@ const { Server } = require('socket.io');
 const { createRooms } = require('./rooms');
 
 function attachRealtime(httpServer, app, { matchOptions } = {}) {
-  const { sessionMiddleware, db, pool, puzzleStore } = app.locals;
+  const { sessionMiddleware, db, pool, puzzleStore, achievements } = app.locals;
   const io = new Server(httpServer, {
     maxHttpBufferSize: 16 * 1024,     // controls and answers are tiny
     serveClient: false,
@@ -26,7 +26,7 @@ function attachRealtime(httpServer, app, { matchOptions } = {}) {
     next();
   });
 
-  const rooms = createRooms({ io, db, pool, puzzleStore, matchOptions });
+  const rooms = createRooms({ io, db, pool, puzzleStore, achievements, matchOptions });
   return { io, rooms };
 }
 

@@ -21,6 +21,10 @@ const userSchema = new Schema({
     streak: { type: Number, default: 0 },
     best: { type: Number, default: 0 },
   },
+  counters: {
+    streak: { type: Number, default: 0 },   // Banana puzzles correct in a row (any mode)
+    crates: { type: Number, default: 0 },   // banana crates opened
+  },
   lastLoginAt: Date,
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 userSchema.index({ username: 1 }, { unique: true, collation: CASE_INSENSITIVE });

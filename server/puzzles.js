@@ -28,7 +28,7 @@ function createPuzzleStore({ ttlMs = 5 * 60 * 1000, maxSize = 5000, now = () => 
       const p = puzzles.get(id);
       if (!p) return null;
       puzzles.delete(id);
-      return { correct: answer === p.solution, solution: p.solution, purpose: p.purpose };
+      return { correct: answer === p.solution, solution: p.solution, purpose: p.purpose, ms: now() - p.createdAt };
     },
     get size() { return puzzles.size; },
   };

@@ -1,7 +1,10 @@
 // One place for every call to our server. fetch sends the HttpOnly session cookie
-// automatically; the browser never sees the session id or a token.
+// automatically; the browser never sees the session id or a token. Any achievements
+// a reply says were unlocked are announced on the event bus for the toasts.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+
+import { emit } from './eventBus.js';
 
 async function call(method, path, body) {
   const res = await fetch(path, {
@@ -11,6 +14,7 @@ async function call(method, path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
+  for (const a of data.unlocked ?? []) emit('achievement:unlocked', a);
   return data;
 }
 
@@ -24,5 +28,10 @@ export const api = {
   answer: (puzzleId, answer) => call('POST', '/api/puzzle/answer', { puzzleId, answer }),
   saveScore: (score) => call('POST', '/api/scores', score),
   myRecord: () => call('GET', '/api/scores/me'),
+  achievements: () => call('GET', '/api/achievements'),
+  daily: () => call('GET', '/api/daily'),
+  dailyStart: () => call('POST', '/api/daily/start'),
+  dailyAnswer: (answer) => call('POST', '/api/daily/answer', { answer }),
+  dailyBoard: () => call('GET', '/api/daily/leaderboard'),
   leaderboard: (mode, period, limit = 10) => call('GET', `/api/scores/leaderboard?mode=${mode}&period=${period}&limit=${limit}`),
 };

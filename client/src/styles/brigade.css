@@ -480,3 +480,37 @@ body.touch .hud-help { display: none; }
 .mode-card.big small { font-size: 2cqh; }
 .modes-list { display: flex; flex-direction: column; gap: 1.4cqh; }
 .modes-list .mode-card small { white-space: normal; line-height: 1.35; }
+
+/* Achievement toasts */
+.toasts { position: absolute; right: 2cqh; top: 12cqh; z-index: 30; display: flex; flex-direction: column; gap: 1cqh; pointer-events: none; }
+.toast { display: flex; gap: 1.2cqh; align-items: center; min-width: 40cqh; padding: 1.2cqh 1.8cqh; border-radius: 1.4cqh; background: var(--panel); border: 0.3cqh solid var(--banana); color: var(--paper); box-shadow: 0 1cqh 3cqh rgba(0,0,0,0.4); animation: toast-in 0.35s ease-out; }
+.toast small { display: block; font-size: 1.5cqh; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.15cqh; }
+.toast b { display: block; font: 400 2.6cqh 'Black Ops One', sans-serif; color: var(--banana); }
+.toast span { font-size: 1.7cqh; }
+@keyframes toast-in { from { transform: translateX(110%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Badges on the profile */
+.badges { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.8cqh; }
+.badge-item { display: flex; flex-direction: column; align-items: center; gap: 0.3cqh; padding: 0.8cqh 0.4cqh; border-radius: 1cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); text-align: center; font-size: 1.4cqh; color: var(--khaki); }
+.badge-item .ico { width: 3cqh; height: 3cqh; color: var(--banana); }
+.badge-item.locked { opacity: 0.35; }
+.badge-item.locked .ico { color: var(--khaki); }
+
+/* Daily challenge */
+.daily-home { display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.4cqh; }
+.daily-result { display: flex; flex-direction: column; align-items: center; gap: 0.6cqh; padding: 2cqh; border-radius: 1.4cqh; background: rgba(255,255,255,0.05); text-align: center; }
+.daily-result b { font: 400 4.4cqh 'Black Ops One', sans-serif; color: var(--banana); }
+.daily-result span { color: var(--khaki); font-size: 1.9cqh; }
+.daily-play { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2.4cqh; align-items: start; }
+.daily-stats { display: flex; flex-wrap: wrap; gap: 0.8cqh 1.8cqh; font-size: 2cqh; color: var(--khaki); }
+.daily-stats b { color: var(--banana); }
+.daily-stats .low b { color: var(--red); }
+.daily-card { display: flex; align-items: center; gap: 1.4cqh; padding: 1.2cqh 1.8cqh; border-radius: 1.4cqh; border: 0.3cqh solid var(--banana-dark); background: linear-gradient(90deg, rgba(255,225,53,0.95), rgba(255,232,102,0.9)); color: var(--ink); cursor: pointer; font: 800 2cqh 'Rubik', sans-serif; text-align: left; }
+.daily-card .ico { width: 3.4cqh; height: 3.4cqh; }
+.daily-card small { display: block; font-weight: 600; font-size: 1.7cqh; }
+/* Profile fits on one screen: 10 stats in two rows of five, tighter cards */
+.record { grid-template-columns: repeat(5, 1fr); gap: 0.7cqh; }
+.record div { padding: 0.7cqh 1cqh; }
+.record dd { font-size: 2.6cqh; }
+.profile-main { gap: 1cqh; }
+.profile-main .rank-card.big { padding: 0.8cqh 1.4cqh; }
