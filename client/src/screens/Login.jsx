@@ -72,7 +72,7 @@ export default function Login({ onLogin }) {
     <section className="screen login">
       <Sky />
       <div className="login-wrap">
-        <h1 className="logo small">BANANA<span>BRIGADE</span></h1>
+        <div className="brand"><img className="emblem" src="/logo.svg" alt="" /><h1 className="logo small">BANANA<span>BRIGADE</span></h1></div>
         <form id="auth-form" className="panel login-panel" data-mode={mode} noValidate onSubmit={submit}>
           <div className="auth-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => switchTo('login')}>Log in</button>

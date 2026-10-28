@@ -33,7 +33,7 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
       </nav>
 
       <div className="menu-left">
-        <h1 className="logo">BANANA<span>BRIGADE</span></h1>
+        <div className="brand"><img className="emblem" src="/logo.svg" alt="" /><h1 className="logo">BANANA<span>BRIGADE</span></h1></div>
         <div className="podium">
           <div className="name-tag"><b>{account.username}</b>{account.role === 'admin' && <span className="role-badge" data-role="admin">admin</span>}</div>
           <AvatarCanvas id="menu-avatar" parts={parts} aria-label="Your soldier" />
