@@ -33,6 +33,7 @@ export const api = {
   campaignResult: (r) => call('POST', '/api/campaign/result', r),
   daily: () => call('GET', '/api/daily'),
   dailyStart: () => call('POST', '/api/daily/start'),
+  dailyCurrent: () => call('GET', '/api/daily/current'),
   dailyAnswer: (answer) => call('POST', '/api/daily/answer', { answer }),
   dailyBoard: () => call('GET', '/api/daily/leaderboard'),
   leaderboard: (mode, period, limit = 10) => call('GET', `/api/scores/leaderboard?mode=${mode}&period=${period}&limit=${limit}`),
