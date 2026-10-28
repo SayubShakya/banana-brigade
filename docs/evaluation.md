@@ -10,7 +10,8 @@ other students' Banana API games come from the research notes in
 `feature/multiplayer`, `fix/lag-and-clear-ui` …), small commits with plain messages, and `git merge --no-ff`
 into `main`, so every feature shows as its own bubble in `git log --graph`. GitHub Actions runs the tests and
 the build on every push and pull request. A pull-request template and a review checklist are in the repository.
-The release steps in `CONTRIBUTING.md` use annotated tags.
+Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`,
+`v0.4-multiplayer`, `v0.5-campaign` and `v1.0.0` (`git tag -n`). The release steps are in `CONTRIBUTING.md`.
 
 | Alternative | For | Against |
 |---|---|---|
@@ -20,8 +21,10 @@ The release steps in `CONTRIBUTING.md` use annotated tags.
 | Git Flow (develop, release, hotfix branches) | Clear for teams with scheduled releases | Too heavy for a one-person project |
 
 **Trade-offs and limits**
-- Branches were merged **locally with `--no-ff`**, not through GitHub pull requests. So there is no recorded
-  review discussion. The PR template and CI are added as the review workflow from now on.
+- **Code reviews were done locally**: each branch was checked against the review checklist and merged with
+  `--no-ff` on this machine, not through GitHub pull requests. So there is no recorded review discussion on
+  GitHub. The PR template and CI are the review workflow; using real GitHub pull requests with a required green
+  check is the obvious improvement.
 - One developer: branches rarely conflict, so the history shows little real merge-conflict resolution.
 - Most work happened on two days (14 and 28 October), so the dates show bursts rather than steady progress.
 - The history keeps a real design change: SQLite (`fadda7c`) replaced by MongoDB (`75afbbd`). Because
@@ -64,7 +67,8 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
 |---|---|---|
 | Server proxy | Browser calls the Banana API directly (as several other students did) | Direct is simpler, but the solution would be visible in DevTools and anyone could cheat. The proxy adds a hop and makes our server a dependency |
 | JSON + base64 | `out=csv`; JSON with an image URL | JSON is self-describing and easy to validate; CSV needs hand splitting and breaks if the format changes; a URL means a second download from another host. Base64 makes each reply about a third larger |
-| Timeout (5 s) + 1 retry | No timeout; many retries; exponential backoff | Without a timeout a hung API hangs the player. More retries would load an API that is already struggling |
+| Timeout (5 s) + up to 2 retries with exponential backoff and jitter (300 ms, 900 ms), only for transient failures | No timeout; no retry; fixed-interval retries; unlimited retries | Without a timeout a hung API hangs the player. Backoff gives the API time to recover and jitter stops many clients retrying at the same moment. Bad data and 4xx answers are not retried because they will not change. The cost: a failing call takes up to about 16 s, which the 2.5 s deadline hides from the player |
+| Circuit breaker (3 failures → 30 s pause → one probe) | Keep calling on every request | Spares a struggling API and stops players waiting for calls that will fail; but the state is per process, so several servers would each keep their own |
 | Ready pool (3) + reserve (25) | Fetch on every request; a fixed fallback image | Instant puzzles and the game still works if the API "may be discontinued without notice". A reserve puzzle can repeat |
 | All API code in one file (`bananaApi.js`) | Calls spread over routes | If the API changes, only one file changes; the tests replace it with a fake |
 | REST/JSON for menus, Socket.io for matches | Polling HTTP for matches; raw `ws`; WebRTC | Polling at 30 Hz would be wasteful and laggy. Socket.io adds rooms, acks, reconnection and a polling fallback over raw `ws`, at the cost of a bigger library and its own protocol. WebRTC would be peer-to-peer, so no server authority |
@@ -74,14 +78,22 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
 - No caching headers or rate limits towards the Banana API beyond the pool; many players at once could still
   hit it often.
 - The reserve lives in memory and is lost on restart.
+- **Daily answers can be shared.** Every player gets the same 5 puzzles, and the solution is shown after
+  answering, so a player who has finished could tell a friend. This is an accepted trade-off: a fair shared
+  leaderboard needs the same puzzles, and showing the answer helps players learn.
+- **A daily run that crosses midnight UTC cannot be finished.** The routes use today's date, so a run started at
+  23:59 belongs to a day that has ended.
 - Our REST API has no version prefix and no OpenAPI file; `docs/api.md` documents it by hand.
 
 ## 4. Virtual identity
 
 **Chosen:** username and password; bcrypt hashes (cost 10); a server-side session in MongoDB identified by an
 HttpOnly, SameSite=Lax cookie; session regeneration at login; lockout after 5 failures in 10 minutes; a dummy
-hash compare so timing does not reveal usernames; roles (`player`, `admin`) checked by middleware; the same
-session authenticates the WebSocket.
+hash compare so timing does not reveal usernames; roles (`player`, `admin`) checked by middleware, which loads the user from the
+database on every request so a deleted or demoted account loses access at once; the same session authenticates
+the WebSocket. Account tools: "remember me" (30 days, off by default), log out everywhere, change password
+(needs the current one, ends the other sessions) and delete account (GDPR erasure). Each of these also closes
+the player's open WebSockets, because ending a session does not close a socket that is already connected.
 
 | Alternative | For | Against |
 |---|---|---|
@@ -93,9 +105,15 @@ session authenticates the WebSocket.
 | PHP-style sessions in memory | Simple | Lost on restart; cannot list or end one player's sessions |
 
 **Limits (honest)**
-- **Lockout is per username.** Someone who knows your name can lock you out for 10 minutes by typing wrong
-  passwords. A per-IP limit (or per username + IP) would avoid that, but IPs are shared behind NAT and change on
-  mobile networks.
+- **Lockout is per username, so anyone can lock a username.** Someone who knows your name can lock you out for
+  10 minutes by typing wrong passwords. A per-IP limit (or per username + IP) would avoid that, but IPs are
+  shared behind NAT and change on mobile networks.
+- **The lockout check and the failed-attempt record are separate steps.** Many guesses sent in parallel can all
+  pass the check before any of them is recorded, so more than 5 guesses can get through. An atomic counter
+  (one `findOneAndUpdate` with `$inc`, or a rate limiter in front of the route) would close that gap.
+- Loading the user on every request costs one small database read per request; that is the price of instant
+  revocation.
+- "Remember me" on a shared computer lets the next person in; that is why it is off by default.
 - **Single-player kills are reported by the browser.** Puzzle counts, stars and daily scores are checked by the
   server, and online matches are fully server-authoritative, but in offline modes a modified browser could post
   a high kill count (within the limits in `routes/scores.js`).
