@@ -1,4 +1,4 @@
-// Main menu: who is playing, their rank, the Banana API status and the game modes.
+// Main menu: your soldier and rank, the ways to play, and the daily challenge.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
@@ -15,30 +15,7 @@ const MAIN = [
 ];
 const RAIL = [['profile', 'user', 'Profile'], ['scores', 'trophy', 'Scores'], ['avatar', 'helmet', 'Avatar'], ['settings', 'gear', 'Settings']];
 
-function useApiStatus() {
-  const [status, setStatus] = useState({ state: 'unknown', text: 'Banana API: checking…' });
-  useEffect(() => {
-    let alive = true;
-    const check = async () => {
-      try {
-        const s = await api.status();
-        const state = s.online === false ? 'offline' : s.online ? 'online' : 'unknown';
-        const text = state === 'offline' ? `Banana API offline${s.reserve ? ` · ${s.reserve} reserve puzzles` : ''}`
-          : state === 'online' ? `Banana API online · ${s.ready} ready` : 'Banana API: checking…';
-        if (alive) setStatus({ state, text });
-      } catch {
-        if (alive) setStatus({ state: 'offline', text: 'Server unreachable' });
-      }
-    };
-    check();
-    const id = setInterval(check, 10000);
-    return () => { alive = false; clearInterval(id); };
-  }, []);
-  return status;
-}
-
-export default function Menu({ account, isNew, parts, onDeploy, onOpen, onLogout }) {
-  const status = useApiStatus();
+export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
   const [rank, setRank] = useState(rankFor(0));
   const [daily, setDaily] = useState(null);
   useEffect(() => {
@@ -49,26 +26,19 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen, onLogout
   return (
     <section className="screen menu v2">
       <Sky />
-      <header className="menu-top">
-        <div className="account">
-          <div className="chip player-chip"><span className="dot" />{account.username}<span className="role-badge" data-role={account.role}>{account.role}</span></div>
-          <button className="chip chip-btn" type="button" onClick={onLogout}>Log out</button>
-        </div>
-        <div className="chip api-chip" data-state={status.state} title="Banana API status"><span className="dot" /><span>{status.text}</span></div>
-      </header>
-
       <nav className="menu-rail" aria-label="Your soldier">
         {RAIL.map(([screen, icon, label]) => <button key={screen} className="tile" onClick={() => onOpen(screen)}><Icon id={icon} />{label}</button>)}
       </nav>
 
       <div className="menu-left">
-        <h1 className="logo">BANANA<span>BRIGADE</span><i className="badge">JETPACK WARS</i></h1>
+        <h1 className="logo">BANANA<span>BRIGADE</span></h1>
         <div className="podium">
+          <div className="name-tag"><b>{account.username}</b>{account.role === 'admin' && <span className="role-badge" data-role="admin">admin</span>}</div>
           <AvatarCanvas id="menu-avatar" parts={parts} aria-label="Your soldier" />
           <div className="rock" aria-hidden="true" />
         </div>
         <RankCard rank={rank} />
-        <p className="welcome">{isNew ? `Welcome to the Brigade, ${account.username}!` : `Welcome back, ${account.username}.`}</p>
+        {isNew && <p className="welcome">Welcome to the Brigade, {account.username}!</p>}
       </div>
 
       <nav className="menu-right" aria-label="Play">
