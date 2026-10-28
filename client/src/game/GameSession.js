@@ -178,6 +178,7 @@ export function createGameSession() {
       setMusicMuted(muted);
       setMusicVolume(musicVolume / 100);
       renderer.setLaser(laser);
+      renderer.setBanners(banners);
       hud.setBanners(banners);
     },
   };
