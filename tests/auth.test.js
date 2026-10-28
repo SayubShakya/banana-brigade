@@ -127,6 +127,7 @@ test('invalid scores are refused', async () => {
     await c.post('/api/auth/register', { username: 'cheater', password: 'bananas123' });
     assert.equal((await c.post('/api/scores', { mode: 'quick', kills: -1, deaths: 0, durationS: 5 })).status, 400);
     assert.equal((await c.post('/api/scores', { mode: 'god', kills: 1, deaths: 0, durationS: 5 })).status, 400);
+    assert.equal((await c.post('/api/scores', { mode: 'quick', difficulty: 'impossible', kills: 1, deaths: 0, durationS: 5 })).status, 400);
     assert.equal((await c.post('/api/scores', { mode: 'quick', kills: 99999, deaths: 0, durationS: 5 })).status, 400);
   } finally { await s.close(); }
 });

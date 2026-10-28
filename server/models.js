@@ -32,6 +32,7 @@ userSchema.index({ username: 1 }, { unique: true, collation: CASE_INSENSITIVE })
 const scoreSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   mode: { type: String, enum: MODES, required: true },
+  difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
   kills: { type: Number, default: 0, min: 0 },
   deaths: { type: Number, default: 0, min: 0 },
   wave: { type: Number, default: 0, min: 0 },

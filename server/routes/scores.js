@@ -20,6 +20,7 @@ function createScoresRouter({ db, achievements }) {
     const score = {
       userId: req.session.userId,
       mode: MODES.includes(b.mode) ? b.mode : null,
+      difficulty: ['easy', 'medium', 'hard'].includes(b.difficulty ?? 'medium') ? (b.difficulty ?? 'medium') : null,
       kills: int(b.kills, 500),
       deaths: int(b.deaths, 500),
       wave: int(b.wave ?? 0, 200),

@@ -20,6 +20,7 @@ const ACHIEVEMENTS = [
   { id: 'team_player', name: 'Team Player', text: 'Win a Team Battle.' },
   { id: 'online_victor', name: 'Online Victor', text: 'Win an online match against real players.' },
   { id: 'veteran', name: 'Veteran', text: 'Finish 25 battles.' },
+  { id: 'hard_win', name: 'Hard as Nails', text: 'Win a battle on Hard.' },
   { id: 'banana_brain', name: 'Banana Brain', text: 'Solve 5 Banana puzzles in a row.' },
   { id: 'speed_demon', name: 'Speed Demon', text: 'Solve a Banana puzzle in under 3 seconds.' },
   { id: 'clutch', name: 'Clutch', text: 'Solve a respawn or crate puzzle with 3 seconds or less left.' },
@@ -44,6 +45,7 @@ function createAchievements({ db }) {
     if (s.mode === 'survival' && s.wave >= 10) ids.push('iron_will');
     if (s.won && (s.mode === 'team' || (s.mode === 'online' && s.teamMode))) ids.push('team_player');
     if (s.won && s.mode === 'online') ids.push('online_victor');
+    if (s.won && s.difficulty === 'hard') ids.push('hard_win');
     if ((await db.totalsForUser(userId)).games >= 25) ids.push('veteran');
     return ids;
   });
