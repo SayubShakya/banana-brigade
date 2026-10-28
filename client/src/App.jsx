@@ -42,7 +42,7 @@ export default function App() {
   const [account, setAccount] = useState(null);
   const [isNew, setIsNew] = useState(false);
   const [parts, setPartsState] = useState(() => readJson('avatar', DEFAULT_AVATAR));
-  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true, fps: false }));
+  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true, fps: false, difficulty: 'normal' }));
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
@@ -75,10 +75,10 @@ export default function App() {
   useBus('game:over', (payload) => { setOver(payload); setScreen('results'); });
 
   const startBattle = useCallback((mode) => {
-    game().start({ playerName: account?.username ?? 'You', parts });
+    game().start({ playerName: account?.username ?? 'You', parts, difficulty: settings.difficulty });
     lastMode.current = mode;
     setScreen('battle');
-  }, [account, parts]);
+  }, [account, parts, settings.difficulty]);
 
   const deploy = useCallback(async (mode) => {
     if (mode === 'online') { net(); setScreen('lobby'); return; }
@@ -97,6 +97,7 @@ export default function App() {
   const logout = async () => {
     try { await api.logout(); } finally { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('login'); }
   };
+  const setSetting = (key, value) => setSettings((s) => { const next = { ...s, [key]: value }; store.set('settings', JSON.stringify(next)); return next; });
   const toggle = (key) => setSettings((s) => { const next = { ...s, [key]: !s[key] }; store.set('settings', JSON.stringify(next)); return next; });
 
   // Preview links such as #battle-team or #puzzle-crate open a screen directly
@@ -117,7 +118,7 @@ export default function App() {
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
-      {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
+      {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onSet={setSetting} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}
