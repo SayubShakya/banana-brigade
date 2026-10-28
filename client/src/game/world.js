@@ -9,7 +9,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../eventBus.js';
-import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE } from './config.js';
+import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, POWERS } from './config.js';
 import { createMap, moveBox, raycast, isSolid, MAPS, randomMapId } from './map.js';
 import { RAMP } from './campaign.js';
 
@@ -155,7 +155,7 @@ function spawn(world, s, initial = false) {
   Object.assign(s, {
     x: best.x - s.w / 2, y: best.y + TILE / 2 - s.h - 1, vx: 0, vy: 0,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, alive: true,
-    shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0, armor: 0, armorTimer: 0, fuelBoost: 0,
+    shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0, armor: 0, armorTimer: 0, fuelBoost: 0, power: null,
     sidearm: newGun(SIDEARM), primary: newGun(pick(CRATE_WEAPONS)), current: 'primary', grenades: SOLDIER.grenades,
   });
   if (!initial) world.emit('soldier:respawned', { soldier: s });
@@ -165,6 +165,8 @@ function spawn(world, s, initial = false) {
 export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
   if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
+  if (hasPower(victim, 'bubble')) return;                                         // Banana Bubble: untouchable
+  if (attacker && hasPower(attacker, 'rage')) amount *= POWERS.rage.damage;       // Banana Rage: double damage
   // Bots hit human players softer, depending on the difficulty.
   if (attacker && !attacker.isPlayer && victim.isPlayer) amount *= world.difficulty.damage;
   // A Shield power-up soaks up damage before health does.
@@ -232,16 +234,37 @@ export function continueMission(world) {
   spawn(world, p);
 }
 
-// A solved Banana crate puzzle: a power weapon, full health and extra grenades.
-export function rewardBananaCrate(world, s) {
-  const weapon = pick(BANANA_CRATE.weapons);
-  s.primary = newGun(weapon);
-  s.current = 'primary';
-  s.reloadTimer = 0;
-  s.health = SOLDIER.maxHealth;
-  s.grenades += BANANA_CRATE.bonusGrenades;
-  world.emit('pickup:taken', { soldier: s, kind: 'banana', weapon });
-  return weapon;
+// ---------- Banana Powers ----------
+export const hasPower = (s, id) => s.power?.id === id;
+const POWER_IDS = Object.keys(POWERS);
+
+// `n` different powers for the crate's choice screen.
+export function powerChoices(n = BANANA_CRATE.choices) {
+  return [...POWER_IDS].sort(() => Math.random() - 0.5).slice(0, n);
+}
+
+// A solved Banana crate puzzle: the chosen super power for a few seconds. 'random'
+// (or no choice) picks one at random and adds a few bonus seconds for the gamble.
+export function rewardBananaCrate(world, s, choice = 'random') {
+  const random = !POWERS[choice];
+  const id = random ? pick(POWER_IDS) : choice;
+  const seconds = POWERS[id].seconds + (random ? BANANA_CRATE.randomBonus : 0);
+  s.power = { id, timer: seconds, total: seconds, warned: false };
+  if (id === 'heal') s.health = SOLDIER.maxHealth;
+  if (id === 'rapid') { const gun = activeGun(s); gun.ammo = Math.max(gun.ammo, 1); s.reloadTimer = 0; }
+  world.emit('power:start', { soldier: s, power: id, seconds, random });
+  world.emit('pickup:taken', { soldier: s, kind: 'banana', power: id });
+  return id;
+}
+
+function updatePower(world, s, dt) {
+  const p = s.power;
+  if (!p) return;
+  p.timer -= dt;
+  if (p.id === 'heal') s.health = Math.min(SOLDIER.maxHealth, s.health + POWERS.heal.regen * dt);
+  if (p.id === 'overdrive') s.fuel = PHYSICS.fuelMax;
+  if (!p.warned && p.timer <= 2) { p.warned = true; world.emit('power:warning', { soldier: s, power: p.id }); }
+  if (p.timer <= 0) { s.power = null; world.emit('power:end', { soldier: s, power: p.id }); }
 }
 
 export function closeBananaCrate(pickup) {
@@ -300,8 +323,8 @@ function fire(world, s) {
     else if (w.type === 'flame') world.flames.push({ ...proj, vx: proj.vx + s.vx * 0.5, vy: proj.vy + s.vy * 0.5, life: w.range / w.speed, age: 0, drag: w.drag ?? 1.5, hit: new Set() });
     else world.bullets.push(proj);
   }
-  gun.ammo -= 1;
-  s.fireCooldown = w.rate;
+  if (!hasPower(s, 'rapid')) gun.ammo -= 1;   // Rapid Fire uses no ammo
+  s.fireCooldown = w.rate * (hasPower(s, 'rapid') ? POWERS.rapid.fireRate : 1);
   world.emit('weapon:fired', { soldier: s, weapon: gun.key, x: start.x, y: start.y });
   if (gun.ammo <= 0 && gun.spare > 0) startReload(world, s);
 }
@@ -400,6 +423,8 @@ function updateSoldier(world, s, dt) {
   if (s.armorTimer > 0) { s.armorTimer -= dt; if (s.armorTimer <= 0) { s.armorTimer = 0; s.armor = 0; } }
   s.fireCooldown = Math.max(0, s.fireCooldown - dt);
   s.meleeCooldown = Math.max(0, s.meleeCooldown - dt);
+  updatePower(world, s, dt);
+  const speed = hasPower(s, 'overdrive') ? POWERS.overdrive.speed : 1;
   if (s.health < SOLDIER.maxHealth && world.time - s.lastHurt > HEALTH_REGEN.delay) {
     s.health = Math.min(SOLDIER.maxHealth, s.health + HEALTH_REGEN.perSecond * dt);
   }
@@ -412,14 +437,14 @@ function updateSoldier(world, s, dt) {
   // Horizontal movement.
   const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
   if (s.onGround) {
-    const target = dir * PHYSICS.walkSpeed;
+    const target = dir * PHYSICS.walkSpeed * speed;
     s.vx += (target - s.vx) * Math.min(1, dt * 18);
   } else {
     const turning = dir !== 0 && Math.sign(s.vx) === -dir;
-    s.vx += dir * PHYSICS.airAccel * (turning ? PHYSICS.airTurnBoost : 1) * dt;
+    s.vx += dir * PHYSICS.airAccel * speed * (turning ? PHYSICS.airTurnBoost : 1) * dt;
     if (!dir) s.vx *= 1 - Math.min(1, dt * PHYSICS.airDrag);
-    s.vx = Math.max(-PHYSICS.airSpeed * 1.6, Math.min(PHYSICS.airSpeed * 1.6, s.vx));
-    if (Math.abs(s.vx) > PHYSICS.airSpeed && dir === Math.sign(s.vx)) s.vx -= Math.sign(s.vx) * PHYSICS.airAccel * dt;
+    s.vx = Math.max(-PHYSICS.airSpeed * 1.6 * speed, Math.min(PHYSICS.airSpeed * 1.6 * speed, s.vx));
+    if (Math.abs(s.vx) > PHYSICS.airSpeed * speed && dir === Math.sign(s.vx)) s.vx -= Math.sign(s.vx) * PHYSICS.airAccel * dt;
   }
 
   // Jetpack and gravity.
