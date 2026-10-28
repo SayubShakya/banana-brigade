@@ -19,6 +19,11 @@
     <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></symbol>
     <symbol id="i-team" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16.5" cy="8.5" r="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M2 20c0-3.6 2.7-6 6-6s6 2.4 6 6M13 14.4c.9-.3 2.2-.4 3.5-.4 3 0 5.5 2 5.5 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
     <symbol id="i-banana" viewBox="0 0 24 24"><path d="M4 6c1 7 6 12 15 12-1.2 2-3.8 3-7 3C6 21 2.5 15.5 3 6z" fill="currentColor"/><path d="M3 6 4.6 4.4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4.2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M3.5 21c0-4.4 3.8-7.4 8.5-7.4s8.5 3 8.5 7.4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 3h10v6a5 5 0 0 1-10 0z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M7 5H3.5c0 3 1.5 5 3.8 5.4M17 5h3.5c0 3-1.5 5-3.8 5.4M12 14v4M8 21h8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-helmet" viewBox="0 0 24 24"><path d="M3 15a9 9 0 0 1 18 0v1H3z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M1.5 16.5h21M9 7.5v4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M4 10l8-5 8 5v4l-8-5-8 5zM4 17l8-5 8 5v3l-8-5-8 5z" fill="currentColor"/></symbol>
   </svg>
 
   <div id="stage">
@@ -78,6 +83,10 @@
           <canvas id="menu-avatar" width="180" height="240" aria-label="Your soldier"></canvas>
           <div class="rock" aria-hidden="true"></div>
         </div>
+        <div class="rank-card" aria-label="Your rank">
+          <svg class="rank-ico"><use href="#i-chevron"/></svg>
+          <div class="rank-text"><b id="menu-rank">Recruit</b><div class="xp-bar"><div id="menu-xp-fill" class="xp-fill"></div><span id="menu-xp">0 / 500 XP</span></div></div>
+        </div>
         <p class="welcome" id="menu-welcome">Welcome back, soldier.</p>
       </div>
 
@@ -102,9 +111,11 @@
           <span class="mode-text"><b>Multiplayer</b><small>Blue vs Red team battle</small></span>
           <span class="mode-tag"><svg class="ico"><use href="#i-banana"/></svg>Deploy</span>
         </button>
-        <div class="menu-row">
-          <button id="btn-avatar" class="mbtn">Avatar</button>
-          <button id="btn-controls" class="mbtn">Controls</button>
+        <div class="menu-tiles">
+          <button id="btn-profile" class="tile"><svg class="ico"><use href="#i-user"/></svg>Profile</button>
+          <button id="btn-scores" class="tile"><svg class="ico"><use href="#i-trophy"/></svg>Scores</button>
+          <button id="btn-avatar" class="tile"><svg class="ico"><use href="#i-helmet"/></svg>Avatar</button>
+          <button id="btn-settings" class="tile"><svg class="ico"><use href="#i-gear"/></svg>Settings</button>
         </div>
         <p class="banana-note"><svg class="ico"><use href="#i-banana"/></svg>Every mode starts with a Banana puzzle. Solve it to deploy.</p>
       </nav>
@@ -132,6 +143,65 @@
           <button id="btn-random" class="mbtn ghost">Randomise</button>
           <button id="btn-reset" class="mbtn ghost">Reset</button>
           <button class="mbtn primary" data-back>Done</button>
+        </footer>
+      </div>
+    </section>
+
+    <!-- ============ Profile (stats from the server) ============ -->
+    <section id="screen-profile" class="screen panel-screen" hidden>
+      <div class="panel wide">
+        <header class="panel-head"><h2>Profile</h2><p>Your service record. Every number comes from games saved on the server.</p></header>
+        <div class="profile-layout">
+          <div class="profile-card">
+            <canvas id="profile-avatar" width="180" height="240" aria-label="Your soldier"></canvas>
+            <b id="profile-name">soldier</b>
+            <span class="role-badge" id="profile-role">player</span>
+            <button id="btn-customize" class="mbtn">Customise</button>
+          </div>
+          <div class="profile-main">
+            <div class="rank-card big">
+              <svg class="rank-ico"><use href="#i-chevron"/></svg>
+              <div class="rank-text"><b id="profile-rank">Recruit</b><div class="xp-bar"><div id="profile-xp-fill" class="xp-fill"></div><span id="profile-xp">0 / 500 XP</span></div></div>
+            </div>
+            <dl class="record" id="profile-record"></dl>
+            <h3 class="sub-head">Recent battles</h3>
+            <table class="results compact"><thead><tr><th>Mode</th><th>Kills</th><th>Deaths</th><th>Puzzles</th><th>Result</th><th>When</th></tr></thead><tbody id="profile-recent"></tbody></table>
+          </div>
+        </div>
+        <footer class="panel-foot"><button class="mbtn primary" data-back>Back</button></footer>
+      </div>
+    </section>
+
+    <!-- ============ Scores (leaderboard) ============ -->
+    <section id="screen-scores" class="screen panel-screen" hidden>
+      <div class="panel wide">
+        <header class="panel-head"><h2>Scores</h2><p>Top soldiers per mode. Survival ranks by wave, the others by kills.</p></header>
+        <div class="tabs" role="tablist" id="scores-tabs">
+          <button role="tab" data-board="quick" aria-selected="true">Quick Play</button>
+          <button role="tab" data-board="survival" aria-selected="false">Survival</button>
+          <button role="tab" data-board="team" aria-selected="false">Multiplayer</button>
+        </div>
+        <div class="boards">
+          <section><h3 class="sub-head">Today's leaders</h3><table class="results compact"><thead><tr><th>#</th><th>Soldier</th><th data-col="main">Kills</th><th>Puzzles</th></tr></thead><tbody id="board-today"></tbody></table></section>
+          <section><h3 class="sub-head">All-time leaders</h3><table class="results compact"><thead><tr><th>#</th><th>Soldier</th><th data-col="main">Kills</th><th>Puzzles</th></tr></thead><tbody id="board-all"></tbody></table></section>
+        </div>
+        <footer class="panel-foot"><button class="mbtn primary" data-back>Back</button></footer>
+      </div>
+    </section>
+
+    <!-- ============ Settings ============ -->
+    <section id="screen-settings" class="screen panel-screen" hidden>
+      <div class="panel">
+        <header class="panel-head"><h2>Settings</h2><p>Saved in this browser.</p></header>
+        <div class="settings-list">
+          <div class="setting"><span>Sound effects</span><button class="toggle" data-setting="sound" aria-pressed="true">On</button></div>
+          <div class="setting"><span>Sight laser</span><button class="toggle" data-setting="laser" aria-pressed="true">On</button></div>
+          <div class="setting"><span>Kill-streak banners</span><button class="toggle" data-setting="banners" aria-pressed="true">On</button></div>
+          <div class="setting"><span>Controls</span><button id="btn-controls" class="toggle">View</button></div>
+        </div>
+        <footer class="panel-foot">
+          <button id="btn-settings-logout" class="mbtn ghost">Log out</button>
+          <button class="mbtn primary" data-back>Back</button>
         </footer>
       </div>
     </section>
