@@ -85,3 +85,14 @@ test('every map has five banana crates on solid ground', () => {
     }
   }
 });
+
+test('Rage does not double your own blast damage, and a power ends when you die', () => {
+  const { w, p, events } = world();
+  rewardBananaCrate(w, p, 'rage');
+  damage(w, p, 20, p, 'Rocket');
+  assert.equal(p.health, SOLDIER.maxHealth - 20);
+  damage(w, p, 500, p, 'Rocket');
+  assert.equal(p.alive, false);
+  assert.equal(p.power, null);
+  assert.ok(events.some((e) => e.name === 'power:end' && e.payload.power === 'rage'));
+});

@@ -166,7 +166,7 @@ export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
   if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
   if (hasPower(victim, 'bubble')) return;                                         // Banana Bubble: untouchable
-  if (attacker && hasPower(attacker, 'rage')) amount *= POWERS.rage.damage;       // Banana Rage: double damage
+  if (attacker && attacker !== victim && hasPower(attacker, 'rage')) amount *= POWERS.rage.damage;   // Banana Rage (not on yourself)
   // Bots hit human players softer, depending on the difficulty.
   if (attacker && !attacker.isPlayer && victim.isPlayer) amount *= world.difficulty.damage;
   // A Shield power-up soaks up damage before health does.
@@ -186,6 +186,7 @@ export function damage(world, victim, amount, attacker, weaponName, info = {}) {
 
   victim.health = 0;
   victim.alive = false;
+  if (victim.power) { world.emit('power:end', { soldier: victim, power: victim.power.id }); victim.power = null; }   // powers end on death
   victim.deaths += 1;
   victim.streak = 0;
   victim.respawnTimer = victim.isDummy ? world.cfg.respawn : world.cfg.respawn ?? SOLDIER.respawnDelay;
@@ -300,7 +301,7 @@ function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
     const wall = raycast(world.map, x, y, c.x, c.y, 6);
     if (wall && Math.hypot(wall.x - x, wall.y - y) > 14) continue;
     const falloff = 1 - d / radius;
-    const push = 600 * falloff;
+    const push = hasPower(s, 'bubble') ? 0 : 600 * falloff;   // the bubble also stops the shove
     s.vx += ((c.x - x) / (d || 1)) * push;
     s.vy += ((c.y - y) / (d || 1)) * push - 150 * falloff;
     const scale = s === owner ? selfDamage : 1;
