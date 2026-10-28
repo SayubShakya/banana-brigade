@@ -33,6 +33,12 @@ export default function Daily({ me, onBack }) {
     setError('');
     setBusy(true);
     try {
+      if (info?.running) {                       // the page was reloaded during a run
+        const r = await api.dailyCurrent();
+        setRun({ total: r.total, score: r.score, solved: r.solved, bonus: r.bonus, finished: false });
+        showPuzzle({ index: r.index, image: r.image }, r.seconds);
+        return;
+      }
       const s = await api.dailyStart();
       setRun({ total: s.total, score: 0, solved: 0, bonus: 1, finished: false });
       showPuzzle({ index: s.index, image: s.image }, s.seconds);
@@ -91,12 +97,12 @@ export default function Daily({ me, onBack }) {
           <section className="lobby-box">
             {run?.finished ? (
               <div className="daily-result"><Icon id="banana" className="ico big" /><b>{run.score} points</b><span>{run.solved} / {run.total} solved · day streak {run.streak}</span></div>
-            ) : info?.played ? (
+            ) : info?.played && !info.running ? (
               <div className="daily-result"><Icon id="banana" className="ico big" /><b>{info.result.score} points</b><span>Done for today · day streak {info.streak}. Come back tomorrow!</span></div>
             ) : (
               <>
                 <div className="daily-result"><Icon id="banana" className="ico big" /><b>Ready?</b><span>Day streak {info?.streak ?? 0} · best {info?.best ?? 0} points</span></div>
-                <button className="mbtn primary" onClick={start} disabled={busy || !info}>Start today&apos;s challenge</button>
+                <button className="mbtn primary" onClick={start} disabled={busy || !info}>{info?.running ? 'Continue today\'s challenge' : 'Start today\'s challenge'}</button>
               </>
             )}
           </section>

@@ -67,3 +67,30 @@ test('the daily challenge: 5 puzzles, doubling points, one attempt a day, no sol
     assert.equal(start2.body.image, start.body.image);
   } finally { await s.close(); }
 });
+
+test('daily: answers sent at the same time cannot score one puzzle twice', async () => {
+  const s = await startServer({ bananaApi: fakeApi(3) });
+  try {
+    const c = await login(s, 'racer');
+    await c.post('/api/daily/start');
+    const replies = await Promise.all(Array.from({ length: 10 }, (_, d) => c.post('/api/daily/answer', { answer: d })));
+    const ok = replies.filter((r) => r.status === 200);
+    // Later requests may answer the next puzzles, but no puzzle is ever answered twice.
+    const answered = ok.map((r) => (r.body.finished ? 5 : r.body.next.index));
+    assert.equal(new Set(answered).size, ok.length);
+    assert.equal(ok.length + replies.filter((r) => r.status === 409 || r.status === 400).length, 10);
+    assert.ok(Math.max(...ok.map((r) => r.body.solved)) <= ok.length);
+  } finally { await s.close(); }
+});
+
+test('daily: a Banana API outage does not use up the day\'s attempt', async () => {
+  let down = true;
+  const api = { fetchPuzzle: async () => { if (down) throw new Error('offline'); return { image: 'data:image/png;base64,AAAA', solution: 2 }; } };
+  const s = await startServer({ bananaApi: api });
+  try {
+    const c = await login(s, 'patient');
+    assert.equal((await c.post('/api/daily/start')).status, 502);
+    down = false;
+    assert.equal((await c.post('/api/daily/start')).status, 200);   // still allowed after the outage
+  } finally { await s.close(); }
+});
