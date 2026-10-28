@@ -71,6 +71,45 @@ async function openDatabase(uri) {
       return res.modifiedCount === 1;
     },
     setDailyStreak: (userId, daily) => m.User.updateOne({ _id: oid(userId) }, { daily }),
+    // Updates the puzzle counters in one atomic step and returns the new values.
+    async recordPuzzle(userId, { correct, crate }) {
+      const update = correct
+        ? { $inc: { 'counters.streak': 1, 'counters.crates': crate ? 1 : 0 } }
+        : { $set: { 'counters.streak': 0 } };
+      const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, update, { new: true, projection: { counters: 1 } }).lean();
+      return { streak: u?.counters?.streak ?? 0, crates: u?.counters?.crates ?? 0 };
+    },
+
+    // ----- Daily Banana Challenge -----
+    getDaily: (date) => m.Daily.findOne({ date }).lean(),
+    async createDaily(date, puzzles) {
+      try {
+        return (await m.Daily.create({ date, puzzles })).toObject();
+      } catch (err) {
+        if (err.code === 11000) return m.Daily.findOne({ date }).lean();   // someone else made today's set first
+        throw err;
+      }
+    },
+    // Registers today's single attempt; returns false if the player already started one.
+    async startDailyAttempt(userId, date) {
+      try {
+        await m.DailyResult.create({ user: oid(userId), date, score: 0, solved: 0 });
+        return true;
+      } catch (err) {
+        if (err.code === 11000) return false;
+        throw err;
+      }
+    },
+    finishDailyAttempt: (userId, date, score, solved) => m.DailyResult.updateOne({ user: oid(userId), date }, { score, solved }),
+    dailyResult: (userId, date) => m.DailyResult.findOne({ user: oid(userId), date }).lean(),
+    async dailyLeaderboard(date, limit = 10) {
+      const rows = await m.DailyResult.aggregate([
+        { $match: { date } }, { $sort: { score: -1, createdAt: 1 } }, { $limit: limit },
+        { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'u' } },
+        { $project: { _id: 0, username: { $first: '$u.username' }, score: 1, solved: 1 } },
+      ]);
+      return rows;
+    },
 
     // ----- match results -----
     async addScore(s) {
