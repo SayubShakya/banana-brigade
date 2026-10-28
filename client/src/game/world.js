@@ -9,7 +9,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../eventBus.js';
-import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY } from './config.js';
+import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE } from './config.js';
 import { createMap, moveBox, raycast, isSolid } from './map.js';
 import { RAMP } from './campaign.js';
 
@@ -157,7 +157,8 @@ function spawn(world, s, initial = false) {
   if (!initial) world.emit('soldier:respawned', { soldier: s });
 }
 
-export function damage(world, victim, amount, attacker, weaponName) {
+// info.headshot marks a sniper-style headshot (already multiplied into amount).
+export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
   if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
   // Bots hit human players softer, depending on the difficulty.
@@ -166,7 +167,8 @@ export function damage(world, victim, amount, attacker, weaponName) {
   victim.hurtFlash = 0.12;
   victim.lastHurt = world.time;
   victim.lastAttacker = attacker;
-  world.emit('soldier:damaged', { victim, attacker, amount });
+  const headshot = !!info.headshot;
+  world.emit('soldier:damaged', { victim, attacker, amount, headshot });
   if (victim.health > 0) return;
 
   victim.health = 0;
@@ -193,7 +195,7 @@ export function damage(world, victim, amount, attacker, weaponName) {
   for (let i = 0; i < 18; i++) {
     world.particles.push({ x: victim.x + victim.w / 2, y: victim.y + 20, vx: rand(-260, 260), vy: rand(-420, -60), life: rand(0.4, 0.9), color: '#b3001b', size: rand(2, 4), gravity: true });
   }
-  world.emit('soldier:killed', { victim, killer: attacker, weapon: weaponName });
+  world.emit('soldier:killed', { victim, killer: attacker, weapon: weaponName, headshot });
 
   if (victim.isPlayer && world.mode === 'survival') world.emit('player:down', { wave: world.wave });
 
@@ -246,7 +248,8 @@ function endMatch(world, reason) {
   world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills }, mission: world.mission, continues: world.continues });
 }
 
-function explode(world, x, y, radius, dmg, owner, weaponName) {
+// selfDamage scales what the blast does to its own owner (rockets: WEAPONS.rocket.selfDamage).
+function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
   world.emit('explosion', { x, y, radius });
   for (let i = 0; i < 26; i++) {
     const a = rand(0, Math.PI * 2);
@@ -262,7 +265,8 @@ function explode(world, x, y, radius, dmg, owner, weaponName) {
     const push = 600 * falloff;
     s.vx += ((c.x - x) / (d || 1)) * push;
     s.vy += ((c.y - y) / (d || 1)) * push - 150 * falloff;
-    damage(world, s, Math.round(dmg * (0.35 + 0.65 * falloff)), owner, weaponName);
+    const scale = s === owner ? selfDamage : 1;
+    damage(world, s, Math.round(dmg * (0.35 + 0.65 * falloff) * scale), owner, weaponName);
   }
 }
 
@@ -276,9 +280,9 @@ function fire(world, s) {
 
   for (let i = 0; i < w.pellets; i++) {
     const a = s.aim + rand(-w.spread, w.spread);
-    const proj = { owner: s, x: start.x, y: start.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, damage: w.damage, travelled: 0, range: w.range, color: w.color, weapon: w.name };
-    if (w.type === 'rocket') world.rockets.push({ ...proj, blastRadius: w.blastRadius, smoke: 0 });
-    else if (w.type === 'flame') world.flames.push({ ...proj, vx: proj.vx + s.vx * 0.5, vy: proj.vy + s.vy * 0.5, life: w.range / w.speed, age: 0, hit: new Set() });
+    const proj = { owner: s, x: start.x, y: start.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, damage: w.damage, travelled: 0, range: w.range, color: w.color, weapon: w.name, falloff: w.falloff, headshot: w.headshot };
+    if (w.type === 'rocket') world.rockets.push({ ...proj, blastRadius: w.blastRadius, selfDamage: w.selfDamage ?? 1, smoke: 0 });
+    else if (w.type === 'flame') world.flames.push({ ...proj, vx: proj.vx + s.vx * 0.5, vy: proj.vy + s.vy * 0.5, life: w.range / w.speed, age: 0, drag: w.drag ?? 1.5, hit: new Set() });
     else world.bullets.push(proj);
   }
   gun.ammo -= 1;
@@ -439,6 +443,8 @@ function updateSoldier(world, s, dt) {
   // Weapons.
   if (c.swap) {
     if (s.primary) {
+      // Swapping cancels a reload in progress (the half-loaded gun keeps its old ammo).
+      if (s.reloadTimer > 0) world.emit('weapon:reload-cancelled', { soldier: s, weapon: activeGun(s).key });
       s.current = s.current === 'primary' ? 'sidearm' : 'primary';
       s.reloadTimer = 0;
       world.emit('weapon:switched', { soldier: s, weapon: activeGun(s).key });
@@ -477,6 +483,18 @@ function updateSoldier(world, s, dt) {
   c.reload = c.swap = c.grenade = c.melee = c.pickup = false;
 }
 
+// Damage for one bullet hit: distance falloff (shotgun) and the headshot bonus (sniper).
+export function bulletDamage(b, victim, hitY, dist) {
+  let amount = b.damage;
+  if (b.falloff && dist > b.falloff.start) {
+    const t = Math.min(1, (dist - b.falloff.start) / Math.max(1, b.range - b.falloff.start));
+    amount *= 1 - t * (1 - b.falloff.min);
+  }
+  const headshot = !!b.headshot && hitY - victim.y < victim.h * HEADSHOT_ZONE;
+  if (headshot) amount *= b.headshot;
+  return { amount: Math.round(amount * 10) / 10, headshot };
+}
+
 function updateProjectiles(world, dt) {
   const { map } = world;
 
@@ -495,7 +513,10 @@ function updateProjectiles(world, dt) {
     }
     b.px = b.x; b.py = b.y;
     if (victim) {
-      damage(world, victim, b.damage, b.owner, b.weapon);
+      const hitY = b.y + (endY - b.y) * best;
+      const dist = b.travelled + Math.hypot(endX - b.x, endY - b.y) * best;
+      const { amount, headshot } = bulletDamage(b, victim, hitY, dist);
+      damage(world, victim, amount, b.owner, b.weapon, { headshot });
       for (let i = 0; i < 5; i++) world.particles.push({ x: b.x + (endX - b.x) * best, y: b.y + (endY - b.y) * best, vx: rand(-120, 120), vy: rand(-160, 40), life: 0.3, color: '#c1121f', size: 2.5, gravity: true });
       return false;
     }
@@ -523,7 +544,7 @@ function updateProjectiles(world, dt) {
     if (r.smoke > 0.02) { r.smoke = 0; world.particles.push({ x: r.x, y: r.y, vx: rand(-20, 20), vy: rand(-30, 0), life: 0.6, color: 'rgba(200,200,200,0.6)', size: 5, gravity: false }); }
     r.travelled += Math.hypot(nx - r.x, ny - r.y);
     if (boom || r.travelled > r.range) {
-      explode(world, boom ? boom.x : nx, boom ? boom.y : ny, r.blastRadius, r.damage, r.owner, 'Rocket');
+      explode(world, boom ? boom.x : nx, boom ? boom.y : ny, r.blastRadius, r.damage, r.owner, 'Rocket', r.selfDamage);
       return false;
     }
     r.x = nx; r.y = ny;
@@ -536,7 +557,7 @@ function updateProjectiles(world, dt) {
     const ny = f.y + f.vy * dt - 60 * dt;
     if (raycast(map, f.x, f.y, nx, ny, 6)) return false;
     f.x = nx; f.y = ny;
-    f.vx *= 1 - dt * 1.5; f.vy *= 1 - dt * 1.5;
+    f.vx *= 1 - dt * f.drag; f.vy *= 1 - dt * f.drag;
     const r = 8 + f.age * 40;
     for (const s of world.soldiers) {
       if (s === f.owner || !s.alive || f.hit.has(s)) continue;

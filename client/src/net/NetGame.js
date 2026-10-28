@@ -150,10 +150,10 @@ export function createNetGame() {
       case 'killed': {
         const victim = s(e.victim);
         if (victim) for (let i = 0; i < 18; i++) view.particles.push({ x: victim.x + victim.w / 2, y: victim.y + 20, vx: rand(-260, 260), vy: rand(-420, -60), life: rand(0.4, 0.9), color: '#b3001b', size: rand(2, 4), gravity: true });
-        emit('soldier:killed', { victim, killer: s(e.killer), weapon: e.weapon });
+        emit('soldier:killed', { victim, killer: s(e.killer), weapon: e.weapon, headshot: !!e.headshot });
         break;
       }
-      case 'damaged': emit('soldier:damaged', { victim: s(e.victim), attacker: s(e.attacker) }); break;
+      case 'damaged': emit('soldier:damaged', { victim: s(e.victim), attacker: s(e.attacker), headshot: !!e.headshot }); break;
       case 'respawned': emit('soldier:respawned', { soldier: s(e.soldier) }); break;
       case 'pickup': emit('pickup:taken', { soldier: s(e.soldier), kind: e.kind, weapon: e.weapon }); break;
       case 'fired': emit('weapon:fired', { soldier: s(e.soldier), weapon: e.weapon, x: e.x, y: e.y }); break;
