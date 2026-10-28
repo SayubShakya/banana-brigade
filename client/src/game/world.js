@@ -1,12 +1,14 @@
 // The game world: soldiers, bullets, rockets, grenades, pickups and the match rules
-// for the four modes (Quick Play, Survival, Training, Team Battle).
-// It never touches the screen. It announces what happens on the event bus
-// ("weapon:fired", "soldier:killed", "match:ended", ...) and the HUD, sound and
-// renderer react to those events.
+// for the modes (Quick Play, Survival, Training, Team Battle, and Online, where several
+// human players share one world run by the server).
+// It never touches the screen. It announces what happens through world.emit
+// ("weapon:fired", "soldier:killed", "match:ended", ...): in the browser that is the
+// page's event bus (HUD, sound and renderer listen); on the server each online room
+// passes its own emit, so rooms never hear each other's events.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { emit } from '../eventBus.js';
+import { emit as busEmit } from '../eventBus.js';
 import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE } from './config.js';
 import { createMap, moveBox, raycast, isSolid } from './map.js';
 
@@ -59,14 +61,17 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
   return null;
 }
 
-// mode: 'quick' | 'survival' | 'training' | 'team' (see MODES in config.js)
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames }) {
+// mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
+// Online worlds take `humans` ([{ id, name, avatar, team }]) instead of one player,
+// `teamMode` for Blue vs Red, and are topped up with bots to cfg.size soldiers.
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false }) {
   const cfg = MODES[mode];
   const map = createMap();
-  const player = createSoldier('p0', playerName, playerAvatar, true, mode === 'team' ? 'blue' : 'p0');
-  const soldiers = [player];
+  const online = mode === 'online';
+  const player = online ? null : createSoldier('p0', playerName, playerAvatar, true, mode === 'team' ? 'blue' : 'p0');
+  const soldiers = online ? humans.map((h) => createSoldier(h.id, h.name, h.avatar, true, teamMode ? h.team : h.id)) : [player];
   const world = {
-    map, soldiers, mode, cfg, player,
+    emit, map, soldiers, mode, cfg, player, teamMode: mode === 'team' || (online && teamMode),
     training: mode === 'training',
     looks: { avatars: botAvatars, names: botNames, next: 0 },
     bullets: [], rockets: [], flames: [], grenades: [], particles: [],
@@ -79,6 +84,13 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
   };
 
   if (mode === 'quick') for (let i = 0; i < cfg.bots; i++) addBot(world);
+  if (online) {
+    for (let i = soldiers.length; i < cfg.size; i++) {
+      const blue = soldiers.filter((s) => s.team === 'blue').length;
+      const red = soldiers.filter((s) => s.team === 'red').length;
+      addBot(world, teamMode ? (blue <= red ? 'blue' : 'red') : undefined);
+    }
+  }
   if (mode === 'team') {
     for (let i = 0; i < cfg.perTeam - 1; i++) addBot(world, 'blue');
     for (let i = 0; i < cfg.perTeam; i++) addBot(world, 'red');
@@ -97,7 +109,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
 
   soldiers.forEach((s) => spawn(world, s, true));
   if (mode === 'survival') startWave(world);
-  emit('match:started', { soldiers, mode });
+  world.emit('match:started', { soldiers, mode });
   return world;
 }
 
@@ -114,7 +126,7 @@ function startWave(world) {
   world.wave += 1;
   const count = Math.min(world.cfg.maxBots, world.cfg.firstWave + world.wave - 1);
   for (let i = 0; i < count; i++) spawn(world, addBot(world, 'enemy'));
-  emit('survival:wave', { wave: world.wave, count });
+  world.emit('survival:wave', { wave: world.wave, count });
 }
 
 const enemiesOf = (world, s) => world.soldiers.filter((o) => o !== s && o.alive && o.team !== s.team);
@@ -134,7 +146,7 @@ function spawn(world, s, initial = false) {
     shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0,
     sidearm: newGun(SIDEARM), primary: newGun(pick(CRATE_WEAPONS)), current: 'primary', grenades: SOLDIER.grenades,
   });
-  if (!initial) emit('soldier:respawned', { soldier: s });
+  if (!initial) world.emit('soldier:respawned', { soldier: s });
 }
 
 export function damage(world, victim, amount, attacker, weaponName) {
@@ -144,7 +156,7 @@ export function damage(world, victim, amount, attacker, weaponName) {
   victim.hurtFlash = 0.12;
   victim.lastHurt = world.time;
   victim.lastAttacker = attacker;
-  emit('soldier:damaged', { victim, attacker, amount });
+  world.emit('soldier:damaged', { victim, attacker, amount });
   if (victim.health > 0) return;
 
   victim.health = 0;
@@ -167,13 +179,14 @@ export function damage(world, victim, amount, attacker, weaponName) {
   for (let i = 0; i < 18; i++) {
     world.particles.push({ x: victim.x + victim.w / 2, y: victim.y + 20, vx: rand(-260, 260), vy: rand(-420, -60), life: rand(0.4, 0.9), color: '#b3001b', size: rand(2, 4), gravity: true });
   }
-  emit('soldier:killed', { victim, killer: attacker, weapon: weaponName });
+  world.emit('soldier:killed', { victim, killer: attacker, weapon: weaponName });
 
-  if (victim.isPlayer && world.mode === 'survival') emit('player:down', { wave: world.wave });
+  if (victim.isPlayer && world.mode === 'survival') world.emit('player:down', { wave: world.wave });
 
   const killer = attacker && attacker !== victim ? attacker : null;
-  if (world.mode === 'quick' && killer && killer.kills >= world.cfg.killLimit) endMatch(world, 'kill limit');
-  if (world.mode === 'team' && Math.max(world.teamKills.blue, world.teamKills.red) >= world.cfg.killLimit) endMatch(world, 'kill limit');
+  const freeForAll = world.mode === 'quick' || (world.mode === 'online' && !world.teamMode);
+  if (freeForAll && killer && killer.kills >= world.cfg.killLimit) endMatch(world, 'kill limit');
+  if (world.teamMode && Math.max(world.teamKills.blue, world.teamKills.red) >= world.cfg.killLimit) endMatch(world, 'kill limit');
 }
 
 // Brings a soldier straight back (used when the player solves a respawn puzzle).
@@ -190,7 +203,7 @@ export function rewardBananaCrate(world, s) {
   s.reloadTimer = 0;
   s.health = SOLDIER.maxHealth;
   s.grenades += BANANA_CRATE.bonusGrenades;
-  emit('pickup:taken', { soldier: s, kind: 'banana', weapon });
+  world.emit('pickup:taken', { soldier: s, kind: 'banana', weapon });
   return weapon;
 }
 
@@ -206,11 +219,11 @@ function endMatch(world, reason) {
   if (world.over) return;
   world.over = true;
   const ranking = [...world.soldiers].filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
-  emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills } });
+  world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills } });
 }
 
 function explode(world, x, y, radius, dmg, owner, weaponName) {
-  emit('explosion', { x, y, radius });
+  world.emit('explosion', { x, y, radius });
   for (let i = 0; i < 26; i++) {
     const a = rand(0, Math.PI * 2);
     const sp = rand(80, 420);
@@ -246,26 +259,26 @@ function fire(world, s) {
   }
   gun.ammo -= 1;
   s.fireCooldown = w.rate;
-  emit('weapon:fired', { soldier: s, weapon: gun.key, x: start.x, y: start.y });
-  if (gun.ammo <= 0 && gun.spare > 0) startReload(s);
+  world.emit('weapon:fired', { soldier: s, weapon: gun.key, x: start.x, y: start.y });
+  if (gun.ammo <= 0 && gun.spare > 0) startReload(world, s);
 }
 
-function startReload(s) {
+function startReload(world, s) {
   const gun = activeGun(s);
   const w = WEAPONS[gun.key];
   if (s.reloadTimer > 0 || gun.ammo >= w.mag || gun.spare <= 0) return;
   s.reloadTimer = w.reload;
-  emit('weapon:reloading', { soldier: s, weapon: gun.key, seconds: w.reload });
+  world.emit('weapon:reloading', { soldier: s, weapon: gun.key, seconds: w.reload });
 }
 
-function finishReload(s) {
+function finishReload(world, s) {
   const gun = activeGun(s);
   const w = WEAPONS[gun.key];
   const need = w.mag - gun.ammo;
   const take = Math.min(need, gun.spare);
   gun.ammo += take;
   if (gun.spare !== Infinity) gun.spare -= take;
-  emit('weapon:reloaded', { soldier: s, weapon: gun.key });
+  world.emit('weapon:reloaded', { soldier: s, weapon: gun.key });
 }
 
 function throwGrenade(world, s) {
@@ -278,13 +291,13 @@ function throwGrenade(world, s) {
     vy: Math.sin(s.aim) * GRENADE.throwSpeed + s.vy * 0.4 - 120,
     fuse: GRENADE.fuse,
   });
-  emit('grenade:thrown', { soldier: s });
+  world.emit('grenade:thrown', { soldier: s });
 }
 
 function melee(world, s) {
   s.meleeCooldown = SOLDIER.meleeCooldown;
   const c = center(s);
-  emit('melee:swing', { soldier: s });
+  world.emit('melee:swing', { soldier: s });
   for (const o of world.soldiers) {
     if (o === s || !o.alive) continue;
     const oc = center(o);
@@ -307,7 +320,7 @@ function takePickup(world, s, p) {
     s.current = 'primary';
     s.reloadTimer = 0;
   }
-  emit('pickup:taken', { soldier: s, kind: p.kind, weapon: p.weapon });
+  world.emit('pickup:taken', { soldier: s, kind: p.kind, weapon: p.weapon });
   if (p.dropped) p.gone = true;
   else { p.active = false; p.timer = p.kind === 'health' ? PICKUPS.healthRespawn : PICKUPS.weaponRespawn; }
   return true;
@@ -371,20 +384,20 @@ function updateSoldier(world, s, dt) {
     if (s.primary) {
       s.current = s.current === 'primary' ? 'sidearm' : 'primary';
       s.reloadTimer = 0;
-      emit('weapon:switched', { soldier: s, weapon: activeGun(s).key });
+      world.emit('weapon:switched', { soldier: s, weapon: activeGun(s).key });
     }
   }
   if (s.reloadTimer > 0) {
     s.reloadTimer -= dt;
-    if (s.reloadTimer <= 0) { s.reloadTimer = 0; finishReload(s); }
+    if (s.reloadTimer <= 0) { s.reloadTimer = 0; finishReload(world, s); }
   } else {
     const gun = activeGun(s);
-    if (c.reload) startReload(s);
+    if (c.reload) startReload(world, s);
     else if (c.fire && s.fireCooldown <= 0) {
       if (gun.ammo > 0) fire(world, s);
-      else if (gun.spare > 0) startReload(s);
-      else if (s.current === 'primary') { s.current = 'sidearm'; emit('weapon:switched', { soldier: s, weapon: SIDEARM }); }
-      else emit('weapon:empty', { soldier: s });
+      else if (gun.spare > 0) startReload(world, s);
+      else if (s.current === 'primary') { s.current = 'sidearm'; world.emit('weapon:switched', { soldier: s, weapon: SIDEARM }); }
+      else world.emit('weapon:empty', { soldier: s });
     }
   }
   if (c.grenade) throwGrenade(world, s);
@@ -395,13 +408,13 @@ function updateSoldier(world, s, dt) {
     if (!p.active || p.gone) continue;
     if (Math.abs(p.x - (s.x + s.w / 2)) > 26 || Math.abs(p.y - (s.y + s.h / 2)) > 36) continue;
     if (p.kind === 'banana') {
-      if (s.isPlayer && c.pickup) emit('banana:crate', { pickup: p });
-      else if (s.isPlayer) emit('pickup:available', { banana: true });
+      if (s.isPlayer && c.pickup) world.emit('banana:crate', { pickup: p, soldier: s });
+      else if (s.isPlayer) world.emit('pickup:available', { banana: true, soldier: s });
       continue;
     }
     if (p.kind === 'health') takePickup(world, s, p);
     else if (c.pickup || (!s.isPlayer && (!s.primary || s.primary.ammo + s.primary.spare < 4))) takePickup(world, s, p);
-    else if (s.isPlayer) emit('pickup:available', { weapon: p.weapon });
+    else if (s.isPlayer) world.emit('pickup:available', { weapon: p.weapon, soldier: s });
   }
 
   c.reload = c.swap = c.grenade = c.melee = c.pickup = false;
@@ -487,7 +500,7 @@ function updateProjectiles(world, dt) {
     g.vx = hit.left || hit.right ? -vx * GRENADE.bounce : box.vx;
     g.vy = hit.top || hit.bottom ? -vy * GRENADE.bounce : box.vy;
     if (hit.bottom) g.vx *= 0.8;
-    if ((hit.bottom || hit.top || hit.left || hit.right) && Math.hypot(vx, vy) > 150) emit('grenade:bounce', {});
+    if ((hit.bottom || hit.top || hit.left || hit.right) && Math.hypot(vx, vy) > 150) world.emit('grenade:bounce', {});
     g.fuse -= dt;
     if (g.fuse <= 0) { explode(world, g.x, g.y, GRENADE.blastRadius, GRENADE.damage, g.owner, 'Grenade'); return false; }
     return true;
@@ -529,7 +542,7 @@ export function updateWorld(world, dt) {
     world.soldiers = world.soldiers.filter((s) => !s.gone);
     const left = world.soldiers.filter((s) => s.team === 'enemy').length;
     if (left === 0) {
-      if (world.waveBreak <= 0) { world.waveBreak = world.cfg.waveBreak; emit('survival:cleared', { wave: world.wave }); }
+      if (world.waveBreak <= 0) { world.waveBreak = world.cfg.waveBreak; world.emit('survival:cleared', { wave: world.wave }); }
       world.waveBreak -= dt;
       if (world.waveBreak <= 0) startWave(world);
     }

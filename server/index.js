@@ -4,8 +4,10 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 const crypto = require('node:crypto');
+const http = require('node:http');
 const { MongoStore } = require('connect-mongo');
 const { createApp } = require('./app');
+const { attachRealtime } = require('./realtime/socket');
 const { createPuzzlePool } = require('./pool');
 const { openDatabase } = require('./db');
 const { createBananaApi, DEFAULT_BASE_URL } = require('./services/bananaApi');
@@ -47,8 +49,11 @@ async function main() {
   const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle });
   const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production });
 
-  app.listen(PORT, () => {
-    console.log(`Banana Brigade running at http://localhost:${PORT} (MongoDB connected)`);
+  // One HTTP server for the web pages, the JSON API and the WebSocket (Socket.io).
+  const server = http.createServer(app);
+  attachRealtime(server, app);
+  server.listen(PORT, () => {
+    console.log(`Banana Brigade running at http://localhost:${PORT} (MongoDB connected, WebSocket ready)`);
     pool.warmUp(); // have puzzles ready before the first player asks
   });
 }

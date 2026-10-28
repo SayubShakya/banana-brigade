@@ -13,6 +13,8 @@ import { readJson, store } from './storage.js';
 import { MODES } from './game/config.js';
 import { DEFAULT_AVATAR } from './game/characters.js';
 import { createGameSession } from './game/GameSession.js';
+import { createNetGame } from './net/NetGame.js';
+import { closeSocket, getSocket } from './net/socket.js';
 import Login from './screens/Login.jsx';
 import Menu from './screens/Menu.jsx';
 import Avatar from './screens/Avatar.jsx';
@@ -23,10 +25,14 @@ import Controls from './screens/Controls.jsx';
 import Pause from './screens/Pause.jsx';
 import Results from './screens/Results.jsx';
 import PuzzleModal from './screens/PuzzleModal.jsx';
+import Lobby from './screens/Lobby.jsx';
 
 // One game session for the whole page; it owns the battle canvas and HUD.
 let gameSession = null;
-const game = () => (gameSession ??= createGameSession(document.getElementById('battle-canvas')));
+const game = () => (gameSession ??= createGameSession());
+// Online matches are run by the server; NetGame shows them (created on first use).
+let netGame = null;
+const net = () => (netGame ??= createNetGame());
 
 export default function App() {
   const [screen, setScreen] = useState('loading');
@@ -35,6 +41,7 @@ export default function App() {
   const [parts, setPartsState] = useState(() => readJson('avatar', DEFAULT_AVATAR));
   const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true }));
   const [over, setOver] = useState(null);
+  const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
 
   const setParts = (next) => { setPartsState(next); store.set('avatar', JSON.stringify(next)); };
@@ -57,7 +64,8 @@ export default function App() {
   }, []);
 
   // Engine → React: battle state changes and the end of a match.
-  useBus('game:state', ({ state }) => {
+  useBus('game:state', ({ state, online: isOnline = false }) => {
+    setOnline(isOnline);
     if (state === 'paused') setScreen('pause');
     else if (state === 'playing') setScreen('battle');
   });
@@ -70,13 +78,22 @@ export default function App() {
   }, [account, parts]);
 
   const deploy = useCallback(async (mode) => {
+    if (mode === 'online') { net(); setScreen('lobby'); return; }
     game().prepare(mode);
     const result = await askPuzzle('deploy', { modeLabel: MODES[mode].name, title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.' });
     if (result === 'solved') startBattle(mode);
   }, [startBattle]);
 
-  const toMenu = () => { game().quit(); setOver(null); setScreen('menu'); };
-  const logout = async () => { try { await api.logout(); } finally { game().quit(); setAccount(null); setScreen('login'); } };
+  const toMenu = () => {
+    game().quit();
+    if (netGame) { net().leave(); getSocket().emit('room:leave'); }
+    setOver(null);
+    setOnline(false);
+    setScreen('menu');
+  };
+  const logout = async () => {
+    try { await api.logout(); } finally { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('login'); }
+  };
   const toggle = (key) => setSettings((s) => { const next = { ...s, [key]: !s[key] }; store.set('settings', JSON.stringify(next)); return next; });
 
   // Preview links such as #battle-team or #puzzle-crate open a screen directly
@@ -85,6 +102,7 @@ export default function App() {
     const [name, arg] = hash.split('-');
     if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick'); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
+    else if (name === 'online') deploy('online');
     else if (['profile', 'scores', 'settings', 'avatar', 'controls'].includes(name)) setScreen(name);
   }
 
@@ -98,10 +116,11 @@ export default function App() {
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
       {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
-      {screen === 'pause' && <Pause sound={settings.sound} onResume={() => game().resume()} onToggleSound={() => toggle('sound')}
-        onEnd={() => game().endNow()} onQuit={toMenu} />}
+      {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={toMenu} />}
+      {screen === 'pause' && <Pause sound={settings.sound} online={online} onResume={() => (online ? net().resume() : game().resume())}
+        onToggleSound={() => toggle('sound')} onEnd={() => game().endNow()} onQuit={toMenu} />}
       {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu}
-        onAgain={() => { const m = lastMode.current; toMenu(); deploy(m); }} />}
+        onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deploy(m); }} />}
       <PuzzleModal />
     </>
   );

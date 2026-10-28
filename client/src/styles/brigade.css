@@ -440,3 +440,14 @@ table.compact { font-size: 1.9cqh; }
 
 /* React renders the screens into #ui; it must not add a box of its own. */
 #ui { display: contents; }
+
+/* Online lobby */
+.lobby-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.4cqh; }
+.lobby-box { display: flex; flex-direction: column; gap: 1.2cqh; }
+.code-row { display: flex; gap: 1cqh; }
+.code-input { flex: 1; min-width: 0; padding: 1cqh 1.4cqh; border-radius: 1cqh; border: 0.3cqh solid var(--olive); background: var(--paper); color: var(--ink); font: 400 3cqh 'Black Ops One', sans-serif; letter-spacing: 0.8cqh; text-transform: uppercase; }
+.room-view { display: flex; flex-direction: column; gap: 1.4cqh; }
+.room-code { display: flex; align-items: baseline; gap: 1.4cqh; flex-wrap: wrap; font: 800 2.2cqh 'Rubik', sans-serif; color: var(--khaki); text-transform: uppercase; }
+.room-code b { font: 400 5cqh 'Black Ops One', sans-serif; color: var(--banana); letter-spacing: 0.8cqh; }
+.room-code small { font-size: 1.8cqh; text-transform: none; }
+.mode-chip[data-state="offline"] { opacity: 0.6; }
