@@ -139,3 +139,15 @@ Full payloads are in [api.md](api.md#socketio-protocol-serverrealtimeroomsjs).
 | MongoDB TTL | `models.js:55` | The database deletes failed logins after 10 minutes |
 
 _Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+
+## Banana Powers (added in 1.2.0)
+
+| Event | Emitted by | Handled by | Payload |
+|---|---|---|---|
+| `power:start` | `client/src/game/world.js` `rewardBananaCrate` | `hud.js` (toast), `sound.js` (fanfare) | `{ soldier, power, seconds, random }` |
+| `power:warning` | `world.js` `updatePower` (2 s left) | `hud.js`, `sound.js` | `{ soldier, power }` |
+| `power:end` | `world.js` `updatePower` / `damage` (on death) | `hud.js`, `sound.js` | `{ soldier, power }` |
+| `power:offer` (Socket.io, server → player) | `server/realtime/match.js` `applyPuzzle` | `client/src/net/NetGame.js` → `PowerPicker.jsx` | `{ choices, seconds }` |
+| `power:choose` (Socket.io, player → server, ack) | `NetGame.js` | `server/realtime/rooms.js` → `match.choosePower` | `{ power }` → `{ power }` |
+
+Online, `power:start/warning/end` travel inside snapshots as `fx` events and are re-emitted on the browser's bus.
