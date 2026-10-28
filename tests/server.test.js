@@ -132,5 +132,8 @@ test('GET /api/status reports the API state', async () => {
     const status = (await c.get('/api/status')).body;
     assert.equal(status.online, true);
     assert.equal(typeof status.reserve, 'number');
+    assert.equal(status.successRate, 100);
+    assert.equal(typeof status.avgLatencyMs, 'number');
+    assert.equal(status.circuit.state, 'closed');
   });
 });
