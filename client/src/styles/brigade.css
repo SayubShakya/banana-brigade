@@ -725,3 +725,9 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .login .brand .emblem { height: 12cqh; }
 .login .brand { justify-content: center; }
 @keyframes emblem-in { from { transform: scale(0.6) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Power-up chips above the health bar */
+.buffs { display: flex; gap: 0.6cqh; min-height: 0; }
+.buff { padding: 0.2cqh 0.9cqh; border-radius: 1cqh; font: 800 1.5cqh 'Rubik', sans-serif; letter-spacing: 0.08cqh; color: var(--ink); box-shadow: 0 0.2cqh 0 rgba(0,0,0,0.3); }
+.buff.shield { background: #7ec8ff; }
+.buff.fuel { background: var(--fuel); }

@@ -20,7 +20,7 @@ export function createHud() {
     timer: $('timer'), feed: $('killfeed'), score: $('score'), rank: $('rank'),
     weapon: $('weapon-name'), ammo: $('ammo'), reload: $('reload-fill'), reloadBar: $('reload-bar'),
     grenades: $('grenades'), zoom: $('zoom-label'), msg: $('center-msg'), crate: $('crate-prompt'),
-    board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'), help: $('hud-help'),
+    board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'), buffs: $('buffs'), help: $('hud-help'),
   };
   let world = null;
   let banners = true;   // kill-streak banners (Settings)
@@ -112,6 +112,9 @@ export function createHud() {
       el.hp.className = p.health > 50 ? 'fill good' : p.health > 25 ? 'fill warn' : 'fill bad';
       el.hpText.textContent = Math.ceil(p.health);
       el.fuel.style.width = `${(p.fuel / PHYSICS.fuelMax) * 100}%`;
+      // Active power-ups (shield points, infinite jet fuel), only rewritten when they change.
+      const buffs = `${p.armor > 0 ? `<span class="buff shield">SHIELD ${Math.ceil(p.armor)}</span>` : ''}${p.fuelBoost > 0 ? `<span class="buff fuel">JET ∞ ${Math.ceil(p.fuelBoost)}s</span>` : ''}`;
+      if (buffs !== el.buffs.dataset.last) { el.buffs.innerHTML = buffs; el.buffs.dataset.last = buffs; }
 
       const gun = activeGun(p);
       const w = WEAPONS[gun.key];
