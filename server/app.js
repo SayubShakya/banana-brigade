@@ -30,6 +30,7 @@ function createApp({
   db,
   bananaApi,
   sessionSecret,
+  sessionStore,               // MongoDB in the real server; in-memory in tests
   production = false,
   puzzleStore = createPuzzleStore(),
   pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle }),
@@ -42,6 +43,7 @@ function createApp({
   app.use(session({
     name: SESSION_COOKIE,
     secret: sessionSecret,
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,     // no cookie until someone logs in
     cookie: {

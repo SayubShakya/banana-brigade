@@ -3,7 +3,6 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-const path = require('node:path');
 const bcrypt = require('bcryptjs');
 const { openDatabase } = require('../server/db');
 const { USERNAME, MIN_PASSWORD } = require('../server/routes/auth');
@@ -14,15 +13,17 @@ if (!username || !password || !USERNAME.test(username) || password.length < MIN_
   process.exit(1);
 }
 
-const db = openDatabase(process.env.DB_FILE || path.join(__dirname, '..', 'data', 'brigade.db'));
-const existing = db.findUserByName(username);
-const hash = bcrypt.hashSync(password, 10);
-if (existing) {
-  db.setRole(existing.id, 'admin');
-  db.setPassword(existing.id, hash);
-  console.log(`${existing.username} is now an admin (password updated).`);
-} else {
-  db.createUser(username, hash, 'admin');
-  console.log(`Admin ${username} created.`);
-}
-db.close();
+(async () => {
+  const db = await openDatabase(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/banana_brigade');
+  const existing = await db.findUserByName(username);
+  const hash = bcrypt.hashSync(password, 10);
+  if (existing) {
+    await db.setRole(existing.id, 'admin');
+    await db.setPassword(existing.id, hash);
+    console.log(`${existing.username} is now an admin (password updated).`);
+  } else {
+    await db.createUser(username, hash, 'admin');
+    console.log(`Admin ${username} created.`);
+  }
+  await db.close();
+})();

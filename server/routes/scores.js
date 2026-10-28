@@ -8,13 +8,14 @@
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
 
-const MODES = ['quick', 'survival', 'training', 'team'];
+const MODES = ['quick', 'survival', 'training', 'team'];   // modes a browser may report
+const BOARDS = [...MODES, 'online'];                          // online scores are written by the server
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
 
 function createScoresRouter({ db }) {
   const router = express.Router();
 
-  router.post('/', requireLogin, (req, res) => {
+  router.post('/', requireLogin, async (req, res, next) => {
     const b = req.body ?? {};
     const score = {
       userId: req.session.userId,
@@ -33,21 +34,34 @@ function createScoresRouter({ db }) {
     score.puzzlesSolved = p.solved;
     score.puzzlesAttempted = p.attempted;
     req.session.puzzles = { solved: 0, attempted: 0 };
-    const id = db.addScore(score);
-    res.status(201).json({ id, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted });
+    try {
+      const id = await db.addScore(score);
+      res.status(201).json({ id, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted });
+    } catch (err) {
+      next(err);
+    }
   });
 
-  router.get('/leaderboard', (req, res) => {
-    const mode = MODES.includes(req.query.mode) ? req.query.mode : 'quick';
+  router.get('/leaderboard', async (req, res, next) => {
+    const mode = BOARDS.includes(req.query.mode) ? req.query.mode : 'quick';
     const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
     // period=today shows only games since midnight UTC (the "daily leaders").
     const period = req.query.period === 'today' ? 'today' : 'all';
-    const since = period === 'today' ? `${new Date().toISOString().slice(0, 10)} 00:00:00` : '';
-    res.json({ mode, period, rows: db.leaderboard(mode, limit, since) });
+    const since = period === 'today' ? new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`) : null;
+    try {
+      res.json({ mode, period, rows: await db.leaderboard(mode, limit, since) });
+    } catch (err) {
+      next(err);
+    }
   });
 
-  router.get('/me', requireLogin, (req, res) => {
-    res.json({ totals: db.totalsForUser(req.session.userId), recent: db.scoresForUser(req.session.userId, 20) });
+  router.get('/me', requireLogin, async (req, res, next) => {
+    try {
+      const [totals, recent] = await Promise.all([db.totalsForUser(req.session.userId), db.scoresForUser(req.session.userId, 20)]);
+      res.json({ totals, recent });
+    } catch (err) {
+      next(err);
+    }
   });
 
   return router;

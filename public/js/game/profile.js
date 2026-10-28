@@ -48,7 +48,7 @@ export async function fetchMyRecord() {
 }
 
 const playTime = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`);
-const when = (iso) => new Date(`${iso.replace(' ', 'T')}Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 export async function loadProfile() {
   const { totals: t, recent } = await fetchMyRecord();
