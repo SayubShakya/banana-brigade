@@ -1,10 +1,10 @@
-// Entry point: reads settings from the environment (.env), opens the database and
+// Entry point: reads settings from the environment (.env), connects to MongoDB and
 // starts the server.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 const crypto = require('node:crypto');
-const path = require('node:path');
+const { MongoStore } = require('connect-mongo');
 const { createApp } = require('./app');
 const { createPuzzlePool } = require('./pool');
 const { openDatabase } = require('./db');
@@ -12,7 +12,7 @@ const { createBananaApi, DEFAULT_BASE_URL } = require('./services/bananaApi');
 
 const PORT = Number(process.env.PORT) || 3100;
 const production = process.env.NODE_ENV === 'production';
-const DB_FILE = process.env.DB_FILE || path.join(__dirname, '..', 'data', 'brigade.db');
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/banana_brigade';
 
 let sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret || sessionSecret === 'change-me') {
@@ -28,12 +28,29 @@ if (!sessionSecret || sessionSecret === 'change-me') {
 const baseUrl = process.env.BANANA_API_URL || DEFAULT_BASE_URL;
 if (baseUrl !== DEFAULT_BASE_URL) console.warn(`Using Banana API at ${baseUrl}`);
 
-const db = openDatabase(DB_FILE);
-const bananaApi = createBananaApi({ baseUrl, timeoutMs: Number(process.env.BANANA_API_TIMEOUT_MS) || 5000 });
-const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle });
-const app = createApp({ db, bananaApi, pool, sessionSecret, production });
+async function main() {
+  let db;
+  try {
+    db = await openDatabase(MONGODB_URI);
+  } catch (err) {
+    console.error(`Cannot reach MongoDB at ${MONGODB_URI.replace(/\/\/[^@]*@/, '//***@')}: ${err.message}`);
+    console.error('Start it with:  brew services start mongodb-community   (or set MONGODB_URI in .env)');
+    process.exit(1);
+  }
+  // Sessions are kept in MongoDB, so players stay logged in when the server restarts.
+  // stringify: false stores each session as a document, so the server can find and
+  // end every session of one player ("log out of all devices").
+  const sessionStore = MongoStore.create({
+    client: db.connection.getClient(), collectionName: 'sessions', ttl: 2 * 60 * 60, stringify: false,
+  });
+  const bananaApi = createBananaApi({ baseUrl, timeoutMs: Number(process.env.BANANA_API_TIMEOUT_MS) || 5000 });
+  const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle });
+  const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production });
 
-app.listen(PORT, () => {
-  console.log(`Banana Brigade running at http://localhost:${PORT}`);
-  pool.warmUp(); // have puzzles ready before the first player asks
-});
+  app.listen(PORT, () => {
+    console.log(`Banana Brigade running at http://localhost:${PORT} (MongoDB connected)`);
+    pool.warmUp(); // have puzzles ready before the first player asks
+  });
+}
+
+main();

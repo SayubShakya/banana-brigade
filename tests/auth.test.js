@@ -13,7 +13,9 @@ test('register logs the player in with an HttpOnly, SameSite session cookie', as
     const c = client(s.base);
     const res = await c.post('/api/auth/register', { username: 'sayub', password: 'bananas123' });
     assert.equal(res.status, 201);
-    assert.deepEqual(res.body.user, { id: 1, username: 'sayub', role: 'player' });
+    assert.equal(res.body.user.username, 'sayub');
+    assert.equal(res.body.user.role, 'player');
+    assert.match(res.body.user.id, /^[0-9a-f]{24}$/);
     assert.match(res.setCookie, /^brigade\.sid=/);
     assert.match(res.setCookie, /HttpOnly/i);
     assert.match(res.setCookie, /SameSite=Lax/i);
@@ -26,7 +28,7 @@ test('passwords are stored as bcrypt hashes, never in plain text', async () => {
   const s = await startServer();
   try {
     await client(s.base).post('/api/auth/register', { username: 'hashme', password: 'bananas123' });
-    const row = s.db.findUserByName('hashme');
+    const row = await s.db.findUserByName('hashme');
     assert.notEqual(row.password_hash, 'bananas123');
     assert.match(row.password_hash, /^\$2[aby]\$10\$/);
     assert.equal(await bcrypt.compare('bananas123', row.password_hash), true);
@@ -137,12 +139,14 @@ test('admin pages are refused for players (403) and allowed for admins', async (
     assert.equal((await player.get('/api/admin/users')).status, 403);
     assert.equal((await client(s.base).get('/api/admin/users')).status, 401);
 
-    s.db.createUser('boss', bcrypt.hashSync('bananas123', 4), 'admin');
+    await s.db.createUser('boss', bcrypt.hashSync('bananas123', 4), 'admin');
     const admin = client(s.base);
     await admin.post('/api/auth/login', { username: 'boss', password: 'bananas123' });
     const users = await admin.get('/api/admin/users');
     assert.equal(users.status, 200);
     assert.equal(users.body.users.length, 2);
-    assert.equal((await admin.del('/api/admin/users/1/scores')).status, 200);
+    const playerId = users.body.users.find((u) => u.username === 'player1').id;
+    assert.equal((await admin.del(`/api/admin/users/${playerId}/scores`)).status, 200);
+    assert.equal((await admin.del('/api/admin/users/not-an-id/scores')).status, 404);
   } finally { await s.close(); }
 });

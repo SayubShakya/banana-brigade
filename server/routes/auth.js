@@ -47,9 +47,16 @@ function createAuthRouter({ db, now = () => Date.now() }) {
       if (typeof password !== 'string' || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
         return res.status(400).json({ error: `Password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
       }
-      if (db.findUserByName(username)) return res.status(409).json({ error: 'That username is taken' });
+      if (await db.findUserByName(username)) return res.status(409).json({ error: 'That username is taken' });
       const hash = await bcrypt.hash(password, BCRYPT_COST);
-      const user = db.createUser(username, hash);
+      let user;
+      try {
+        user = await db.createUser(username, hash);
+      } catch (err) {
+        // Two sign-ups with the same name at the same moment: the unique index wins.
+        if (err.code === 11000) return res.status(409).json({ error: 'That username is taken' });
+        throw err;
+      }
       await startSession(req, user);
       res.status(201).json({ user: publicUser(user) });
     } catch (err) {
@@ -64,21 +71,22 @@ function createAuthRouter({ db, now = () => Date.now() }) {
         return res.status(400).json({ error: 'Enter your username and password' });
       }
       const since = now() - LOCKOUT_MS;
-      const recent = db.recentFailedLogins(username, since);
+      const recent = await db.recentFailedLogins(username, since);
       if (recent.n >= LOCKOUT_ATTEMPTS) {
         const wait = Math.ceil((recent.last + LOCKOUT_MS - now()) / 60000);
         return res.status(429).json({ error: `Too many failed attempts. Try again in ${wait} min.` });
       }
-      const user = db.findUserByName(username);
+      const user = await db.findUserByName(username);
       // Compare even when the user does not exist, so the response time does not
       // reveal which usernames are registered.
       const ok = await bcrypt.compare(password, user ? user.password_hash : getDummyHash());
       if (!user || !ok) {
-        db.recordFailedLogin(username, now());
+        await db.recordFailedLogin(username, now());
         const left = LOCKOUT_ATTEMPTS - recent.n - 1;
         return res.status(401).json({ error: left > 0 ? `Wrong username or password (${left} tries left)` : 'Wrong username or password. Account locked for 10 min.' });
       }
-      db.clearFailedLogins(username);
+      await db.clearFailedLogins(username);
+      await db.touchLogin(user.id);
       await startSession(req, user);
       res.json({ user: publicUser(user) });
     } catch (err) {
@@ -95,11 +103,15 @@ function createAuthRouter({ db, now = () => Date.now() }) {
     });
   });
 
-  router.get('/me', (req, res) => {
-    if (!req.session.userId) return res.json({ user: null });
-    const user = db.findUserById(req.session.userId);
-    if (!user) return res.json({ user: null });
-    res.json({ user: publicUser(user), puzzles: req.session.puzzles ?? { solved: 0, attempted: 0 } });
+  router.get('/me', async (req, res, next) => {
+    try {
+      if (!req.session.userId) return res.json({ user: null });
+      const user = await db.findUserById(req.session.userId);
+      if (!user) return res.json({ user: null });
+      res.json({ user: publicUser(user), puzzles: req.session.puzzles ?? { solved: 0, attempted: 0 } });
+    } catch (err) {
+      next(err);
+    }
   });
 
   return router;

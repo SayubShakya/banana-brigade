@@ -10,12 +10,17 @@ function createAdminRouter({ db }) {
   const router = express.Router();
   router.use(requireAdmin);
 
-  router.get('/users', (req, res) => res.json({ users: db.listUsers() }));
+  router.get('/users', async (req, res, next) => {
+    try { res.json({ users: await db.listUsers() }); } catch (err) { next(err); }
+  });
 
-  router.delete('/users/:id/scores', (req, res) => {
-    const id = Number.parseInt(req.params.id, 10);
-    if (!db.findUserById(id)) return res.status(404).json({ error: 'No such user' });
-    res.json({ deleted: db.deleteScoresForUser(id) });
+  router.delete('/users/:id/scores', async (req, res, next) => {
+    try {
+      if (!(await db.findUserById(req.params.id))) return res.status(404).json({ error: 'No such user' });
+      res.json({ deleted: await db.deleteScoresForUser(req.params.id) });
+    } catch (err) {
+      next(err);
+    }
   });
 
   return router;
