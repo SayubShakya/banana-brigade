@@ -549,3 +549,31 @@ table.compact tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .medal.m1 { background: linear-gradient(#ffe866, #d4a800); }
 .medal.m2 { background: linear-gradient(#f2f2f2, #a9a9a9); }
 .medal.m3 { background: linear-gradient(#f0b27a, #a05a2c); }
+
+/* Menu: name above the soldier instead of a chip and logout in the corner */
+.menu.v2 { grid-template-rows: 1fr; padding-top: 5cqh; }
+.menu.v2 .menu-rail, .menu.v2 .menu-left, .menu.v2 .menu-right { grid-row: 1; }
+.name-tag { position: absolute; top: -1cqh; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; gap: 0.8cqh; align-items: center; padding: 0.5cqh 1.6cqh; border-radius: 3cqh; background: rgba(24, 28, 15, 0.85); white-space: nowrap; }
+.name-tag b { font: 400 2.6cqh 'Black Ops One', sans-serif; color: var(--banana); letter-spacing: 0.1cqh; }
+.menu.v2 .podium { height: 36cqh; padding-top: 4cqh; }
+.setting-note { font: 600 1.8cqh 'Rubik', sans-serif; color: var(--khaki); text-transform: none; letter-spacing: 0; }
+
+/* Difficulty picker */
+.levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.8cqh; }
+.level-card { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1cqh; padding: 2.2cqh; border-radius: 1.6cqh; cursor: pointer; text-align: left;
+  border: 0.35cqh solid var(--olive-dark); background: linear-gradient(var(--olive-light), var(--olive)); color: var(--paper); box-shadow: 0 0.7cqh 0 var(--olive-dark);
+  transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.level-card:hover { transform: translateY(-0.5cqh); box-shadow: 0 1.2cqh 0 var(--olive-dark), 0 0 2cqh rgba(255,225,53,0.45); }
+.level-card b { font: 400 4.6cqh 'Black Ops One', sans-serif; color: var(--banana); }
+.level-card.easy { background: linear-gradient(#5f8f43, #3f6a2a); }
+.level-card.hard { background: linear-gradient(#8a4b2a, #5c2a14); border-color: #3b1a0b; box-shadow: 0 0.7cqh 0 #3b1a0b; }
+.level-card ul { margin: 0; padding-left: 2.2cqh; font-size: 1.9cqh; line-height: 1.5; }
+.level-stars { font-size: 3cqh; color: var(--banana); letter-spacing: 0.4cqh; }
+.level-time { display: flex; gap: 0.6cqh; align-items: center; margin-top: auto; font-size: 1.6cqh; color: var(--khaki); }
+.level-card.last { outline: 0.4cqh solid var(--banana); outline-offset: 0.3cqh; }
+.level-last { position: absolute; top: 1.4cqh; right: 1.4cqh; padding: 0.2cqh 1cqh; border-radius: 2cqh; background: var(--banana); color: var(--ink); font: 800 1.4cqh 'Rubik', sans-serif; text-transform: uppercase; }
+.level-tag { margin-left: 0.8cqh; padding: 0.1cqh 0.7cqh; border-radius: 1cqh; font-size: 1.3cqh; text-transform: uppercase; background: rgba(255,255,255,0.12); color: var(--khaki); }
+.level-tag.hard { background: #8a4b2a; color: var(--paper); }
+.level-tag.easy { background: #3f6a2a; color: var(--paper); }
+.menu.v2 .podium { margin-top: 3cqh; }
+.menu.v2 .logo { margin-bottom: 0; }

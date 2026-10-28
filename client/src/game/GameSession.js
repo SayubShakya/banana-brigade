@@ -13,7 +13,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on, emit } from '../eventBus.js';
-import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS } from './config.js';
+import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow } from './world.js';
 import { updateBots } from './bots.js';
@@ -48,6 +48,8 @@ export function createGameSession() {
   let state = 'idle';
   let stats = null;     // puzzle stats for this deployment (deploy puzzle included)
   let mode = 'quick';
+  let level = DIFFICULTY.medium;
+  let levelKey = 'medium';
 
   const setState = (next) => { state = next; emit('game:state', { state }); };
 
@@ -65,7 +67,7 @@ export function createGameSession() {
     if (!world || isPuzzleOpen() || state !== 'playing') return null;
     setState('puzzle');
     input.setEnabled(false);
-    const result = await askPuzzle(purpose, { modeLabel: MODES[mode].name, ...options });
+    const result = await askPuzzle(purpose, { modeLabel: `${MODES[mode].name} · ${level.name}`, seconds: level.puzzle[purpose], ...options });
     if (world && !world.over && state === 'puzzle') { setState('playing'); input.setEnabled(true); }
     return result;
   }
@@ -110,7 +112,7 @@ export function createGameSession() {
     input.setEnabled(false);
     hud.hide();
     const s = stats ?? newStats();
-    emit('game:over', { result, outcome: outcome(result), session: s, durationS: Math.round((performance.now() - s.started) / 1000) });
+    emit('game:over', { result, outcome: outcome(result), session: s, difficulty: levelKey, durationS: Math.round((performance.now() - s.started) / 1000) });
   }, 1500));
 
   const session = {
@@ -118,13 +120,20 @@ export function createGameSession() {
     get mode() { return mode; },
 
     // Call before the deploy puzzle, so it counts in this deployment's stats.
-    prepare(nextMode) { mode = nextMode; stats = newStats(); unlockAudio(); },
+    prepare(nextMode, difficulty = 'medium') {
+      mode = nextMode;
+      levelKey = DIFFICULTY[difficulty] ? difficulty : 'medium';
+      level = DIFFICULTY[levelKey];
+      stats = newStats();
+      unlockAudio();
+    },
+    get difficulty() { return levelKey; },
 
-    start({ playerName, parts, difficulty }) {
+    start({ playerName, parts }) {
       stats ??= newStats();
       stats.started = performance.now();
       world = createWorld({
-        mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty,
+        mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey,
       });
       hud.attach(world);
       input.setEnabled(true);

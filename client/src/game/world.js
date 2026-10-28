@@ -64,7 +64,7 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
 // mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
 // Online worlds take `humans` ([{ id, name, avatar, team }]) instead of one player,
 // `teamMode` for Blue vs Red, and are topped up with bots to cfg.size soldiers.
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'normal' }) {
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium' }) {
   const cfg = MODES[mode];
   const map = createMap();
   const online = mode === 'online';
@@ -72,7 +72,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
   const soldiers = online ? humans.map((h) => createSoldier(h.id, h.name, h.avatar, true, teamMode ? h.team : h.id)) : [player];
   const world = {
     emit, map, soldiers, mode, cfg, player, teamMode: mode === 'team' || (online && teamMode),
-    difficulty: DIFFICULTY[difficulty] ?? DIFFICULTY.normal,
+    difficulty: DIFFICULTY[difficulty] ?? DIFFICULTY.medium,
     training: mode === 'training',
     looks: { avatars: botAvatars, names: botNames, next: 0 },
     bullets: [], rockets: [], flames: [], grenades: [], particles: [],

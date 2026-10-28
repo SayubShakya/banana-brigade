@@ -21,7 +21,7 @@ const userRow = (u) => u && ({
   achievements: u.achievements ?? [], daily: u.daily ?? { lastDate: '', streak: 0, best: 0 },
 });
 const scoreRow = (s) => ({
-  id: String(s._id), username: s.username, mode: s.mode, kills: s.kills, deaths: s.deaths, wave: s.wave,
+  id: String(s._id), username: s.username, mode: s.mode, difficulty: s.difficulty ?? 'medium', kills: s.kills, deaths: s.deaths, wave: s.wave,
   won: s.won ? 1 : 0, puzzles_solved: s.puzzlesSolved, puzzles_attempted: s.puzzlesAttempted,
   duration_s: s.durationS, created_at: s.createdAt, multiplayer: !!s.multiplayer,
 });
@@ -114,7 +114,7 @@ async function openDatabase(uri) {
     // ----- match results -----
     async addScore(s) {
       const doc = await m.Score.create({
-        user: oid(s.userId), mode: s.mode, kills: s.kills, deaths: s.deaths, wave: s.wave ?? 0, won: !!s.won,
+        user: oid(s.userId), mode: s.mode, difficulty: s.difficulty ?? 'medium', kills: s.kills, deaths: s.deaths, wave: s.wave ?? 0, won: !!s.won,
         puzzlesSolved: s.puzzlesSolved ?? 0, puzzlesAttempted: s.puzzlesAttempted ?? 0, durationS: s.durationS ?? 0,
         matchId: s.matchId, multiplayer: !!s.multiplayer,
       });

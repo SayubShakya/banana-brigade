@@ -28,6 +28,8 @@ import PuzzleModal from './screens/PuzzleModal.jsx';
 import Lobby from './screens/Lobby.jsx';
 import Modes from './screens/Modes.jsx';
 import Daily from './screens/Daily.jsx';
+import Difficulty from './screens/Difficulty.jsx';
+import { DIFFICULTY } from './game/config.js';
 import Toasts from './screens/Toasts.jsx';
 
 // One game session for the whole page; it owns the battle canvas and HUD.
@@ -42,10 +44,11 @@ export default function App() {
   const [account, setAccount] = useState(null);
   const [isNew, setIsNew] = useState(false);
   const [parts, setPartsState] = useState(() => readJson('avatar', DEFAULT_AVATAR));
-  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true, fps: false, difficulty: 'normal' }));
+  const [settings, setSettings] = useState(() => readJson('settings', { sound: true, laser: true, banners: true, fps: false, difficulty: 'medium' }));
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
+  const [pendingMode, setPendingMode] = useState('quick');
 
   const setParts = (next) => { setPartsState(next); store.set('avatar', JSON.stringify(next)); };
 
@@ -75,15 +78,26 @@ export default function App() {
   useBus('game:over', (payload) => { setOver(payload); setScreen('results'); });
 
   const startBattle = useCallback((mode) => {
-    game().start({ playerName: account?.username ?? 'You', parts, difficulty: settings.difficulty });
+    game().start({ playerName: account?.username ?? 'You', parts });
     lastMode.current = mode;
     setScreen('battle');
-  }, [account, parts, settings.difficulty]);
+  }, [account, parts]);
 
-  const deploy = useCallback(async (mode) => {
+  // Choosing a mode opens the difficulty picker (online matches use the room's rules).
+  const deploy = useCallback((mode) => {
     if (mode === 'online') { net(); setScreen('lobby'); return; }
-    game().prepare(mode);
-    const result = await askPuzzle('deploy', { modeLabel: MODES[mode].name, title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.' });
+    setPendingMode(mode);
+    setScreen('difficulty');
+  }, []);
+
+  const deployWith = useCallback(async (mode, difficulty) => {
+    setSettings((s) => { const next = { ...s, difficulty }; store.set('settings', JSON.stringify(next)); return next; });
+    game().prepare(mode, difficulty);
+    setScreen('menu');
+    const result = await askPuzzle('deploy', {
+      modeLabel: `${MODES[mode].name} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
+      title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.',
+    });
     if (result === 'solved') startBattle(mode);
   }, [startBattle]);
 
@@ -97,14 +111,14 @@ export default function App() {
   const logout = async () => {
     try { await api.logout(); } finally { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('login'); }
   };
-  const setSetting = (key, value) => setSettings((s) => { const next = { ...s, [key]: value }; store.set('settings', JSON.stringify(next)); return next; });
   const toggle = (key) => setSettings((s) => { const next = { ...s, [key]: !s[key] }; store.set('settings', JSON.stringify(next)); return next; });
 
   // Preview links such as #battle-team or #puzzle-crate open a screen directly
   // (no deploy puzzle), so every screen can be reviewed and screenshotted.
   function openPreview(hash) {
     const [name, arg] = hash.split('-');
-    if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick'); startBattle(MODES[arg] ? arg : 'quick'); }
+    if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick', settings.difficulty); startBattle(MODES[arg] ? arg : 'quick'); }
+    else if (name === 'difficulty') deploy('quick');
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
     else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily'].includes(name)) setScreen(name);
@@ -114,19 +128,20 @@ export default function App() {
   return (
     <>
       {screen === 'login' && <Login onLogin={(user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); }} />}
-      {screen === 'menu' && <Menu account={account} isNew={isNew} parts={parts} onDeploy={deploy} onOpen={setScreen} onLogout={logout} />}
+      {screen === 'menu' && <Menu account={account} isNew={isNew} parts={parts} onDeploy={deploy} onOpen={setScreen} />}
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
-      {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onSet={setSetting} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
+      {screen === 'settings' && <Settings settings={settings} onToggle={toggle} onControls={() => setScreen('controls')} onLogout={logout} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
+      {screen === 'difficulty' && <Difficulty mode={pendingMode} current={settings.difficulty} onPick={(d) => deployWith(pendingMode, d)} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={toMenu} />}
       {screen === 'pause' && <Pause sound={settings.sound} online={online} onResume={() => (online ? net().resume() : game().resume())}
         onToggleSound={() => toggle('sound')} onEnd={() => game().endNow()} onQuit={toMenu} />}
       {screen === 'results' && over && <Results game={over} me={account.username} onMenu={toMenu}
-        onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deploy(m); }} />}
+        onAgain={over.online ? () => { setOver(null); setScreen('lobby'); } : () => { const m = lastMode.current; toMenu(); deployWith(m, settings.difficulty); }} />}
       <PuzzleModal />
       <Toasts />
     </>

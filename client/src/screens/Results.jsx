@@ -23,14 +23,14 @@ export default function Results({ game, me, onMenu, onAgain }) {
     if (game.online || result.mode === 'training') return;
     api.saveScore({
       mode: result.mode, kills: result.player.kills, deaths: result.player.deaths,
-      wave: result.wave, won: outcome.won, durationS: Math.min(3600, durationS),
+      wave: result.wave, won: outcome.won, durationS: Math.min(3600, durationS), difficulty: game.difficulty,
     })
       .then(() => setSaved({ state: 'ok', text: `Score saved to ${me}'s record.` }))
       .catch((err) => setSaved({ state: 'error', text: `Score not saved: ${err.message}` }));
   }, [game]);
 
   return (
-    <Panel wide title={outcome.title} chip={<span className="mode-chip">{MODES[result.mode].name}</span>} footer={<>
+    <Panel wide title={outcome.title} chip={<span className="mode-chip">{MODES[result.mode].name}{game.difficulty ? ` · ${game.difficulty}` : ''}</span>} footer={<>
       <button className="mbtn ghost" onClick={onMenu}>Menu</button>
       <button className="mbtn primary" onClick={onAgain}>{game.online ? 'Back to the room' : 'Deploy again'}</button>
     </>}>
