@@ -1,113 +1,126 @@
-// SQLite storage for players, their match results and failed login attempts.
-// Every query uses prepared statements with ? or @name parameters, never string
-// concatenation, so user input cannot change the SQL (SQL injection).
+// MongoDB storage for players, match results, failed logins and the daily challenge.
+// The rest of the server only calls the functions returned below, so it does not
+// know (or care) which database is behind them. Until October 2026 this file used
+// SQLite with prepared statements; the git history keeps that version for comparison.
+//
+// Queries are built from objects, never from strings, so user input cannot change
+// a query (the NoSQL version of SQL injection); usernames are also checked against
+// a strict pattern before they get here.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-const fs = require('node:fs');
-const path = require('node:path');
-const Database = require('better-sqlite3');
+const mongoose = require('mongoose');
+const { registerModels } = require('./models');
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'admin')),
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-);
+const CASE_INSENSITIVE = { locale: 'en', strength: 2 };
 
-CREATE TABLE IF NOT EXISTS scores (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  mode              TEXT NOT NULL CHECK (mode IN ('quick', 'survival', 'training', 'team')),
-  kills             INTEGER NOT NULL DEFAULT 0,
-  deaths            INTEGER NOT NULL DEFAULT 0,
-  wave              INTEGER NOT NULL DEFAULT 0,
-  won               INTEGER NOT NULL DEFAULT 0,
-  puzzles_solved    INTEGER NOT NULL DEFAULT 0,
-  puzzles_attempted INTEGER NOT NULL DEFAULT 0,
-  duration_s        INTEGER NOT NULL DEFAULT 0,
-  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS scores_by_mode ON scores(mode, kills DESC);
-CREATE INDEX IF NOT EXISTS scores_by_user ON scores(user_id, created_at DESC);
+// Shapes sent to the rest of the server (ids as strings, the same field names as before).
+const userRow = (u) => u && ({
+  id: String(u._id), username: u.username, role: u.role, password_hash: u.passwordHash,
+  created_at: u.createdAt, last_login_at: u.lastLoginAt ?? null,
+  achievements: u.achievements ?? [], daily: u.daily ?? { lastDate: '', streak: 0, best: 0 },
+});
+const scoreRow = (s) => ({
+  id: String(s._id), username: s.username, mode: s.mode, kills: s.kills, deaths: s.deaths, wave: s.wave,
+  won: s.won ? 1 : 0, puzzles_solved: s.puzzlesSolved, puzzles_attempted: s.puzzlesAttempted,
+  duration_s: s.durationS, created_at: s.createdAt, multiplayer: !!s.multiplayer,
+});
+const isId = (id) => mongoose.isValidObjectId(id);
+const oid = (id) => new mongoose.Types.ObjectId(String(id));
 
-CREATE TABLE IF NOT EXISTS login_attempts (
-  username   TEXT NOT NULL COLLATE NOCASE,
-  failed_at  INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS attempts_by_user ON login_attempts(username, failed_at);
-`;
-
-function openDatabase(file = ':memory:') {
-  if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
-  const db = new Database(file);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  db.exec(SCHEMA);
-
-  const q = {
-    insertUser: db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)'),
-    userByName: db.prepare('SELECT * FROM users WHERE username = ?'),
-    userById: db.prepare('SELECT id, username, role, created_at FROM users WHERE id = ?'),
-    setRole: db.prepare('UPDATE users SET role = ? WHERE id = ?'),
-    setPassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
-    listUsers: db.prepare(`
-      SELECT u.id, u.username, u.role, u.created_at,
-             COUNT(s.id) AS games, COALESCE(SUM(s.kills), 0) AS kills,
-             COALESCE(SUM(s.puzzles_solved), 0) AS puzzles_solved
-      FROM users u LEFT JOIN scores s ON s.user_id = u.id
-      GROUP BY u.id ORDER BY u.created_at`),
-
-    insertScore: db.prepare(`
-      INSERT INTO scores (user_id, mode, kills, deaths, wave, won, puzzles_solved, puzzles_attempted, duration_s)
-      VALUES (@userId, @mode, @kills, @deaths, @wave, @won, @puzzlesSolved, @puzzlesAttempted, @durationS)`),
-    leaderboard: db.prepare(`
-      SELECT s.id, u.username, s.mode, s.kills, s.deaths, s.wave, s.won, s.puzzles_solved, s.puzzles_attempted,
-             s.duration_s, s.created_at
-      FROM scores s JOIN users u ON u.id = s.user_id
-      WHERE s.mode = ? AND s.created_at >= ?
-      ORDER BY CASE WHEN s.mode = 'survival' THEN s.wave ELSE s.kills END DESC, s.puzzles_solved DESC, s.created_at ASC
-      LIMIT ?`),
-    scoresForUser: db.prepare('SELECT * FROM scores WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?'),
-    totalsForUser: db.prepare(`
-      SELECT COUNT(*) AS games, COALESCE(SUM(kills), 0) AS kills, COALESCE(SUM(deaths), 0) AS deaths,
-             COALESCE(MAX(wave), 0) AS best_wave, COALESCE(MAX(kills), 0) AS best_kills,
-             COALESCE(SUM(won), 0) AS wins, COALESCE(SUM(duration_s), 0) AS seconds_played,
-             COALESCE(SUM(puzzles_solved), 0) AS puzzles_solved, COALESCE(SUM(puzzles_attempted), 0) AS puzzles_attempted
-      FROM scores WHERE user_id = ?`),
-    deleteScoresForUser: db.prepare('DELETE FROM scores WHERE user_id = ?'),
-
-    addAttempt: db.prepare('INSERT INTO login_attempts (username, failed_at) VALUES (?, ?)'),
-    countAttempts: db.prepare('SELECT COUNT(*) AS n, MAX(failed_at) AS last FROM login_attempts WHERE username = ? AND failed_at > ?'),
-    clearAttempts: db.prepare('DELETE FROM login_attempts WHERE username = ?'),
-  };
+async function openDatabase(uri) {
+  const conn = await mongoose.createConnection(uri, { serverSelectionTimeoutMS: 5000 }).asPromise();
+  const m = registerModels(conn);
+  await Promise.all(Object.values(m).map((model) => model.init()));   // build indexes (unique names, TTL)
 
   return {
-    raw: db,
-    close: () => db.close(),
+    connection: conn,
+    models: m,
+    close: () => conn.close(),
 
-    createUser(username, passwordHash, role = 'player') {
-      const info = q.insertUser.run(username, passwordHash, role);
-      return q.userById.get(info.lastInsertRowid);
+    // ----- players -----
+    async createUser(username, passwordHash, role = 'player') {
+      return userRow(await m.User.create({ username, passwordHash, role }));
     },
-    findUserByName: (username) => q.userByName.get(username),
-    findUserById: (id) => q.userById.get(id),
-    setRole: (id, role) => q.setRole.run(role, id),
-    setPassword: (id, hash) => q.setPassword.run(hash, id),
-    listUsers: () => q.listUsers.all(),
+    async findUserByName(username) {
+      return userRow(await m.User.findOne({ username: String(username) }).collation(CASE_INSENSITIVE).lean());
+    },
+    async findUserById(id) {
+      return isId(id) ? userRow(await m.User.findById(id).lean()) : null;
+    },
+    setRole: (id, role) => m.User.updateOne({ _id: oid(id) }, { role }),
+    setPassword: (id, hash) => m.User.updateOne({ _id: oid(id) }, { passwordHash: hash }),
+    touchLogin: (id) => m.User.updateOne({ _id: oid(id) }, { lastLoginAt: new Date() }),
+    async deleteUser(id) {
+      if (!isId(id)) return false;
+      await m.Score.deleteMany({ user: oid(id) });
+      await m.DailyResult.deleteMany({ user: oid(id) });
+      return (await m.User.deleteOne({ _id: oid(id) })).deletedCount === 1;
+    },
+    async listUsers() {
+      const rows = await m.User.aggregate([
+        { $sort: { createdAt: 1 } },
+        { $lookup: { from: 'scores', localField: '_id', foreignField: 'user', as: 's' } },
+        { $project: { username: 1, role: 1, createdAt: 1, games: { $size: '$s' }, kills: { $sum: '$s.kills' }, puzzles_solved: { $sum: '$s.puzzlesSolved' } } },
+      ]);
+      return rows.map((r) => ({ id: String(r._id), username: r.username, role: r.role, created_at: r.createdAt, games: r.games, kills: r.kills, puzzles_solved: r.puzzles_solved }));
+    },
+    // Adds an achievement once; returns true only the first time (write-once).
+    async unlockAchievement(userId, id) {
+      const res = await m.User.updateOne({ _id: oid(userId), 'achievements.id': { $ne: id } }, { $push: { achievements: { id, at: new Date() } } });
+      return res.modifiedCount === 1;
+    },
+    setDailyStreak: (userId, daily) => m.User.updateOne({ _id: oid(userId) }, { daily }),
 
-    addScore: (score) => q.insertScore.run(score).lastInsertRowid,
-    // since: an SQLite datetime string; '' means all time.
-    leaderboard: (mode, limit = 20, since = '') => q.leaderboard.all(mode, since, limit),
-    scoresForUser: (userId, limit = 20) => q.scoresForUser.all(userId, limit),
-    totalsForUser: (userId) => q.totalsForUser.get(userId),
-    deleteScoresForUser: (userId) => q.deleteScoresForUser.run(userId).changes,
+    // ----- match results -----
+    async addScore(s) {
+      const doc = await m.Score.create({
+        user: oid(s.userId), mode: s.mode, kills: s.kills, deaths: s.deaths, wave: s.wave ?? 0, won: !!s.won,
+        puzzlesSolved: s.puzzlesSolved ?? 0, puzzlesAttempted: s.puzzlesAttempted ?? 0, durationS: s.durationS ?? 0,
+        matchId: s.matchId, multiplayer: !!s.multiplayer,
+      });
+      return String(doc._id);
+    },
+    // since: a Date, or null for all time. Survival is ranked by wave, the rest by kills.
+    async leaderboard(mode, limit = 20, since = null) {
+      const main = mode === 'survival' ? 'wave' : 'kills';
+      const rows = await m.Score.aggregate([
+        { $match: { mode, ...(since ? { createdAt: { $gte: since } } : {}) } },
+        { $sort: { [main]: -1, puzzlesSolved: -1, createdAt: 1 } },
+        { $limit: limit },
+        { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'u' } },
+        { $set: { username: { $first: '$u.username' } } },
+      ]);
+      return rows.map(scoreRow);
+    },
+    async scoresForUser(userId, limit = 20) {
+      return (await m.Score.find({ user: oid(userId) }).sort({ createdAt: -1, _id: -1 }).limit(limit).lean()).map(scoreRow);
+    },
+    async totalsForUser(userId) {
+      const [t] = await m.Score.aggregate([
+        { $match: { user: oid(userId) } },
+        { $group: {
+          _id: null, games: { $sum: 1 }, kills: { $sum: '$kills' }, deaths: { $sum: '$deaths' },
+          best_wave: { $max: '$wave' }, best_kills: { $max: '$kills' }, wins: { $sum: { $cond: ['$won', 1, 0] } },
+          seconds_played: { $sum: '$durationS' }, puzzles_solved: { $sum: '$puzzlesSolved' }, puzzles_attempted: { $sum: '$puzzlesAttempted' },
+        } },
+      ]);
+      const zero = { games: 0, kills: 0, deaths: 0, best_wave: 0, best_kills: 0, wins: 0, seconds_played: 0, puzzles_solved: 0, puzzles_attempted: 0 };
+      if (!t) return zero;
+      delete t._id;
+      return { ...zero, ...t };
+    },
+    async deleteScoresForUser(userId) {
+      return isId(userId) ? (await m.Score.deleteMany({ user: oid(userId) })).deletedCount : 0;
+    },
 
-    recordFailedLogin: (username, now = Date.now()) => q.addAttempt.run(username, now),
-    recentFailedLogins: (username, sinceMs) => q.countAttempts.get(username, sinceMs),
-    clearFailedLogins: (username) => q.clearAttempts.run(username),
+    // ----- failed logins (lockout) -----
+    recordFailedLogin: (username, now = Date.now()) => m.LoginAttempt.create({ username, failedAt: new Date(now) }),
+    async recentFailedLogins(username, sinceMs) {
+      const rows = await m.LoginAttempt.find({ username: String(username).toLowerCase(), failedAt: { $gt: new Date(sinceMs) } }).sort({ failedAt: -1 }).lean();
+      return { n: rows.length, last: rows[0]?.failedAt.getTime() ?? null };
+    },
+    clearFailedLogins: (username) => m.LoginAttempt.deleteMany({ username: String(username).toLowerCase() }),
   };
 }
 
