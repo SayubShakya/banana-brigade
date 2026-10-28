@@ -18,7 +18,7 @@ import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission } from './world.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
-import { setEffectsVolume, setListener, setMuted, unlockAudio } from './sound.js';
+import { setEffectsVolume, setListener, setMuted, unlockAudio, updateSound } from './sound.js';
 import { setMusicMuted, setMusicVolume } from './music.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
 
@@ -210,6 +210,7 @@ export function createGameSession() {
         const c = center(world.player);
         setListener(c.x, c.y);
       } else acc = 0;
+      updateSound(running ? world.soldiers : [], world.player);
       // 3x zoom only with a scoped weapon (the sniper); everything else stops at 2x.
       const maxZoom = (WEAPONS[activeGun(world.player).key].zoom ?? 2) - 1;
       renderer.render(world, input.mouse, running ? dt : 0, ZOOM_LEVELS[Math.min(input.zoom, maxZoom)]);
