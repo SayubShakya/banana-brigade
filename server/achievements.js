@@ -21,6 +21,7 @@ const ACHIEVEMENTS = [
   { id: 'online_victor', name: 'Online Victor', text: 'Win an online match against real players.' },
   { id: 'veteran', name: 'Veteran', text: 'Finish 25 battles.' },
   { id: 'hard_win', name: 'Hard as Nails', text: 'Win a battle on Hard.' },
+  { id: 'power_hungry', name: 'Power Hungry', text: 'Use all five Banana Powers.' },
   { id: 'three_stars', name: 'Three Stars', text: 'Earn 3 stars on a campaign mission.' },
   { id: 'campaign_clear', name: 'Campaign Hero', text: 'Complete the final campaign mission.' },
   { id: 'banana_brain', name: 'Banana Brain', text: 'Solve 5 Banana puzzles in a row.' },
@@ -30,6 +31,10 @@ const ACHIEVEMENTS = [
   { id: 'daily_warrior', name: 'Daily Warrior', text: 'Finish the Daily Banana Challenge 3 days in a row.' },
   { id: 'perfect_day', name: 'Perfect Day', text: 'Solve all 5 daily puzzles.' },
 ];
+const { POWERS } = require('../client/src/game/config.js');
+const POWER_IDS = Object.keys(POWERS);
+const POWER_COUNT = POWER_IDS.length;
+const cleanPowers = (list) => (Array.isArray(list) ? [...new Set(list.filter((p) => POWER_IDS.includes(p)))] : []);
 const BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
 const LIMITS = { deploy: 30, respawn: 15, crate: 20, daily: 20 };   // seconds per puzzle (client PUZZLE_RULES, daily route)
 
@@ -70,6 +75,11 @@ function createAchievements({ db }) {
     return ids;
   });
 
+  rule('power:used', async (userId, { powers }) => {
+    const all = await db.addPowersUsed(userId, powers);
+    return all.length >= POWER_COUNT ? ['power_hungry'] : [];
+  });
+
   rule('daily:finished', async (userId, d) => {
     const ids = [];
     if (d.streak >= 3) ids.push('daily_warrior');
@@ -94,4 +104,4 @@ function createAchievements({ db }) {
   return { emit, events, list: ACHIEVEMENTS };
 }
 
-module.exports = { createAchievements, ACHIEVEMENTS };
+module.exports = { createAchievements, ACHIEVEMENTS, cleanPowers };

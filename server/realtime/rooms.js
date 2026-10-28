@@ -16,6 +16,7 @@
 //   puzzle:get  {purpose}     (ack)  →  { puzzleId, image, source }
 //   puzzle:answer {puzzleId, answer} (ack)  →  { correct, solution }
 //   puzzle:cancel {purpose}
+//   power:choose {power}      (ack)  →  { power }   after server → browser power:offer { choices, seconds }
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
@@ -115,6 +116,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
       players,
       teamMode: room.teamMode,
       difficulty: room.difficulty,
+      onPower: (userId, power) => award(userId, 'power:used', { powers: [power] }),
       send: (event, payload, userId) => io.to(userId ? `user:${userId}` : `room:${room.code}`).emit(event, payload),
       onEnd: async (summary) => {
         await saveResults(summary);
@@ -244,6 +246,12 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
       room?.match?.applyPuzzle(userId, owner.purpose, result.correct);
       award(userId, 'puzzle:answered', result);
       ack(cb)({ correct: result.correct, solution: result.solution, purpose: owner.purpose });
+    });
+
+    socket.on('power:choose', (opts, cb) => {
+      const room = rooms.get(roomOf.get(userId));
+      const power = room?.match?.choosePower(userId, String(opts?.power ?? 'random')) ?? null;
+      ack(cb)(power ? { power } : { error: 'No power to choose right now' });
     });
 
     socket.on('puzzle:cancel', (opts) => {

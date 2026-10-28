@@ -19,6 +19,7 @@ import { emptyControls, activeGun } from '../game/world.js';
 import { getStage } from '../game/stage.js';
 import { setListener, updateSound } from '../game/sound.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
+import { askPower } from '../powerBridge.js';
 import { getSocket, request } from './socket.js';
 
 const DELAY_MS = 60;             // how far in the past soldiers are shown (about two snapshots)
@@ -111,8 +112,17 @@ export function createNetGame() {
 
   socket.on('puzzle:offer', async ({ purpose }) => {
     if (!active || purpose !== 'crate') return;
-    const result = await openPuzzle('crate', { title: 'Banana crate', subtitle: 'Solve it for a power weapon, full health and +2 grenades. You are shielded while you solve it.', cancelText: 'Leave it' });
+    const result = await openPuzzle('crate', { title: 'Banana crate', subtitle: 'Solve it to choose a Banana Power. You are shielded while you solve it.', cancelText: 'Leave it' });
     if (result === 'cancelled') socket.emit('puzzle:cancel', { purpose: 'crate' });
+  });
+
+  // A solved crate online: the server offers powers; the choice goes back to the server.
+  socket.on('power:offer', async ({ choices, seconds }) => {
+    if (!active) return;
+    input.setEnabled(false);
+    const power = await askPower(choices, seconds);
+    socket.emit('power:choose', { power });
+    if (active && !paused) input.setEnabled(true);
   });
 
   on('banana:answered', ({ correct, purpose }) => {
