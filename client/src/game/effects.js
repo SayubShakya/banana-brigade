@@ -170,6 +170,17 @@ export function createEffects(view) {
     }
   });
 
+  // Dust puffs when a soldier lands hard; bigger falls kick up more.
+  on('soldier:landed', ({ speed, x, y }) => {
+    if (!(speed > 380) || x === undefined) return;
+    const n = Math.min(8, Math.round(speed / 120));
+    for (let i = 0; i < n; i++) {
+      const s = sparks.spawn();
+      s.x = x + rand(-10, 10); s.y = y - 2; s.vx = rand(-140, 140); s.vy = rand(-90, -20);
+      s.life = rand(0.3, 0.5); s.size = 4; s.color = 'rgba(170,150,120,0.6)';
+    }
+  });
+
   on('explosion', ({ x, y, radius }) => {
     if (!world?.player) return;
     const p = world.player;
