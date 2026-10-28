@@ -6,7 +6,24 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [1.0.0] - 2026-10-28
 
+Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `feature/polish` (ccb8657),
+`feature/api-hardening` (63b53da), `docs/readme-ci` (3abaa7f), `fix/review-findings` (90b97cd) and
+`docs/final-pass`.
+
 ### Added
+- Account tools: remember me (30 days), log out of all devices, change password, delete account, a live
+  username check and an active-session count on the profile.
+- Admin screen: list users, reset scores, promote and demote (but not yourself).
+- Banana API resilience: per-attempt timeout, up to 2 retries with backoff and jitter for transient failures,
+  a 2.5 s deadline on `take()`, an in-flight limit and a circuit breaker; latency, success rate and circuit
+  state in `/api/status` and in Settings; `docs/resilience.md`.
+- Online rooms: the host picks the bots' difficulty, checked on the server.
+- Procedural menu and battle music that crossfades on `game:state`; music and effects volume sliders and a
+  mute; a chime or buzzer for each Banana answer.
+- Accessibility: high contrast, large text and reduced motion, with focus outlines; a coloured puzzle timer.
+- Phones: a fullscreen button and a rotate-to-landscape hint.
+- `npm run demo` (in-memory MongoDB) and `npm run package` (source zip of `HEAD`).
+- The daily challenge carries on after a page reload (`GET /api/daily/current`).
 - Documentation: README rewrite, `docs/architecture.md`, `docs/events.md`, `docs/api.md`,
   `docs/evaluation.md`, `docs/IDEAS.md`, `docs/VIDEO-GUIDE.md`.
 - GitHub Actions CI: tests and the Vite build on every push and pull request.
@@ -15,6 +32,15 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ### Changed
 - Version 1.0.0 and an accurate package description.
+- Protected routes read the user and role from the database on every request, so a deleted or demoted account
+  loses access at once.
+- Settings split into Game, Sound, Accessibility and Account tabs.
+
+### Fixed
+- Daily challenge: an API outage no longer uses up the day's attempt, and two answers sent at once can no
+  longer score one puzzle twice (the run's position is advanced atomically in MongoDB).
+- A queued player no longer loses their place in the puzzle pool when another player times out.
+- CI downloads MongoDB into the cached folder, so the cache is used.
 
 ## Milestones before 1.0.0
 
