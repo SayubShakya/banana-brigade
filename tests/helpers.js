@@ -7,7 +7,9 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const { after } = require('node:test');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const http = require('node:http');
 const { createApp } = require('../server/app');
+const { attachRealtime } = require('../server/realtime/socket');
 const { openDatabase } = require('../server/db');
 
 // Use the locally installed mongod if there is one (no download); CI downloads one.
@@ -32,13 +34,16 @@ after(async () => {
 const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 const fakeApi = (solution = 7) => ({ fetchPuzzle: async () => ({ image: IMAGE, solution }) });
 
-async function startServer({ bananaApi = fakeApi(), db } = {}) {
+async function startServer({ bananaApi = fakeApi(), db, matchOptions } = {}) {
   db ??= await freshDatabase();
   const app = createApp({ db, bananaApi, sessionSecret: 'test-secret' });
-  const server = app.listen(0);
+  const server = http.createServer(app);
+  const realtime = attachRealtime(server, app, { matchOptions });
+  server.listen(0);
   await new Promise((r) => server.once('listening', r));
   const base = `http://localhost:${server.address().port}`;
-  return { base, db, close: () => new Promise((r) => server.close(r)) };
+  const close = () => new Promise((r) => { realtime.io.close(); server.close(r); });
+  return { base, db, realtime, close };
 }
 
 // Remembers the session cookie between requests, as a browser would.
