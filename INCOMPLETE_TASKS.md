@@ -1,47 +1,59 @@
 # Incomplete tasks: audit against the CIS046-3 brief
 
 Audit date: 28 Oct 2026. Source of truth: `../ASSIGNMENT-SUMMARY.md`, which summarises the brief, the Student Guide and the grade bands.
-Status key: [ ] open · [~] in progress · [x] done (with branch/commit).
+Status key: [ ] open · [x] done (with branch). All branches are merged into `main` with `--no-ff`.
 
 Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 ## Game (case study)
-- [x] Campaign: 9 missions, stars, unlocks checked by the server, Banana continue, difficulty ramp (`feature/campaign`, merged)
-- [ ] Online rooms: the host picks the bot difficulty (currently always Medium)
+- [x] Campaign: 9 missions, stars, unlocks checked by the server, Banana continue, difficulty ramp (`feature/campaign`)
+- [x] Online rooms: the host picks the bot difficulty, checked on the server (`feature/api-hardening`)
+- [x] Daily challenge: the attempt is kept if the API is down; answers are atomic, so a puzzle can never score twice; a run can continue after a reload (`fix/daily-and-demo`)
 
-## Version control (70%+ asks for branching, **tagging**, **code reviews**)
-- [ ] Release tags for each milestone, and `v1.0.0`
-- [ ] `CHANGELOG.md`
-- [ ] Pull-request template and a code-review checklist (`CONTRIBUTING.md`)
-- [ ] GitHub Actions CI: tests and build on every push
+## Version control (70%+ asks for branching, tagging, code reviews)
+- [x] Annotated release tags `v0.1-login` … `v0.5-campaign`, plus `v1.0.0` at the end
+- [x] `CHANGELOG.md` (`docs/readme-ci`)
+- [x] Pull-request template and code-review checklist in `CONTRIBUTING.md` (`docs/readme-ci`)
+- [x] GitHub Actions CI: tests and build on every push, green on GitHub (`docs/readme-ci`, `fix/review-findings`)
+- [ ] **For Sayub:** open one real GitHub pull request from your own account, with a review comment and the green CI check, and turn on branch protection for `main`. This gives you code-review evidence to SHOW. (`gh` on this Mac is logged in as another account, so this was not done for you.)
 
 ## Event-driven programming (Week 4: retries and timeouts)
-- [ ] Banana API: timeout with AbortController, retry with backoff, cache-buster
-- [ ] `/api/status`: latency and success rate, shown in Settings
-- [ ] `docs/events.md`: every event, who emits it, who handles it (engine bus, React hooks, server EventEmitter, Socket.io)
+- [x] Banana API: a timeout per attempt, 2 retries with exponential backoff and jitter, only for transient errors (`feature/api-hardening`)
+- [x] Circuit breaker, a deadline on `take()`, and a limit on calls in flight (`feature/api-hardening`, `fix/review-findings`)
+- [x] `/api/status`: latency, success rate and circuit state, shown in Settings in plain words
+- [x] `docs/events.md`: the event catalogue (engine bus, React hooks, server events, Socket.io)
 
 ## Interoperability
-- [ ] `docs/api.md`: REST endpoints and the Socket.io protocol table
-- [ ] Notes on the evaluation: JSON+base64 vs CSV vs image URL; server proxy vs browser fetch; Socket.io vs polling
+- [x] `docs/api.md`: REST and Socket.io protocol; `docs/resilience.md`; `docs/evaluation.md` (alternatives and limits)
 
 ## Virtual identity
-- [ ] "Remember me" (30-day session cookie)
-- [ ] Log out of all devices (deletes every session of the user in the MongoDB store)
-- [ ] Change password (needs the current one) and delete my account and data (GDPR)
-- [ ] Live username availability check on register
-- [ ] Admin screen (authorisation demo: roles checked on the server)
-- [ ] Profile: member since, last login, active sessions
+- [x] Remember me (30 days), log out of all devices (MongoDB session store, also drops live sockets; checked by hand against the real store), change password, delete account (GDPR) (`feature/identity-plus`)
+- [x] Live check that a username is free (rate-limited), and the session count on the Profile
+- [x] Admin screen; the role is read from the database on every request (a demoted admin loses access at once)
 
 ## Polish
-- [ ] Procedural music, with music and effects volume
-- [ ] Puzzle timer changes colour (safe/warning/danger); buzzer and shake on a wrong answer
-- [ ] Mobile: rotate-to-landscape prompt, fullscreen button
-- [ ] Accessibility: high contrast, large text, reduced motion
+- [x] Procedural menu and battle music, with music and effects volume and a mute (`feature/polish`)
+- [x] Puzzle timer colours, a chime when right, a buzzer and shake when wrong
+- [x] Fullscreen button and a rotate-to-landscape hint on phones
+- [x] Accessibility: high contrast, large text, reduced motion
+- [x] Settings split into tabs: Game / Sound / Accessibility / Account
 
 ## Documentation and submission
-- [ ] README rewrite (it still says "UI only"): setup (MongoDB, Vite), architecture, features, 4-theme map, **AI credits section**
-- [ ] `docs/architecture.md`, `docs/IDEAS.md`
-- [ ] `docs/VIDEO-GUIDE.md`: file:line pointers for SHOW/LOCATE (facts only; Sayub records in his own voice)
-- [ ] Week 8 Progress Form answers drafted as a local .docx (`../04 Assessment and Feedback/My plans/`)
-- [ ] Research doc: add the level findings from the second round of research
-- [ ] `package.json` version 1.0.0 and an updated description
+- [x] README rewritten (setup, architecture, features, four-theme map, **credits section**) (`docs/readme-ci`)
+- [x] `docs/architecture.md`, `docs/IDEAS.md`, `docs/VIDEO-GUIDE.md` (facts and file:line pointers; the narration must be Sayub's own)
+- [x] `npm run demo` runs without installing MongoDB (in-memory), a safety net for the tutor demo (`fix/daily-and-demo`)
+- [x] `npm run package` creates the source zip for the separate code submission
+- [x] Week 8 Progress Form: draft answers in `../04 Assessment and Feedback/My plans/Week8-Progress-Form-DRAFT-answers.docx` (**rewrite in your own words before printing**)
+- [x] Research doc updated with the level findings
+- [x] `package.json` version 1.0.0
+
+## Known limits (said honestly in `docs/evaluation.md`)
+- Login lockout is per username and checks before it records, so parallel guesses can go past 5, and anyone can lock out a name. A per-IP or atomic counter would be the alternative.
+- Single-player kills are reported by the browser (online matches are server-authoritative).
+- Daily puzzles are the same for everyone, so answers could be shared.
+- A daily run that crosses midnight UTC cannot be finished.
+
+## Still for Sayub (cannot be done by code)
+- [ ] Rehearse `npm run demo` and a broken `BANANA_API_URL` run on the laptop you will use at the Week 8 demo.
+- [ ] Check the demo date: CLAUDE.md says around 2 Nov, ASSIGNMENT-SUMMARY says Thu 12 Nov 2026.
+- [ ] Record the video in your own voice (use `docs/VIDEO-GUIDE.md` to find the code).
