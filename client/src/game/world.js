@@ -10,7 +10,7 @@
 
 import { emit as busEmit } from '../eventBus.js';
 import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY } from './config.js';
-import { createMap, moveBox, raycast, isSolid } from './map.js';
+import { createMap, moveBox, raycast, isSolid, MAPS, randomMapId } from './map.js';
 import { RAMP } from './campaign.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -65,12 +65,14 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
 // mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
 // Online worlds take `humans` ([{ id, name, avatar, team }]) instead of one player,
 // `teamMode` for Blue vs Red, and are topped up with bots to cfg.size soldiers.
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null }) {
+// map: 'jungle' | 'desert' | 'snow' | 'night' (maps.js); left out, a random one is used.
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null, map: mapId = null }) {
   // A campaign mission brings its own bot count, kill target, time limit and lives.
   const cfg = mode === 'campaign'
     ? { name: mission.name, bots: mission.bots, killLimit: mission.target, timeLimit: mission.timeLimit, respawn: 5, lives: mission.lives }
     : MODES[mode];
-  const map = createMap();
+  // The battlefield: asked for by id (online rooms), fixed by a campaign mission, or random.
+  const map = createMap(MAPS[mapId] ? mapId : mission?.map ?? randomMapId());
   const online = mode === 'online';
   const player = online ? null : createSoldier('p0', playerName, playerAvatar, true, mode === 'team' ? 'blue' : 'p0');
   const soldiers = online ? humans.map((h) => createSoldier(h.id, h.name, h.avatar, true, teamMode ? h.team : h.id)) : [player];
