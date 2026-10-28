@@ -168,3 +168,16 @@ test('gameplay: easy bots deal less damage than hard bots', () => {
   }
   assert.ok(easy < hard, `easy ${easy} vs hard ${hard}`);
 });
+
+test('one press of E swaps to the crate gun and does not pick the old gun straight back up', () => {
+  const { world } = makeWorld({ mode: 'training' });
+  const p = world.player;
+  p.primary = { key: 'rifle', ammo: 30, spare: 90 };
+  p.current = 'primary';
+  world.pickups.push({ kind: 'weapon', weapon: 'sniper', x: p.x + p.w / 2, y: p.y + p.h / 2, active: true, timer: 0 });
+  p.controls.pickup = true;
+  updateWorld(world, 1 / 60);
+  assert.equal(activeGun(p).key, 'sniper');
+  assert.ok(world.pickups.some((k) => k.kind === 'weapon' && k.weapon === 'rifle' && k.dropped));   // the rifle is on the floor
+});
+
