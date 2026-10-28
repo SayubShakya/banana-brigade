@@ -630,3 +630,50 @@ table.compact tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .slider input[type="range"] { width: 24cqh; height: 2.4cqh; accent-color: var(--banana); cursor: pointer; }
 .slider input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }
 .slider output { min-width: 4.4cqh; text-align: right; font: 800 2cqh 'Rubik', sans-serif; color: var(--banana); }
+.settings-list.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9cqh 1.4cqh; }
+.settings-group { grid-column: 1 / -1; margin: 0.8cqh 0 0; font: 400 2.4cqh 'Black Ops One', sans-serif; letter-spacing: 0.15cqh; color: var(--banana); }
+.settings-group:first-child { margin-top: 0; }
+
+/* ---------- Accessibility (Settings → Accessibility; classes on <body>) ---------- */
+/* Every control shows a clear ring when reached with the keyboard. */
+:where(button, a, input, select, [role="button"], [tabindex]):focus-visible { outline: 0.5cqh solid var(--banana); outline-offset: 0.3cqh; }
+
+/* High contrast: solid black panels, white borders and text, no see-through backgrounds. */
+body.a11y-contrast { --panel: #000; --panel-line: rgba(255, 255, 255, 0.85); --khaki: #fff6cc; --paper: #fff; }
+body.a11y-contrast .panel, body.a11y-contrast .puzzle-card { border-color: #fff; }
+body.a11y-contrast .setting { background: #000; border-color: #fff; }
+body.a11y-contrast .mbtn { border-color: #fff; text-shadow: none; }
+body.a11y-contrast .mbtn.ghost { color: #fff; }
+body.a11y-contrast .toggle[aria-pressed="false"] { color: #fff; border-color: #fff; }
+body.a11y-contrast .score-pill, body.a11y-contrast .weapon-panel, body.a11y-contrast .hud-btn,
+body.a11y-contrast #timer, body.a11y-contrast #center-msg, body.a11y-contrast #hud-toast, body.a11y-contrast .rank-card {
+  background: #000; border: 0.3cqh solid #fff; color: #fff;
+}
+body.a11y-contrast .bar { background: #000; border-color: #fff; }
+body.a11y-contrast .puzzle { background: rgba(0, 0, 0, 0.88); backdrop-filter: none; }
+body.a11y-contrast .panel-screen.dim { background: rgba(0, 0, 0, 0.85); backdrop-filter: none; }
+body.a11y-contrast :where(button, a, input, select, [role="button"], [tabindex]):focus-visible { outline-color: #fff; box-shadow: 0 0 0 0.9cqh #000; }
+
+/* Large text: HUD corners and panel/puzzle text about 15% bigger. */
+body.a11y-large .hud-player { scale: 1.15; transform-origin: top left; }
+body.a11y-large .hud-score { scale: 1.15; transform-origin: top right; }
+body.a11y-large .hud-weapons { scale: 1.15; transform-origin: bottom right; }
+body.a11y-large .hud-center { scale: 1.15; transform-origin: top center; }
+body.a11y-large #center-msg, body.a11y-large #hud-toast { scale: 1.15; }
+body.a11y-large .panel-head p, body.a11y-large .setting, body.a11y-large .panel .mbtn, body.a11y-large .panel p,
+body.a11y-large #puzzle-sub, body.a11y-large .puzzle-side, body.a11y-large .puzzle-credit, body.a11y-large .rule-chip, body.a11y-large .mode-chip,
+body.a11y-large .toast { zoom: 1.15; }
+
+/* Reduced motion: animations end at once and nothing slides; same as the system setting. */
+body.a11y-calm *, body.a11y-calm *::before, body.a11y-calm *::after {
+  animation-duration: 0.01s !important; animation-iteration-count: 1 !important; transition: none !important; scroll-behavior: auto !important;
+}
+body.a11y-calm .puzzle-card.bad { border-color: var(--bad); }
+body.a11y-calm .puzzle-card.good { border-color: var(--good); }
+/* The battle toast is shown by an animation: keep it on screen for its 2 s, with no fade. */
+body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-timing-function: step-end !important; }
+@media (prefers-reduced-motion: reduce) {
+  #hud-toast.show { animation-duration: 2s !important; animation-timing-function: step-end !important; }
+  .puzzle-card.bad { border-color: var(--bad); }
+  .puzzle-card.good { border-color: var(--good); }
+}

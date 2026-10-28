@@ -7,6 +7,7 @@ import { api } from '../api.js';
 import { Panel } from './common.jsx';
 
 const OPTIONS = [['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
+const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];
 const VOLUMES = [['musicVolume', 'Music volume'], ['sfxVolume', 'Effects volume']];
 
 // The Banana API connection, explained in plain words (the server fetches puzzles
@@ -32,11 +33,12 @@ function Toggle({ label, value, onClick }) {
 export default function Settings({ settings, onToggle, onSet, onControls, onLogout, onBack }) {
   const apiStatus = useApiStatus();
   return (
-    <Panel title="Settings" subtitle="Saved in this browser." footer={<>
+    <Panel wide title="Settings" subtitle="Saved in this browser." footer={<>
       <button className="mbtn ghost" onClick={onLogout}>Log out</button>
       <button className="mbtn primary" onClick={onBack}>Back</button>
     </>}>
-      <div className="settings-list">
+      <div className="settings-list cols">
+        <h3 className="settings-group">Sound</h3>
         {VOLUMES.map(([key, label]) => (
           <div className="setting" key={key}>
             <label htmlFor={`set-${key}`}>{label}</label>
@@ -48,7 +50,11 @@ export default function Settings({ settings, onToggle, onSet, onControls, onLogo
           </div>
         ))}
         <Toggle label="Mute all sound" value={settings.muted} onClick={() => onToggle('muted')} />
+        <h3 className="settings-group">Game</h3>
         {OPTIONS.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
+        <h3 className="settings-group">Accessibility</h3>
+        {ACCESSIBILITY.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
+        <h3 className="settings-group">More</h3>
         <div className="setting"><span>Banana API</span><span className="setting-note">{apiStatus}</span></div>
         <div className="setting"><span>Controls</span><button className="toggle" onClick={onControls}>View</button></div>
       </div>

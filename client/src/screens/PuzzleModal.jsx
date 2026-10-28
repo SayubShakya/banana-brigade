@@ -170,7 +170,7 @@ export default function PuzzleModal() {
             <p id="puzzle-sub">{options.subtitle}</p>
           </div>
           <div className="timer-ring" role="timer" aria-label="Seconds left" data-level={urgency}>
-            <svg viewBox="0 0 60 60">
+            <svg viewBox="0 0 60 60" aria-hidden="true">
               <circle className="track" cx="30" cy="30" r="26" />
               <circle className="ring" cx="30" cy="30" r="26"
                 style={{ strokeDasharray: RING, strokeDashoffset: counting ? RING * (1 - left / total) : 0 }} />
@@ -192,7 +192,7 @@ export default function PuzzleModal() {
               ))}
             </div>
             <div className="puzzle-stats">
-              <span><svg className="ico"><use href="#i-banana" /></svg><b>{puzzleStats.solved}</b> solved</span>
+              <span><svg className="ico" aria-hidden="true"><use href="#i-banana" /></svg><b>{puzzleStats.solved}</b> solved</span>
               <span><b>{puzzleStats.streak}</b> streak</span>
             </div>
             <div className="puzzle-actions">

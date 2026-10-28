@@ -71,6 +71,13 @@ export default function App() {
 
   useEffect(() => { game().applySettings(settings); }, [settings]);
 
+  // Accessibility settings are classes on <body>; the CSS does the rest.
+  useEffect(() => {
+    document.body.classList.toggle('a11y-contrast', !!settings.contrast);
+    document.body.classList.toggle('a11y-large', !!settings.largeText);
+    document.body.classList.toggle('a11y-calm', !!settings.calm);
+  }, [settings.contrast, settings.largeText, settings.calm]);
+
   // Already logged in (the session cookie is still valid)? Skip the login screen.
   useEffect(() => {
     api.me().then(({ user }) => {
