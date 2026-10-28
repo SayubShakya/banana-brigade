@@ -40,7 +40,7 @@ function createApp({
   if (production) app.set('trust proxy', 1);
   app.use(express.json({ limit: '4kb' }));
 
-  app.use(session({
+  const sessionMiddleware = session({
     name: SESSION_COOKIE,
     secret: sessionSecret,
     store: sessionStore,
@@ -52,7 +52,10 @@ function createApp({
       secure: production,         // HTTPS only in production
       maxAge: 2 * 60 * 60 * 1000, // 2 hours
     },
-  }));
+  });
+  app.use(sessionMiddleware);
+  // The WebSocket server (realtime/) reuses the same sessions and puzzle store.
+  Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db });
 
   app.use('/api/auth', createAuthRouter({ db }));
   app.use('/api/scores', createScoresRouter({ db }));
