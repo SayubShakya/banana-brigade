@@ -9,10 +9,11 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../eventBus.js';
-import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY } from './config.js';
+import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE } from './config.js';
 import { createMap, moveBox, raycast, isSolid } from './map.js';
 import { RAMP } from './campaign.js';
 
+const POWERUP_KINDS = new Set(PICKUPS.powerups);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
@@ -30,6 +31,8 @@ function createSoldier(id, name, avatar, isPlayer, team = id) {
     x: 0, y: 0, w: SOLDIER.width, h: SOLDIER.height, vx: 0, vy: 0,
     facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, groundTime: 0,
+    jetHeld: false, jetBuffer: 0, coyote: 0, sputterCooldown: 0,
+    armor: 0, armorTimer: 0, fuelBoost: 0,   // power-ups: shield points (and how long they last), infinite fuel
     alive: false, respawnTimer: 0, shieldTimer: 0, hurtFlash: 0,
     sidearm: newGun(SIDEARM), primary: null, current: 'primary', lastHurt: 0,
     fireCooldown: 0, reloadTimer: 0, meleeCooldown: 0, grenades: SOLDIER.grenades,
@@ -111,7 +114,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
   }
 
   map.healthSpots.forEach((p) => world.pickups.push({ kind: 'health', x: p.x, y: p.y + 6, active: true, timer: 0 }));
-  map.crateSpots.forEach((p) => world.pickups.push({ kind: 'weapon', weapon: pick(CRATE_WEAPONS), x: p.x, y: p.y + 6, active: true, timer: 0 }));
+  map.crateSpots.forEach((p) => world.pickups.push({ kind: 'weapon', weapon: pick(CRATE_WEAPONS), x: p.x, y: p.y + 6, active: true, timer: 0, crateSpot: true }));
   map.bananaSpots.forEach((p) => world.pickups.push({ kind: 'banana', x: p.x, y: p.y + 6, active: true, timer: 0 }));
 
   soldiers.forEach((s) => spawn(world, s, true));
@@ -150,22 +153,31 @@ function spawn(world, s, initial = false) {
   Object.assign(s, {
     x: best.x - s.w / 2, y: best.y + TILE / 2 - s.h - 1, vx: 0, vy: 0,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, alive: true,
-    shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0,
+    shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0, armor: 0, armorTimer: 0, fuelBoost: 0,
     sidearm: newGun(SIDEARM), primary: newGun(pick(CRATE_WEAPONS)), current: 'primary', grenades: SOLDIER.grenades,
   });
   if (!initial) world.emit('soldier:respawned', { soldier: s });
 }
 
-export function damage(world, victim, amount, attacker, weaponName) {
+// info.headshot marks a sniper-style headshot (already multiplied into amount).
+export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
   if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
   // Bots hit human players softer, depending on the difficulty.
   if (attacker && !attacker.isPlayer && victim.isPlayer) amount *= world.difficulty.damage;
+  // A Shield power-up soaks up damage before health does.
+  if (victim.armor > 0) {
+    const soak = Math.min(victim.armor, amount);
+    victim.armor -= soak;
+    amount -= soak;
+    if (victim.armor <= 0) { victim.armor = 0; victim.armorTimer = 0; world.emit('shield:broken', { soldier: victim }); }
+  }
   victim.health -= amount;
   victim.hurtFlash = 0.12;
   victim.lastHurt = world.time;
   victim.lastAttacker = attacker;
-  world.emit('soldier:damaged', { victim, attacker, amount });
+  const headshot = !!info.headshot;
+  world.emit('soldier:damaged', { victim, attacker, amount, headshot });
   if (victim.health > 0) return;
 
   victim.health = 0;
@@ -192,7 +204,7 @@ export function damage(world, victim, amount, attacker, weaponName) {
   for (let i = 0; i < 18; i++) {
     world.particles.push({ x: victim.x + victim.w / 2, y: victim.y + 20, vx: rand(-260, 260), vy: rand(-420, -60), life: rand(0.4, 0.9), color: '#b3001b', size: rand(2, 4), gravity: true });
   }
-  world.emit('soldier:killed', { victim, killer: attacker, weapon: weaponName });
+  world.emit('soldier:killed', { victim, killer: attacker, weapon: weaponName, headshot });
 
   if (victim.isPlayer && world.mode === 'survival') world.emit('player:down', { wave: world.wave });
 
@@ -245,7 +257,8 @@ function endMatch(world, reason) {
   world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills }, mission: world.mission, continues: world.continues });
 }
 
-function explode(world, x, y, radius, dmg, owner, weaponName) {
+// selfDamage scales what the blast does to its own owner (rockets: WEAPONS.rocket.selfDamage).
+function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
   world.emit('explosion', { x, y, radius });
   for (let i = 0; i < 26; i++) {
     const a = rand(0, Math.PI * 2);
@@ -261,7 +274,8 @@ function explode(world, x, y, radius, dmg, owner, weaponName) {
     const push = 600 * falloff;
     s.vx += ((c.x - x) / (d || 1)) * push;
     s.vy += ((c.y - y) / (d || 1)) * push - 150 * falloff;
-    damage(world, s, Math.round(dmg * (0.35 + 0.65 * falloff)), owner, weaponName);
+    const scale = s === owner ? selfDamage : 1;
+    damage(world, s, Math.round(dmg * (0.35 + 0.65 * falloff) * scale), owner, weaponName);
   }
 }
 
@@ -275,9 +289,9 @@ function fire(world, s) {
 
   for (let i = 0; i < w.pellets; i++) {
     const a = s.aim + rand(-w.spread, w.spread);
-    const proj = { owner: s, x: start.x, y: start.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, damage: w.damage, travelled: 0, range: w.range, color: w.color, weapon: w.name };
-    if (w.type === 'rocket') world.rockets.push({ ...proj, blastRadius: w.blastRadius, smoke: 0 });
-    else if (w.type === 'flame') world.flames.push({ ...proj, vx: proj.vx + s.vx * 0.5, vy: proj.vy + s.vy * 0.5, life: w.range / w.speed, age: 0, hit: new Set() });
+    const proj = { owner: s, x: start.x, y: start.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, damage: w.damage, travelled: 0, range: w.range, color: w.color, weapon: w.name, falloff: w.falloff, headshot: w.headshot };
+    if (w.type === 'rocket') world.rockets.push({ ...proj, blastRadius: w.blastRadius, selfDamage: w.selfDamage ?? 1, smoke: 0 });
+    else if (w.type === 'flame') world.flames.push({ ...proj, vx: proj.vx + s.vx * 0.5, vy: proj.vy + s.vy * 0.5, life: w.range / w.speed, age: 0, drag: w.drag ?? 1.5, hit: new Set() });
     else world.bullets.push(proj);
   }
   gun.ammo -= 1;
@@ -337,6 +351,18 @@ function takePickup(world, s, p) {
   if (p.kind === 'health') {
     if (s.health >= SOLDIER.maxHealth) return false;
     s.health = Math.min(SOLDIER.maxHealth, s.health + PICKUPS.healthAmount);
+  } else if (p.kind === 'shield') {
+    if (s.armor >= PICKUPS.shieldAmount) return false;
+    s.armor = PICKUPS.shieldAmount;
+    s.armorTimer = PICKUPS.shieldTime;
+  } else if (p.kind === 'fuel') {
+    s.fuel = PHYSICS.fuelMax;
+    s.fuelBoost = PICKUPS.fuelBoostTime;
+  } else if (p.kind === 'ammo') {
+    const gun = s.primary;
+    const w = gun && WEAPONS[gun.key];
+    if (!gun || gun.spare >= w.mag * w.spareMags) return false;
+    gun.spare = w.mag * w.spareMags;
   } else {
     if (s.primary) world.pickups.push({ kind: 'weapon', weapon: s.primary.key, x: p.x + s.facing * -10, y: p.y, active: true, timer: 0, dropped: 12 });
     s.primary = newGun(p.weapon);
@@ -347,6 +373,11 @@ function takePickup(world, s, p) {
   if (p.dropped) p.gone = true;
   else { p.active = false; p.timer = p.kind === 'health' ? PICKUPS.healthRespawn : PICKUPS.weaponRespawn; }
   return true;
+}
+
+function sputter(world, s) {
+  s.sputterCooldown = PHYSICS.sputterCooldown;
+  world.emit('jetpack:sputter', { soldier: s, x: s.x + s.w / 2, y: s.y + s.h - 10 });
 }
 
 function updateSoldier(world, s, dt) {
@@ -360,6 +391,7 @@ function updateSoldier(world, s, dt) {
   if (s.isDummy) { c.aimX = s.x + s.w / 2 - 100; c.aimY = s.y + 25; }
   s.shieldTimer = Math.max(0, s.shieldTimer - dt);
   s.hurtFlash = Math.max(0, s.hurtFlash - dt);
+  if (s.armorTimer > 0) { s.armorTimer -= dt; if (s.armorTimer <= 0) { s.armorTimer = 0; s.armor = 0; } }
   s.fireCooldown = Math.max(0, s.fireCooldown - dt);
   s.meleeCooldown = Math.max(0, s.meleeCooldown - dt);
   if (s.health < SOLDIER.maxHealth && world.time - s.lastHurt > HEALTH_REGEN.delay) {
@@ -377,23 +409,51 @@ function updateSoldier(world, s, dt) {
     const target = dir * PHYSICS.walkSpeed;
     s.vx += (target - s.vx) * Math.min(1, dt * 18);
   } else {
-    s.vx += dir * PHYSICS.airAccel * dt;
-    if (!dir) s.vx *= 1 - Math.min(1, dt * 1.5);
+    const turning = dir !== 0 && Math.sign(s.vx) === -dir;
+    s.vx += dir * PHYSICS.airAccel * (turning ? PHYSICS.airTurnBoost : 1) * dt;
+    if (!dir) s.vx *= 1 - Math.min(1, dt * PHYSICS.airDrag);
     s.vx = Math.max(-PHYSICS.airSpeed * 1.6, Math.min(PHYSICS.airSpeed * 1.6, s.vx));
     if (Math.abs(s.vx) > PHYSICS.airSpeed && dir === Math.sign(s.vx)) s.vx -= Math.sign(s.vx) * PHYSICS.airAccel * dt;
   }
 
   // Jetpack and gravity.
+  // A fresh jet press is remembered for a moment (jump buffer), and walking off a
+  // ledge still counts as standing for a moment (coyote time), so a take-off pop
+  // feels reliable. The thrust is strongest while falling (quick lift-off) and eases
+  // off near the top speed, so the climb levels out smoothly instead of snapping.
+  const jetPressed = c.jet && !s.jetHeld;
+  s.jetHeld = c.jet;
+  s.jetBuffer = jetPressed ? PHYSICS.jumpBuffer : Math.max(0, s.jetBuffer - dt);
+  s.coyote = s.onGround ? PHYSICS.coyoteTime : Math.max(0, s.coyote - dt);
+  s.sputterCooldown = Math.max(0, s.sputterCooldown - dt);
+  if (s.fuelBoost > 0) { s.fuelBoost = Math.max(0, s.fuelBoost - dt); s.fuel = PHYSICS.fuelMax; }
+  if (c.jet && s.jetBuffer > 0 && s.coyote > 0 && s.fuel > PHYSICS.takeoffFuel && s.vy > -PHYSICS.takeoffKick) {
+    s.vy = -PHYSICS.takeoffKick;
+    if (!(s.fuelBoost > 0)) s.fuel -= PHYSICS.takeoffFuel;
+    s.jetBuffer = 0;
+    s.coyote = 0;
+  }
   s.jetting = c.jet && s.fuel > 0;
   if (s.jetting) {
-    s.vy -= PHYSICS.jetThrust * dt;
+    const rise = Math.max(0, -s.vy) / PHYSICS.maxRise;
+    const curve = s.vy > 0 ? PHYSICS.jetLiftBoost : 1 - PHYSICS.jetEase * rise * rise;
+    s.vy -= PHYSICS.jetThrust * curve * dt;
     if (s.vy < -PHYSICS.maxRise) s.vy = -PHYSICS.maxRise;
-    s.fuel = Math.max(0, s.fuel - PHYSICS.fuelBurn * dt);
+    if (!(s.fuelBoost > 0)) s.fuel = Math.max(0, s.fuel - PHYSICS.fuelBurn * dt);
+    if (s.fuel <= 0 && s.sputterCooldown <= 0) sputter(world, s);
+  } else if (jetPressed && s.sputterCooldown <= 0) {
+    sputter(world, s);   // pressing jet on an empty tank
   }
   s.vy = Math.min(PHYSICS.maxFall, s.vy + PHYSICS.gravity * dt);
 
+  const fallSpeed = s.vy;
+  const wasOnGround = s.onGround;
   const hit = moveBox(world.map, s, dt);
   s.onGround = hit.bottom;
+  // Landing: no fall damage, just an event for dust and a thud.
+  if (s.onGround && !wasOnGround && fallSpeed >= PHYSICS.landMinSpeed) {
+    world.emit('soldier:landed', { soldier: s, speed: Math.round(fallSpeed), x: s.x + s.w / 2, y: s.y + s.h });
+  }
   if (s.onGround) {
     s.groundTime += dt;
     if (s.groundTime > PHYSICS.fuelRegenDelay) s.fuel = Math.min(PHYSICS.fuelMax, s.fuel + PHYSICS.fuelRegen * dt);
@@ -405,6 +465,8 @@ function updateSoldier(world, s, dt) {
   // Weapons.
   if (c.swap) {
     if (s.primary) {
+      // Swapping cancels a reload in progress (the half-loaded gun keeps its old ammo).
+      if (s.reloadTimer > 0) world.emit('weapon:reload-cancelled', { soldier: s, weapon: activeGun(s).key });
       s.current = s.current === 'primary' ? 'sidearm' : 'primary';
       s.reloadTimer = 0;
       world.emit('weapon:switched', { soldier: s, weapon: activeGun(s).key });
@@ -435,12 +497,24 @@ function updateSoldier(world, s, dt) {
       else if (s.isPlayer) world.emit('pickup:available', { banana: true, soldier: s });
       continue;
     }
-    if (p.kind === 'health') takePickup(world, s, p);
+    if (p.kind === 'health' || POWERUP_KINDS.has(p.kind)) takePickup(world, s, p);
     else if (c.pickup || (!s.isPlayer && (!s.primary || s.primary.ammo + s.primary.spare < 4))) takePickup(world, s, p);
     else if (s.isPlayer) world.emit('pickup:available', { weapon: p.weapon, soldier: s });
   }
 
   c.reload = c.swap = c.grenade = c.melee = c.pickup = false;
+}
+
+// Damage for one bullet hit: distance falloff (shotgun) and the headshot bonus (sniper).
+export function bulletDamage(b, victim, hitY, dist) {
+  let amount = b.damage;
+  if (b.falloff && dist > b.falloff.start) {
+    const t = Math.min(1, (dist - b.falloff.start) / Math.max(1, b.range - b.falloff.start));
+    amount *= 1 - t * (1 - b.falloff.min);
+  }
+  const headshot = !!b.headshot && hitY - victim.y < victim.h * HEADSHOT_ZONE;
+  if (headshot) amount *= b.headshot;
+  return { amount: Math.round(amount * 10) / 10, headshot };
 }
 
 function updateProjectiles(world, dt) {
@@ -461,7 +535,10 @@ function updateProjectiles(world, dt) {
     }
     b.px = b.x; b.py = b.y;
     if (victim) {
-      damage(world, victim, b.damage, b.owner, b.weapon);
+      const hitY = b.y + (endY - b.y) * best;
+      const dist = b.travelled + Math.hypot(endX - b.x, endY - b.y) * best;
+      const { amount, headshot } = bulletDamage(b, victim, hitY, dist);
+      damage(world, victim, amount, b.owner, b.weapon, { headshot });
       for (let i = 0; i < 5; i++) world.particles.push({ x: b.x + (endX - b.x) * best, y: b.y + (endY - b.y) * best, vx: rand(-120, 120), vy: rand(-160, 40), life: 0.3, color: '#c1121f', size: 2.5, gravity: true });
       return false;
     }
@@ -490,7 +567,7 @@ function updateProjectiles(world, dt) {
     if (r.smoke > 0.02) { r.smoke = 0; world.particles.push({ x: r.x, y: r.y, vx: rand(-20, 20), vy: rand(-30, 0), life: 0.6, color: 'rgba(200,200,200,0.6)', size: 5, gravity: false }); }
     r.travelled += Math.hypot(nx - r.x, ny - r.y);
     if (boom || r.travelled > r.range) {
-      explode(world, boom ? boom.x : nx, boom ? boom.y : ny, r.blastRadius, r.damage, r.owner, 'Rocket');
+      explode(world, boom ? boom.x : nx, boom ? boom.y : ny, r.blastRadius, r.damage, r.owner, 'Rocket', r.selfDamage);
       return false;
     }
     r.x = nx; r.y = ny;
@@ -503,7 +580,7 @@ function updateProjectiles(world, dt) {
     const ny = f.y + f.vy * dt - 60 * dt;
     if (raycast(map, f.x, f.y, nx, ny, 6)) return false;
     f.x = nx; f.y = ny;
-    f.vx *= 1 - dt * 1.5; f.vy *= 1 - dt * 1.5;
+    f.vx *= 1 - dt * f.drag; f.vy *= 1 - dt * f.drag;
     const r = 8 + f.age * 40;
     for (const s of world.soldiers) {
       if (s === f.owner || !s.alive || f.hit.has(s)) continue;
@@ -546,7 +623,11 @@ function updatePickups(world, dt) {
     p.timer -= dt;
     if (p.timer <= 0) {
       p.active = true;
-      if (p.kind === 'weapon') p.weapon = pick(CRATE_WEAPONS);
+      // A crate spot comes back as a weapon, or now and then as a power-up.
+      if (p.crateSpot) {
+        p.kind = Math.random() < PICKUPS.powerupChance ? pick(PICKUPS.powerups) : 'weapon';
+        p.weapon = p.kind === 'weapon' ? pick(CRATE_WEAPONS) : undefined;
+      }
     }
   }
   world.pickups = world.pickups.filter((p) => !p.gone);

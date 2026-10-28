@@ -6,7 +6,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../eventBus.js';
-import { WEAPONS, SOLDIER, PHYSICS } from './config.js';
+import { WEAPONS, SOLDIER, PHYSICS, PICKUPS } from './config.js';
 import { activeGun } from './world.js';
 import { drawAvatarPreview } from './characters.js';
 
@@ -69,6 +69,9 @@ export function createHud() {
   on('pickup:taken', ({ soldier, kind, weapon }) => {
     if (!soldier.isPlayer) return;
     if (kind === 'health') toast('+50 health');
+    else if (kind === 'shield') toast(`Shield: absorbs ${PICKUPS.shieldAmount} damage for ${PICKUPS.shieldTime} s`);
+    else if (kind === 'fuel') toast(`Jet fuel: full tank, unlimited for ${PICKUPS.fuelBoostTime} s`);
+    else if (kind === 'ammo') toast('Ammo box: spare ammo refilled');
     else if (kind === 'banana') toast(`Banana crate: ${WEAPONS[weapon].name}, full health, +2 grenades`);
     else toast(`Picked up ${WEAPONS[weapon].name}`);
   });

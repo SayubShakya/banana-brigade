@@ -3,10 +3,13 @@
 // fills in the same controls object the keyboard and mouse fill for the player.
 // How well they aim, how fast they react and how they fire comes from
 // world.difficulty (config.js DIFFICULTY), so the same code plays easy or hard.
+// Tactics (difficulty `smarts` decides how often they are used): retreat to health
+// when hurt, strafe and jet away when hit, get clear of incoming rockets and live
+// grenades, spread out over targets instead of all chasing one, grenade groups.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { WEAPONS, SOLDIER, TILE } from './config.js';
+import { WEAPONS, SOLDIER, TILE, GRENADE, BOT_TACTICS } from './config.js';
 import { hasLineOfSight, isSolid } from './map.js';
 import { center, activeGun } from './world.js';
 
@@ -19,6 +22,7 @@ function brainFor(bot, level) {
       jetHold: false, stuck: 0, lastX: bot.x, aimErr: { x: 0, y: 0 }, detour: 1, detourTime: 0, refuel: false, climbing: false,
       accuracy: rand(...level.accuracy), // lower is sloppier
       burst: rand(0, level.burst), firing: true,
+      retreatUntil: 0, dodge: 0, dodgeDir: 1, seenHurt: bot.lastHurt, evade: null, cluster: 0,
     };
   }
   return bot.brain;
@@ -50,27 +54,72 @@ function gapSide(map, bot, wp) {
   return left < right ? -1 : 1;
 }
 
-function think(world, bot, b) {
+// The nearest incoming rocket or live grenade whose blast would reach this bot, or null.
+function blastThreat(world, bot, me) {
+  for (const r of world.rockets) {
+    if (r.owner === bot) continue;
+    // Closest point of the rocket's next 0.6 s of flight to the bot.
+    const ex = r.vx * 0.6, ey = r.vy * 0.6;
+    const t = Math.max(0, Math.min(1, ((me.x - r.x) * ex + (me.y - r.y) * ey) / (ex * ex + ey * ey || 1)));
+    const px = r.x + ex * t, py = r.y + ey * t;
+    if (Math.hypot(px - me.x, py - me.y) < r.blastRadius) return { x: px, y: py, horizontal: Math.abs(r.vx) > Math.abs(r.vy) };
+  }
+  for (const g of world.grenades) {
+    if (g.fuse < 1.5 && Math.hypot(g.x - me.x, g.y - me.y) < GRENADE.blastRadius + 20) return { x: g.x, y: g.y, horizontal: false };
+  }
+  return null;
+}
+
+function think(world, bot, b, level) {
   const me = center(bot);
   const enemies = world.soldiers.filter((s) => s !== bot && s.alive && s.shieldTimer <= 0 && s.team !== bot.team);
 
-  // Prefer a visible enemy; otherwise remember the closest one.
+  // Prefer a visible enemy; otherwise remember the closest one. Smarter bots spread
+  // out: a target other bots are already on counts as further away.
   let target = null;
   let bestScore = Infinity;
   for (const e of enemies) {
     const ec = center(e);
     const d = Math.hypot(ec.x - me.x, ec.y - me.y);
     const visible = d < 1400 && hasLineOfSight(world.map, me, ec);
-    const score = d + (visible ? 0 : 900);   // no extra focus on human players
+    const chasers = world.soldiers.filter((o) => o !== bot && o.alive && o.brain?.target?.soldier === e).length;
+    const score = d + (visible ? 0 : 900) + chasers * BOT_TACTICS.spreadPenalty * level.smarts;
     if (score < bestScore) { bestScore = score; target = { soldier: e, visible, d }; }
   }
   if (target?.soldier !== b.target?.soldier) b.seenFor = 0;
   b.target = target;
 
+  // How many other enemies stand around the target (a grenade there hits them all).
+  b.cluster = 0;
+  if (target) {
+    const tc = center(target.soldier);
+    b.cluster = enemies.filter((e) => e !== target.soldier && Math.hypot(center(e).x - tc.x, center(e).y - tc.y) < BOT_TACTICS.clusterRadius).length;
+  }
+
+  // Get out of a blast that is about to happen.
+  if (!b.evade || world.time > b.evade.until) {
+    b.evade = null;
+    const threat = blastThreat(world, bot, me);
+    if (threat && Math.random() < level.smarts + 0.15) {
+      b.evade = { dir: Math.sign(me.x - threat.x) || (Math.random() < 0.5 ? -1 : 1), jet: threat.horizontal, until: world.time + BOT_TACTICS.evadeTime };
+    }
+  }
+
+  // Badly hurt and under fire: break off and fall back (to health if there is any).
+  if (bot.health < BOT_TACTICS.retreatHealth && target?.visible && world.time > b.retreatUntil && Math.random() < level.smarts) {
+    b.retreatUntil = world.time + BOT_TACTICS.retreatTime;
+  }
+  const retreating = world.time < b.retreatUntil && bot.health < BOT_TACTICS.retreatHealth + 15;
+
   // Where to go: health when hurt, a weapon when only holding the pistol, else the enemy or a wander point.
-  const hurt = bot.health < 40 ? nearestPickup(world, bot, 'health') : null;
+  const hurt = bot.health < 40 || retreating ? nearestPickup(world, bot, 'health') : null;
   const crate = !bot.primary ? nearestPickup(world, bot, 'weapon') : null;
   if (hurt) b.waypoint = { x: hurt.x, y: hurt.y };
+  else if (retreating && target) {
+    const tc = center(target.soldier);
+    const away = Math.sign(me.x - tc.x) || 1;
+    b.waypoint = { x: me.x + away * 450, y: me.y - 40 };
+  }
   else if (crate && !(target && target.visible && target.d < 450)) b.waypoint = { x: crate.x, y: crate.y };
   else if (target && target.visible) {
     const gun = WEAPONS[activeGun(bot).key];
@@ -100,7 +149,14 @@ export function updateBots(world, dt) {
     const me = center(bot);
 
     b.think -= dt;
-    if (b.think <= 0) { b.think = rand(0.12, 0.22); think(world, bot, b); }
+    if (b.think <= 0) { b.think = rand(0.12, 0.22); think(world, bot, b, level); }
+
+    // Just got hit: smarter bots strafe and pop the jetpack to throw off the shooter's aim.
+    if (bot.lastHurt > b.seenHurt) {
+      b.seenHurt = bot.lastHurt;
+      if (b.dodge <= 0 && Math.random() < level.smarts * 0.8) { b.dodge = BOT_TACTICS.dodgeTime; b.dodgeDir = Math.random() < 0.5 ? -1 : 1; }
+    }
+    b.dodge = Math.max(0, b.dodge - dt);
     b.strafeTimer -= dt;
     if (b.strafeTimer <= 0) { b.strafeTimer = rand(0.6, 1.6); b.strafe = Math.random() < 0.5 ? -1 : 1; }
 
@@ -138,6 +194,13 @@ export function updateBots(world, dt) {
       b.climbing = false;
       b.detourTime = 0;
     }
+    // Evading a blast or dodging fire overrides the route for a moment.
+    const evading = b.evade && world.time <= b.evade.until;
+    if (evading || b.dodge > 0) {
+      const d = evading ? b.evade.dir : b.dodgeDir;
+      c.left = d < 0;
+      c.right = d > 0;
+    }
     const dir = c.right ? 1 : c.left ? -1 : 0;
 
     // Jetpack: climb to targets above, over walls, and to stop long falls; keep a fuel reserve.
@@ -147,6 +210,7 @@ export function updateBots(world, dt) {
     else if (wantUp && (bot.fuel > 25 || !bot.onGround)) b.jetHold = true;
     else if (!wantUp) b.jetHold = false;
     c.jet = b.jetHold && !(b.climbing && roofAbove(1));
+    if (((evading && b.evade.jet) || b.dodge > 0) && bot.fuel > 10 && !roofAbove(1)) c.jet = true;
 
     // Stuck detection.
     if (dir !== 0 && Math.abs(bot.x - b.lastX) < 0.5) b.stuck += dt; else b.stuck = Math.max(0, b.stuck - dt * 2);
@@ -168,7 +232,9 @@ export function updateBots(world, dt) {
       if (b.burst <= 0) { b.firing = !b.firing; b.burst = b.firing ? rand(0.5, 1) * level.burst : rand(0.6, 1.4) * level.pause; }
       c.fire = t.visible && inRange && b.seenFor > level.reaction && (b.firing || level.pause === 0);
       if (t.visible && t.d < SOLDIER.meleeRange + 10) c.melee = true;
-      if (t.visible && t.d > 220 && t.d < 520 && bot.grenades > 0 && Math.random() < dt * level.grenades) c.grenade = true;
+      // Grenades: now and then, and much more likely into a group of enemies.
+      const grenadeRate = level.grenades * (b.cluster > 0 ? 1 + 5 * level.smarts : 1);
+      if (t.visible && t.d > 220 && t.d < (b.cluster > 0 ? 620 : 520) && bot.grenades > 0 && Math.random() < dt * grenadeRate) c.grenade = true;
       if (!t.visible && gun.ammo < WEAPONS[gun.key].mag * 0.4) c.reload = true;
       if (bot.primary && bot.current === 'sidearm' && bot.primary.ammo + bot.primary.spare > 0) c.swap = true;
     } else {

@@ -10,8 +10,18 @@ export const PHYSICS = {
   gravity: 1900,          // px/s²
   walkSpeed: 270,         // px/s on the ground
   airSpeed: 300,          // px/s horizontal top speed in the air
-  airAccel: 1600,         // px/s² horizontal acceleration in the air
+  airAccel: 1500,         // px/s² horizontal acceleration in the air
+  airTurnBoost: 1.7,      // extra air acceleration when steering against your drift (snappier turns)
+  airDrag: 2.2,           // how fast horizontal drift dies in the air with no key held (per second)
   jetThrust: 3300,        // px/s² upward while the jetpack fires
+  jetLiftBoost: 1.5,      // thrust multiplier while still falling: quick lift-off and catching falls
+  jetEase: 0.35,          // thrust fades by up to this share near maxRise, so top speed arrives smoothly
+  takeoffKick: 230,       // px/s instant upward pop when the jetpack starts from the ground
+  takeoffFuel: 3,         // fuel the take-off pop costs
+  coyoteTime: 0.12,       // seconds after walking off a ledge that still count as "on the ground"
+  jumpBuffer: 0.15,       // seconds a jet press is remembered before landing
+  landMinSpeed: 260,      // px/s fall speed needed for a 'soldier:landed' (dust) event; no fall damage
+  sputterCooldown: 0.5,   // seconds between 'jetpack:sputter' events when the tank is empty
   maxRise: 480,           // px/s fastest climb
   maxFall: 950,           // px/s fastest fall
   fuelMax: 100,
@@ -33,15 +43,33 @@ export const SOLDIER = {
 };
 
 // type: 'bullet' (tracer), 'rocket' (slow, explodes) or 'flame' (short-lived fire puffs)
+// falloff: damage drops after `start` px of travel down to `min` x at full range (shotgun).
+// headshot: damage multiplier when the bullet enters the top 30% of the soldier's box.
+// selfDamage: share of its own blast the shooter takes (rocket jumps hurt less).
+// drag: how quickly flame puffs slow down (per second).
+//
+// Time to kill a full-health (100 HP) soldier, every shot hitting, no armour:
+//   weapon     dmg/hit         shots  TTK (s)   notes
+//   Magnum     25              4      1.02      sidearm, infinite ammo
+//   SMG        10              10     0.63      wide spread: real TTK is close range only
+//   Rifle      15              7      0.66      tight spread, the all-rounder
+//   Shotgun    7x12 = 84       2      0.80      point blank; ~50 per shot at 300 px (falloff)
+//   Sniper     70 / 112 head   2 / 1  1.30 / 0  one-shot only on a headshot
+//   Rocket     ~70 direct      2      1.20      splash; 40% self-damage
+//   Flamer     4 per puff      25     ~1.0      25 puffs/s, short range (~250 px)
+// The Magnum is the slowest on purpose (always available); every crate weapon beats it.
 export const WEAPONS = {
-  magnum:  { name: 'Magnum',          type: 'bullet', damage: 24, rate: 0.34, mag: 8,   spareMags: Infinity, reload: 1.2, speed: 1600, spread: 0.025, pellets: 1, range: 950,  color: '#ffe08a' },
+  magnum:  { name: 'Magnum',          type: 'bullet', damage: 25, rate: 0.34, mag: 8,   spareMags: Infinity, reload: 1.2, speed: 1600, spread: 0.025, pellets: 1, range: 950,  color: '#ffe08a' },
   smg:     { name: 'SMG',             type: 'bullet', damage: 10, rate: 0.07, mag: 32,  spareMags: 3, reload: 1.6, speed: 1600, spread: 0.09, pellets: 1, range: 800,  color: '#ffd166' },
   rifle:   { name: 'Assault Rifle',   type: 'bullet', damage: 15, rate: 0.11, mag: 30,  spareMags: 3, reload: 1.9, speed: 1900, spread: 0.04, pellets: 1, range: 1100, color: '#ffd166' },
-  shotgun: { name: 'Shotgun',         type: 'bullet', damage: 12, rate: 0.8,  mag: 6,   spareMags: 3, reload: 2.0, speed: 1400, spread: 0.22, pellets: 7, range: 430,  color: '#ffb703' },
-  sniper:  { name: 'Sniper',          type: 'bullet', damage: 90, rate: 1.3,  mag: 5,   spareMags: 3, reload: 2.4, speed: 2800, spread: 0.0,  pellets: 1, range: 2000, color: '#ffffff', zoom: 3 },
-  rocket:  { name: 'Rocket Launcher', type: 'rocket', damage: 75, rate: 1.2,  mag: 2,   spareMags: 2, reload: 2.5, speed: 720,  spread: 0.01, pellets: 1, range: 1600, color: '#ff6b35', blastRadius: 120 },
-  flamer:  { name: 'Flamethrower',    type: 'flame',  damage: 4,  rate: 0.04, mag: 100, spareMags: 1, reload: 2.2, speed: 520,  spread: 0.18, pellets: 1, range: 260,  color: '#ff7b00' },
+  shotgun: { name: 'Shotgun',         type: 'bullet', damage: 12, rate: 0.8,  mag: 6,   spareMags: 3, reload: 2.0, speed: 1400, spread: 0.22, pellets: 7, range: 430,  color: '#ffb703', falloff: { start: 120, min: 0.3 } },
+  sniper:  { name: 'Sniper',          type: 'bullet', damage: 70, rate: 1.3,  mag: 5,   spareMags: 3, reload: 2.4, speed: 2800, spread: 0.0,  pellets: 1, range: 2000, color: '#ffffff', zoom: 3, headshot: 1.6 },
+  rocket:  { name: 'Rocket Launcher', type: 'rocket', damage: 75, rate: 1.2,  mag: 2,   spareMags: 2, reload: 2.5, speed: 720,  spread: 0.01, pellets: 1, range: 1600, color: '#ff6b35', blastRadius: 120, selfDamage: 0.4 },
+  flamer:  { name: 'Flamethrower',    type: 'flame',  damage: 4,  rate: 0.04, mag: 100, spareMags: 1, reload: 2.2, speed: 620,  spread: 0.15, pellets: 1, range: 320,  color: '#ff7b00', drag: 1.0 },
 };
+
+// A hit in the top share of the soldier's box counts as a headshot (for weapons with `headshot`).
+export const HEADSHOT_ZONE = 0.3;
 
 export const SIDEARM = 'magnum';
 // Weapons found in crates and given as a random starting primary.
@@ -56,6 +84,13 @@ export const PICKUPS = {
   healthAmount: 50,
   healthRespawn: 20,      // seconds
   weaponRespawn: 15,
+  // Power-ups that sometimes appear at weapon crate spots instead of a weapon
+  // (rolled every time a crate spot respawns, so they follow weaponRespawn).
+  powerupChance: 0.3,
+  powerups: ['shield', 'fuel', 'ammo'],
+  shieldAmount: 50,       // damage the shield absorbs
+  shieldTime: 10,         // seconds before an unused shield fades
+  fuelBoostTime: 6,       // seconds of infinite jet fuel (after an instant refill)
 };
 
 export const MATCH = {
@@ -80,11 +115,23 @@ export const BANANA_CRATE = { respawn: 25, weapons: ['rocket', 'sniper', 'flamer
 // Difficulty, chosen before every battle. It changes the bots and the Banana puzzle
 // timers. Bots: accuracy is a range per bot (higher aims better); reaction is how
 // long a bot must see you before it fires; damage scales what bots do to human
-// players; burst/pause make bots fire in bursts. puzzle: seconds per puzzle type.
+// players; burst/pause make bots fire in bursts. smarts (0-1) is how often bots use
+// tactics: retreating when hurt, dodging fire and rockets, spreading targets, grenading
+// groups. puzzle: seconds per puzzle type.
 export const DIFFICULTY = {
-  easy:   { name: 'Easy',   accuracy: [0.10, 0.35], reaction: 1.2,  damage: 0.4,  burst: 0.5, pause: 1.1, grenades: 0.03, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
-  medium: { name: 'Medium', accuracy: [0.30, 0.55], reaction: 0.75, damage: 0.65, burst: 0.7, pause: 0.7, grenades: 0.08, puzzle: { deploy: 30, respawn: 15, crate: 20 } },
-  hard:   { name: 'Hard',   accuracy: [0.55, 0.90], reaction: 0.35, damage: 1,    burst: 9,   pause: 0,   grenades: 0.25, puzzle: { deploy: 20, respawn: 10, crate: 12 } },
+  easy:   { name: 'Easy',   accuracy: [0.10, 0.35], reaction: 1.2,  damage: 0.4,  burst: 0.5, pause: 1.1, grenades: 0.03, smarts: 0.25, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
+  medium: { name: 'Medium', accuracy: [0.30, 0.55], reaction: 0.75, damage: 0.65, burst: 0.7, pause: 0.7, grenades: 0.08, smarts: 0.6,  puzzle: { deploy: 30, respawn: 15, crate: 20 } },
+  hard:   { name: 'Hard',   accuracy: [0.55, 0.90], reaction: 0.35, damage: 1,    burst: 9,   pause: 0,   grenades: 0.25, smarts: 1,    puzzle: { deploy: 20, respawn: 10, crate: 12 } },
+};
+
+// Bot tactics thresholds (how much they are used depends on DIFFICULTY smarts).
+export const BOT_TACTICS = {
+  retreatHealth: 35,      // below this a bot breaks off and looks for health
+  retreatTime: 3,         // seconds a retreat lasts before it re-thinks
+  spreadPenalty: 260,     // px added to a target's "distance" for every other bot already on it
+  clusterRadius: 150,     // enemies this close to the target count as a group worth a grenade
+  dodgeTime: 0.4,         // seconds of strafe + jet after being hit
+  evadeTime: 0.6,         // seconds spent getting out of a rocket's or grenade's blast
 };
 
 export const BOT_NAMES = ['Rex', 'Viper', 'Ghost', 'Blaze', 'Tank', 'Shadow', 'Ace', 'Bolt'];

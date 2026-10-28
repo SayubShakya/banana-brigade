@@ -24,7 +24,7 @@ function soldierState(s) {
   return {
     id: s.id, x: round(s.x), y: round(s.y), aim: round(s.aim), facing: s.facing, walkPhase: round(s.walkPhase),
     onGround: s.onGround, jetting: s.jetting, alive: s.alive, health: Math.ceil(s.health), fuel: Math.round(s.fuel),
-    hurtFlash: round(s.hurtFlash), shieldTimer: round(s.shieldTimer), fireCooldown: round(s.fireCooldown), reloadTimer: round(s.reloadTimer),
+    hurtFlash: round(s.hurtFlash), shieldTimer: round(s.shieldTimer), armor: Math.round(s.armor), fuelBoost: round(s.fuelBoost), fireCooldown: round(s.fireCooldown), reloadTimer: round(s.reloadTimer),
     respawnTimer: s.alive ? 0 : round(Math.min(99, s.respawnTimer)), grenades: s.grenades, kills: s.kills, deaths: s.deaths, streak: s.streak,
     current: s.current, primary: gun(s.primary), sidearm: gun(s.sidearm), lastAttacker: s.lastAttacker?.id ?? null, busy: !!s.busy,
   };
@@ -52,8 +52,8 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
   const sid = (userId) => `u${userId}`;
   const emit = (event, p) => {
     switch (event) {
-      case 'soldier:killed': outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon }]); break;
-      case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount) }]); break;
+      case 'soldier:killed': outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon, headshot: !!p.headshot }]); break;
+      case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount), headshot: !!p.headshot }]); break;
       case 'soldier:respawned': outbox.push(['respawned', { soldier: p.soldier.id }]); break;
       case 'pickup:taken': outbox.push(['pickup', { soldier: p.soldier.id, kind: p.kind, weapon: p.weapon }]); break;
       case 'weapon:fired': outbox.push(['fired', { soldier: p.soldier.id, weapon: p.weapon, x: round(p.x), y: round(p.y) }]); break;
