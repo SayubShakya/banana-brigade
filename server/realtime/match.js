@@ -53,7 +53,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
   const emit = (event, p) => {
     switch (event) {
       case 'soldier:killed': outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon }]); break;
-      case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null }]); break;
+      case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount) }]); break;
       case 'soldier:respawned': outbox.push(['respawned', { soldier: p.soldier.id }]); break;
       case 'pickup:taken': outbox.push(['pickup', { soldier: p.soldier.id, kind: p.kind, weapon: p.weapon }]); break;
       case 'weapon:fired': outbox.push(['fired', { soldier: p.soldier.id, weapon: p.weapon, x: round(p.x), y: round(p.y) }]); break;

@@ -153,7 +153,7 @@ export function createNetGame() {
         emit('soldier:killed', { victim, killer: s(e.killer), weapon: e.weapon });
         break;
       }
-      case 'damaged': emit('soldier:damaged', { victim: s(e.victim), attacker: s(e.attacker) }); break;
+      case 'damaged': emit('soldier:damaged', { victim: s(e.victim), attacker: s(e.attacker), amount: e.amount ?? 0 }); break;
       case 'respawned': emit('soldier:respawned', { soldier: s(e.soldier) }); break;
       case 'pickup': emit('pickup:taken', { soldier: s(e.soldier), kind: e.kind, weapon: e.weapon }); break;
       case 'fired': emit('weapon:fired', { soldier: s(e.soldier), weapon: e.weapon, x: e.x, y: e.y }); break;
