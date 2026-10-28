@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t">
+  <!-- Banana Brigade emblem: a jetpack banana flying up from an olive army shield.
+       Written with help from a generative AI coding assistant; reviewed by Sayub Shakya. -->
+  <title id="t">Banana Brigade</title>
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6d7f3c"/><stop offset="1" stop-color="#3b4a1d"/>
+    </linearGradient>
+    <linearGradient id="peel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff07a"/><stop offset="0.55" stop-color="#ffe135"/><stop offset="1" stop-color="#e0b400"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3b0"/><stop offset="0.45" stop-color="#ff9f1c"/><stop offset="1" stop-color="#e63946" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- shield with a banana-yellow rim -->
+  <path d="M128 10 L226 44 V120 C226 182 184 226 128 246 C72 226 30 182 30 120 V44 Z" fill="#c9a800"/>
+  <path d="M128 22 L214 52 V120 C214 175 177 214 128 232 C79 214 42 175 42 120 V52 Z" fill="url(#shield)"/>
+  <path d="M128 22 L214 52 V120 C214 175 177 214 128 232 C79 214 42 175 42 120 V52 Z" fill="none" stroke="#1b1f12" stroke-width="5" stroke-linejoin="round"/>
+  <!-- chevrons (rank stripes) -->
+  <path d="M78 192 L128 168 L178 192 L178 206 L128 182 L78 206 Z" fill="#ffe135" stroke="#1b1f12" stroke-width="4" stroke-linejoin="round"/>
+  <!-- star -->
+  <path d="M128 36 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2 z" fill="#ffe135" stroke="#1b1f12" stroke-width="3" stroke-linejoin="round"/>
+  <!-- the banana, flying up and to the right -->
+  <g transform="translate(-4 -18) rotate(-40 134 120)">
+    <path d="M78 104 C82 146 120 166 168 150 C184 145 192 134 190 126 C176 136 150 140 128 134 C104 128 90 116 84 98 Z" fill="url(#peel)" stroke="#1b1f12" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M92 116 C104 134 128 144 160 142" fill="none" stroke="#c9a800" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+    <path d="M80 104 L72 92 L82 88 L88 100 Z" fill="#6b4f00" stroke="#1b1f12" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="190" cy="126" r="4" fill="#3b2a00"/>
+    <!-- little jetpack strapped on the banana -->
+    <rect x="112" y="150" width="22" height="26" rx="6" fill="#8a8f9c" stroke="#1b1f12" stroke-width="4"/>
+    <rect x="116" y="174" width="14" height="6" rx="2" fill="#4a4f5c" stroke="#1b1f12" stroke-width="3"/>
+    <!-- jet flame from the nozzle -->
+    <path d="M115 181 C112 200 118 214 123 226 C128 214 134 200 131 181 Z" fill="url(#flame)"/>
+    <path d="M119 181 C118 192 121 200 123 206 C125 200 128 192 127 181 Z" fill="#fff3b0"/>
+    <!-- goggles -->
+    <rect x="150" y="128" width="26" height="12" rx="6" fill="#1b1f12"/>
+    <circle cx="158" cy="134" r="3" fill="#7ec8ff"/><circle cx="169" cy="134" r="3" fill="#7ec8ff"/>
+  </g>
+</svg>

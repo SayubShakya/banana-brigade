@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/img/logo.svg" alt="Banana Brigade logo" width="160"></p>
+
 # Banana Brigade
 
 A 2D jetpack shooter in the style of the classic doodle army games, built by **Sayub Shakya** for
