@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { CHAPTERS, MISSIONS, isUnlocked, totalStars } from '../game/campaign.js';
 import { DIFFICULTY } from '../game/config.js';
+import { mapName } from '../game/maps.js';
 import { Panel, Icon } from './common.jsx';
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -72,6 +73,7 @@ export default function Campaign({ onPlay, onBack }) {
             <ul className="brief-facts">
               <li><b>{picked.target}</b> kills to win</li>
               <li><b>{fmt(picked.timeLimit)}</b> time limit</li>
+              <li><b>{mapName(picked.map)}</b> map</li>
               <li><b>{'♥'.repeat(picked.lives)}</b> lives</li>
               <li><b>{picked.bots}</b> {DIFFICULTY[chapter.difficulty].name.toLowerCase()} bots</li>
             </ul>
