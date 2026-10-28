@@ -152,7 +152,11 @@ function createPuzzlePool({
       const spare = fromReserve();
       if (!spare) { const p = await live; refill(); return { ...p, source: 'live' }; }
       // Too slow: give the player a reserve puzzle and keep the live one for later.
-      if (waiter) waiting.splice(waiting.indexOf(waiter), 1);
+      // If this player is still queued, leave the queue (only our own entry: indexOf
+      // is -1 once a puzzle was already handed to us). Otherwise the live puzzle is
+      // ours and arrives later, so it goes to `ready` for the next player.
+      const i = waiter ? waiting.indexOf(waiter) : -1;
+      if (i >= 0) waiting.splice(i, 1);
       else live.then((p) => ready.push(p), () => {});
       refill();
       return spare;
