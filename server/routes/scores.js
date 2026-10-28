@@ -39,7 +39,7 @@ function createScoresRouter({ db, achievements }) {
     try {
       const id = await db.addScore(score);
       const unlocked = score.mode === 'training' ? [] : await achievements.emit('score:saved', score.userId, { ...score, won: !!score.won });
-      const powers = cleanPowers(b.powers);   // only real power names count
+      const powers = score.mode === 'training' ? [] : cleanPowers(b.powers);   // only real power names, not in Training
       if (powers.length) unlocked.push(...await achievements.emit('power:used', score.userId, { powers }));
       res.status(201).json({ id, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted, unlocked });
     } catch (err) {

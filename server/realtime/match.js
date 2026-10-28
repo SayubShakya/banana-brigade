@@ -58,6 +58,9 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       case 'soldier:killed': outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon, headshot: !!p.headshot }]); break;
       case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount), headshot: !!p.headshot }]); break;
       case 'soldier:respawned': outbox.push(['respawned', { soldier: p.soldier.id }]); break;
+      case 'power:start': case 'power:warning': case 'power:end':
+        outbox.push(['fx', { name: event, soldier: p.soldier.id, power: p.power, seconds: p.seconds, random: p.random }]);
+        break;
       case 'pickup:taken': outbox.push(['pickup', { soldier: p.soldier.id, kind: p.kind, weapon: p.weapon }]); break;
       case 'weapon:fired': outbox.push(['fired', { soldier: p.soldier.id, weapon: p.weapon, x: round(p.x), y: round(p.y) }]); break;
       case 'weapon:reloading': case 'weapon:reloaded': case 'weapon:empty':
@@ -171,7 +174,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     });
   }
 
-  return {
+  const api = {
     matchId,
     mapId,
     roster,
@@ -205,7 +208,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
         // Solved: the player stays frozen and protected while choosing a Banana Power.
         // If no choice arrives in time, the server picks a random one.
         const choices = powerChoices();
-        const timer = setTimeout(() => this.choosePower(userId, 'random'), (BANANA_CRATE.pickSeconds + 1) * 1000);
+        const timer = setTimeout(() => api.choosePower(userId, 'random'), (BANANA_CRATE.pickSeconds + 1) * 1000);
         offers.set(userId, { choices, timer });
         send('power:offer', { choices, seconds: BANANA_CRATE.pickSeconds }, userId);
       }
@@ -227,6 +230,9 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     cancelCrate(userId) {
       const s = byUser(userId);
       crates.delete(userId);
+      // A player who leaves while choosing a power gets nothing (no power for the bot).
+      const offer = offers.get(userId);
+      if (offer) { clearTimeout(offer.timer); offers.delete(userId); }
       if (s) { s.busy = false; s.shieldTimer = 0.5; }
     },
     // A player left: a bot takes over their soldier so the match stays fair for the others.
@@ -250,6 +256,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     stop() { ended = true; clearInterval(timer); for (const o of offers.values()) clearTimeout(o.timer); offers.clear(); },
     get over() { return ended; },
   };
+  return api;
 }
 
 module.exports = { createMatch, TICK_HZ };
