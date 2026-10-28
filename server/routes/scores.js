@@ -40,7 +40,10 @@ function createScoresRouter({ db }) {
   router.get('/leaderboard', (req, res) => {
     const mode = MODES.includes(req.query.mode) ? req.query.mode : 'quick';
     const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
-    res.json({ mode, rows: db.leaderboard(mode, limit) });
+    // period=today shows only games since midnight UTC (the "daily leaders").
+    const period = req.query.period === 'today' ? 'today' : 'all';
+    const since = period === 'today' ? `${new Date().toISOString().slice(0, 10)} 00:00:00` : '';
+    res.json({ mode, period, rows: db.leaderboard(mode, limit, since) });
   });
 
   router.get('/me', requireLogin, (req, res) => {

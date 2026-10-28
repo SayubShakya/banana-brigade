@@ -67,13 +67,14 @@ function openDatabase(file = ':memory:') {
       SELECT s.id, u.username, s.mode, s.kills, s.deaths, s.wave, s.won, s.puzzles_solved, s.puzzles_attempted,
              s.duration_s, s.created_at
       FROM scores s JOIN users u ON u.id = s.user_id
-      WHERE s.mode = ?
+      WHERE s.mode = ? AND s.created_at >= ?
       ORDER BY CASE WHEN s.mode = 'survival' THEN s.wave ELSE s.kills END DESC, s.puzzles_solved DESC, s.created_at ASC
       LIMIT ?`),
     scoresForUser: db.prepare('SELECT * FROM scores WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?'),
     totalsForUser: db.prepare(`
       SELECT COUNT(*) AS games, COALESCE(SUM(kills), 0) AS kills, COALESCE(SUM(deaths), 0) AS deaths,
              COALESCE(MAX(wave), 0) AS best_wave, COALESCE(MAX(kills), 0) AS best_kills,
+             COALESCE(SUM(won), 0) AS wins, COALESCE(SUM(duration_s), 0) AS seconds_played,
              COALESCE(SUM(puzzles_solved), 0) AS puzzles_solved, COALESCE(SUM(puzzles_attempted), 0) AS puzzles_attempted
       FROM scores WHERE user_id = ?`),
     deleteScoresForUser: db.prepare('DELETE FROM scores WHERE user_id = ?'),
@@ -98,7 +99,8 @@ function openDatabase(file = ':memory:') {
     listUsers: () => q.listUsers.all(),
 
     addScore: (score) => q.insertScore.run(score).lastInsertRowid,
-    leaderboard: (mode, limit = 20) => q.leaderboard.all(mode, limit),
+    // since: an SQLite datetime string; '' means all time.
+    leaderboard: (mode, limit = 20, since = '') => q.leaderboard.all(mode, since, limit),
     scoresForUser: (userId, limit = 20) => q.scoresForUser.all(userId, limit),
     totalsForUser: (userId) => q.totalsForUser.get(userId),
     deleteScoresForUser: (userId) => q.deleteScoresForUser.run(userId).changes,
