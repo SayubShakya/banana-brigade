@@ -23,13 +23,47 @@
 
   <div id="stage">
 
+    <!-- ============ Login / register ============ -->
+    <section id="screen-login" class="screen login" hidden>
+      <div class="sky-clouds" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="menu-ground" aria-hidden="true"></div>
+      <div class="login-wrap">
+        <h1 class="logo small">BANANA<span>BRIGADE</span></h1>
+        <form id="auth-form" class="panel login-panel" novalidate>
+          <div class="auth-tabs" role="tablist">
+            <button type="button" role="tab" data-auth-tab="login" aria-selected="true">Log in</button>
+            <button type="button" role="tab" data-auth-tab="register" aria-selected="false">Create account</button>
+          </div>
+          <label class="field">Username
+            <input id="auth-username" name="username" autocomplete="username" required minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" placeholder="e.g. sayub_s">
+          </label>
+          <label class="field">Password
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72">
+          </label>
+          <div class="register-only">
+            <div id="auth-meter" class="meter" data-level=""><i></i><i></i><i></i><i></i></div>
+            <span id="auth-meter-text" class="meter-text"></span>
+            <label class="field">Confirm password
+              <input id="auth-confirm" type="password" autocomplete="new-password" maxlength="72">
+            </label>
+          </div>
+          <p id="auth-error" class="auth-error" role="alert"></p>
+          <button id="auth-submit" class="mbtn primary" type="submit">Log in</button>
+          <p class="auth-note">Passwords are stored only as bcrypt hashes. You stay signed in with a secure, HttpOnly session cookie.</p>
+        </form>
+      </div>
+    </section>
+
     <!-- ============ Main menu ============ -->
     <section id="screen-menu" class="screen menu">
       <div class="sky-clouds" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="menu-ground" aria-hidden="true"></div>
 
       <header class="menu-top">
-        <div class="chip player-chip"><span class="dot"></span><span id="menu-name">You</span></div>
+        <div class="account">
+          <div class="chip player-chip"><span class="dot"></span><span id="menu-name">You</span><span class="role-badge" id="menu-role">player</span></div>
+          <button id="btn-logout" class="chip chip-btn" type="button">Log out</button>
+        </div>
         <div class="stat-chips" aria-label="Your Banana puzzle record">
           <div class="chip"><svg class="ico"><use href="#i-banana"/></svg><b id="stat-solved">0</b><span>solved</span></div>
           <div class="chip"><b id="stat-best">0</b><span>best streak</span></div>
@@ -44,7 +78,7 @@
           <canvas id="menu-avatar" width="180" height="240" aria-label="Your soldier"></canvas>
           <div class="rock" aria-hidden="true"></div>
         </div>
-        <label class="name-field">Soldier name <input id="player-name" maxlength="14" placeholder="You" autocomplete="off"></label>
+        <p class="welcome" id="menu-welcome">Welcome back, soldier.</p>
       </div>
 
       <nav class="menu-right" aria-label="Game modes">
