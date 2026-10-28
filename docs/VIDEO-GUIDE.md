@@ -129,20 +129,20 @@ not yet used. See `docs/evaluation.md` section 2.
 
 ## Virtual identity
 **Facts**
-- Register: validation (`routes/auth.js:68-73`), `bcrypt.hash` cost 10 (`auth.js:75`), unique index race
-  (`auth.js:76-83`). The sign-up form checks names live (`/available`, `auth.js:190-201`, 20 checks a minute).
-- Login: lockout check (`auth.js:97-102`), dummy-hash compare (`auth.js:103-106`), failed attempt recorded
-  (`auth.js:108`), session regenerated (`auth.js:33-48`), "remember me" sets 30 days (`auth.js:20`, `:44`).
-- Logout destroys the session and clears the cookie (`auth.js:121-123`).
-- Log out everywhere (`auth.js:127-137`), change password, needing the current one (`auth.js:141-159`), delete
-  account and all data (`auth.js:165-181`), active sessions (`auth.js:204-216`).
+- Register: validation (`routes/auth.js:68-73`), `bcrypt.hash` cost 10 (`routes/auth.js:75`), unique index race
+  (`routes/auth.js:76-83`). The sign-up form checks names live (`/available`, `routes/auth.js:190-201`, 20 checks a minute).
+- Login: lockout check (`routes/auth.js:97-102`), dummy-hash compare (`routes/auth.js:103-106`), failed attempt recorded
+  (`routes/auth.js:108`), session regenerated (`routes/auth.js:33-48`), "remember me" sets 30 days (`routes/auth.js:20`, `:44`).
+- Logout destroys the session and clears the cookie (`routes/auth.js:121-123`).
+- Log out everywhere (`routes/auth.js:127-137`), change password, needing the current one (`routes/auth.js:141-159`), delete
+  account and all data (`routes/auth.js:165-181`), active sessions (`routes/auth.js:204-216`).
 - Ending sessions: one MongoDB query on the session store, then the player's sockets are closed
   (`server/sessions.js:10-41`). Sockets join `user:<id>` and `sid:<id>` rooms for this (`realtime/socket.js:27-30`).
 - Cookie: `brigade.sid`, HttpOnly, SameSite=Lax, Secure in production, 2 hours (`app.js:48-60`).
 - Sessions stored in MongoDB (`index.js:45-47`); failed logins expire by TTL index (`models.js:53-56`).
 - Authorisation: `loadUser` reads the user and role from the database on every request, so a deleted or demoted
   account loses access at once (`middleware/auth.js:13-27`); `requireLogin`, `requireAdmin` (`:29-46`).
-- Admin routes (`routes/admin.js:13`); promote or demote, but not yourself (`admin.js:30-45`); Admin screen
+- Admin routes (`routes/admin.js:13`); promote or demote, but not yourself (`routes/admin.js:30-45`); Admin screen
   (`client/src/screens/Admin.jsx`), offered only to admins in Settings (`Settings.jsx:88`).
 - WebSocket uses the same session (`realtime/socket.js:20-32`).
 - Identity from the session, not the body: puzzle counts (`routes/scores.js:33-37`), online scores written by
