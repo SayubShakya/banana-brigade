@@ -12,6 +12,7 @@ const crypto = require('node:crypto');
 const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls } = require('../../client/src/game/world.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
+const { randomMapId } = require('../../client/src/game/map.js');
 
 const TICK_HZ = 30;
 const SNAPSHOT_EVERY = 1;                  // a snapshot after every 30 Hz tick, for smooth movement
@@ -67,8 +68,11 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
     }
   };
 
+  // The server picks the battlefield; its id goes out in match:start so every
+  // browser builds the same tile grid from maps.js.
+  const mapId = randomMapId();
   const world = createWorld({
-    mode: 'online', teamMode, difficulty, emit,
+    mode: 'online', teamMode, difficulty, emit, map: mapId,
     humans: players.map((p) => ({ id: sid(p.userId), name: p.username, avatar: { parts: p.parts }, team: p.team })),
     botAvatars: Array.from({ length: 8 }, (_, i) => ({ bot: i })),
     botNames: [...BOT_NAMES].sort(() => Math.random() - 0.5),
@@ -161,6 +165,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, ti
 
   return {
     matchId,
+    mapId,
     roster,
     botLevel: world.difficulty.name,          // what the engine actually uses, e.g. 'Hard'
     setControls,
