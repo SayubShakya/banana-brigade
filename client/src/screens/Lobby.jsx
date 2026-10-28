@@ -7,6 +7,9 @@
 import { useEffect, useState } from 'react';
 import { getSocket, request } from '../net/socket.js';
 import { Panel, Icon } from './common.jsx';
+import { DIFFICULTY } from '../game/config.js';
+
+const botLevel = (key) => DIFFICULTY[key]?.name ?? 'Medium';
 
 export default function Lobby({ account, parts, onBack }) {
   const [rooms, setRooms] = useState([]);
@@ -14,6 +17,7 @@ export default function Lobby({ account, parts, onBack }) {
   const [code, setCode] = useState('');
   const [teamMode, setTeamMode] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
+  const [difficulty, setDifficulty] = useState('medium');
   const [error, setError] = useState('');
   const [online, setOnline] = useState(false);
 
@@ -43,7 +47,7 @@ export default function Lobby({ account, parts, onBack }) {
     setError('');
     try { await fn(); } catch (err) { setError(err.message); }
   };
-  const create = () => run(async () => setRoom((await request('room:create', { teamMode, isPublic, parts })).room));
+  const create = () => run(async () => setRoom((await request('room:create', { teamMode, isPublic, difficulty, parts })).room));
   const join = (c) => run(async () => setRoom((await request('room:join', { code: c, parts })).room));
   const start = () => run(() => request('room:start'));
   const leave = () => { getSocket().emit('room:leave'); setRoom(null); };
@@ -67,6 +71,11 @@ export default function Lobby({ account, parts, onBack }) {
               <button role="tab" aria-selected={!teamMode} onClick={() => setTeamMode(false)}>Free-for-all</button>
               <button role="tab" aria-selected={teamMode} onClick={() => setTeamMode(true)}>Blue vs Red</button>
             </div>
+            <div className="tabs" role="tablist" aria-label="Bot difficulty">
+              {Object.entries(DIFFICULTY).map(([key, d]) => (
+                <button key={key} role="tab" aria-selected={difficulty === key} onClick={() => setDifficulty(key)}>{d.name} bots</button>
+              ))}
+            </div>
             <div className="setting"><span>Show in public list</span><button className="toggle" aria-pressed={isPublic} onClick={() => setIsPublic(!isPublic)}>{isPublic ? 'On' : 'Off'}</button></div>
             <button className="mbtn primary" onClick={create} disabled={!online}><Icon id="team" />Create room</button>
             <h3 className="sub-head">Join with a code</h3>
@@ -78,12 +87,12 @@ export default function Lobby({ account, parts, onBack }) {
           <section className="lobby-box">
             <h3 className="sub-head">Public rooms</h3>
             <table className="results compact">
-              <thead><tr><th>Host</th><th>Mode</th><th>Players</th><th /></tr></thead>
+              <thead><tr><th>Host</th><th>Mode</th><th>Bots</th><th>Players</th><th /></tr></thead>
               <tbody>
-                {!rooms.length && <tr className="empty-row"><td colSpan={4}>No open rooms. Create one and share the code.</td></tr>}
+                {!rooms.length && <tr className="empty-row"><td colSpan={5}>No open rooms. Create one and share the code.</td></tr>}
                 {rooms.map((r) => (
                   <tr key={r.code}>
-                    <td>{r.host}</td><td>{r.teamMode ? 'Blue vs Red' : 'Free-for-all'}</td><td>{r.players} / 6</td>
+                    <td>{r.host}</td><td>{r.teamMode ? 'Blue vs Red' : 'Free-for-all'}</td><td>{botLevel(r.difficulty)}</td><td>{r.players} / 6</td>
                     <td>{r.state === 'lobby' ? <button className="toggle" onClick={() => join(r.code)}>Join</button> : 'Playing'}</td>
                   </tr>
                 ))}
@@ -93,7 +102,7 @@ export default function Lobby({ account, parts, onBack }) {
         </div>
       ) : (
         <div className="room-view">
-          <div className="room-code">Room code <b>{room.code}</b><small>{room.teamMode ? 'Blue vs Red' : 'Free-for-all'} · bots fill empty places up to 6</small></div>
+          <div className="room-code">Room code <b>{room.code}</b><small>{room.teamMode ? 'Blue vs Red' : 'Free-for-all'} · {botLevel(room.difficulty)} bots fill empty places up to 6</small></div>
           <table className="results compact">
             <thead><tr><th>Soldier</th>{room.teamMode && <th>Team</th>}<th>Status</th></tr></thead>
             <tbody>
