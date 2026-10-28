@@ -14,6 +14,7 @@ const MODE_CARDS = [
   { mode: 'survival', icon: 'shield', name: 'Survival', text: 'Endless waves · Banana revives only' },
   { mode: 'training', icon: 'target', name: 'Training', text: 'Practice range with dummies' },
   { mode: 'team', icon: 'team', name: 'Team Battle', text: 'Blue vs Red with bots' },
+  { mode: 'online', icon: 'globe', name: 'Online', text: 'Real players · rooms with a code', online: true },
 ];
 
 function useApiStatus() {
@@ -78,7 +79,7 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen, onLogout
           <button key={m.mode} className={`mode-card${m.primary ? ' primary' : ''}`} onClick={() => onDeploy(m.mode)}>
             <Icon id={m.icon} className="mode-ico" />
             <span className="mode-text"><b>{m.name}</b><small>{m.text}</small></span>
-            <span className="mode-tag"><Icon id="banana" />Deploy</span>
+            <span className="mode-tag">{m.online ? <><Icon id="globe" />Play</> : <><Icon id="banana" />Deploy</>}</span>
           </button>
         ))}
         <div className="menu-tiles">

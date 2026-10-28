@@ -1,6 +1,7 @@
 // Results: the final ranking, puzzle stats for this deployment, and saving the score.
-// Kills come from this browser, but the server takes the puzzle counts from the
-// session, where every answer was checked, so those cannot be faked.
+// In a local game the kills come from this browser, but the server takes the puzzle
+// counts from the session, where every answer was checked. In an online match the
+// server has already saved everyone's score itself, so nothing is sent from here.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
@@ -14,10 +15,12 @@ const PURPOSES = [['deploy', 'Deploy'], ['respawn', 'Respawn'], ['crate', 'Crate
 
 export default function Results({ game, me, onMenu, onAgain }) {
   const { result, outcome, session: s, durationS } = game;
-  const [saved, setSaved] = useState({ state: '', text: result.mode === 'training' ? '' : 'Saving your score…' });
+  const [saved, setSaved] = useState(game.online
+    ? { state: 'ok', text: 'Online match: the server saved every player\'s score.' }
+    : { state: '', text: result.mode === 'training' ? '' : 'Saving your score…' });
 
   useEffect(() => {
-    if (result.mode === 'training') return;
+    if (game.online || result.mode === 'training') return;
     api.saveScore({
       mode: result.mode, kills: result.player.kills, deaths: result.player.deaths,
       wave: result.wave, won: outcome.won, durationS: Math.min(3600, durationS),
@@ -29,7 +32,7 @@ export default function Results({ game, me, onMenu, onAgain }) {
   return (
     <Panel wide title={outcome.title} chip={<span className="mode-chip">{MODES[result.mode].name}</span>} footer={<>
       <button className="mbtn ghost" onClick={onMenu}>Menu</button>
-      <button className="mbtn primary" onClick={onAgain}>Deploy again</button>
+      <button className="mbtn primary" onClick={onAgain}>{game.online ? 'Back to the room' : 'Deploy again'}</button>
     </>}>
       <p className="results-reason">{outcome.line}</p>
       <div className="result-cards">
@@ -46,7 +49,7 @@ export default function Results({ game, me, onMenu, onAgain }) {
         <tbody>
           {result.ranking.map((r, i) => (
             <tr key={r.id} className={r.isPlayer ? 'me' : ''}>
-              <td>{i + 1}</td><td>{r.name}{result.mode === 'team' && <> <small className={`team-${r.team}`}>{r.team}</small></>}</td><td>{r.kills}</td><td>{r.deaths}</td>
+              <td>{i + 1}</td><td>{r.name}{(result.mode === 'team' || result.teamMode) && <> <small className={`team-${r.team}`}>{r.team}</small></>}</td><td>{r.kills}</td><td>{r.deaths}</td>
             </tr>
           ))}
         </tbody>
