@@ -115,11 +115,23 @@ export const BANANA_CRATE = { respawn: 25, weapons: ['rocket', 'sniper', 'flamer
 // Difficulty, chosen before every battle. It changes the bots and the Banana puzzle
 // timers. Bots: accuracy is a range per bot (higher aims better); reaction is how
 // long a bot must see you before it fires; damage scales what bots do to human
-// players; burst/pause make bots fire in bursts. puzzle: seconds per puzzle type.
+// players; burst/pause make bots fire in bursts. smarts (0-1) is how often bots use
+// tactics: retreating when hurt, dodging fire and rockets, spreading targets, grenading
+// groups. puzzle: seconds per puzzle type.
 export const DIFFICULTY = {
-  easy:   { name: 'Easy',   accuracy: [0.10, 0.35], reaction: 1.2,  damage: 0.4,  burst: 0.5, pause: 1.1, grenades: 0.03, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
-  medium: { name: 'Medium', accuracy: [0.30, 0.55], reaction: 0.75, damage: 0.65, burst: 0.7, pause: 0.7, grenades: 0.08, puzzle: { deploy: 30, respawn: 15, crate: 20 } },
-  hard:   { name: 'Hard',   accuracy: [0.55, 0.90], reaction: 0.35, damage: 1,    burst: 9,   pause: 0,   grenades: 0.25, puzzle: { deploy: 20, respawn: 10, crate: 12 } },
+  easy:   { name: 'Easy',   accuracy: [0.10, 0.35], reaction: 1.2,  damage: 0.4,  burst: 0.5, pause: 1.1, grenades: 0.03, smarts: 0.25, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
+  medium: { name: 'Medium', accuracy: [0.30, 0.55], reaction: 0.75, damage: 0.65, burst: 0.7, pause: 0.7, grenades: 0.08, smarts: 0.6,  puzzle: { deploy: 30, respawn: 15, crate: 20 } },
+  hard:   { name: 'Hard',   accuracy: [0.55, 0.90], reaction: 0.35, damage: 1,    burst: 9,   pause: 0,   grenades: 0.25, smarts: 1,    puzzle: { deploy: 20, respawn: 10, crate: 12 } },
+};
+
+// Bot tactics thresholds (how much they are used depends on DIFFICULTY smarts).
+export const BOT_TACTICS = {
+  retreatHealth: 35,      // below this a bot breaks off and looks for health
+  retreatTime: 3,         // seconds a retreat lasts before it re-thinks
+  spreadPenalty: 260,     // px added to a target's "distance" for every other bot already on it
+  clusterRadius: 150,     // enemies this close to the target count as a group worth a grenade
+  dodgeTime: 0.4,         // seconds of strafe + jet after being hit
+  evadeTime: 0.6,         // seconds spent getting out of a rocket's or grenade's blast
 };
 
 export const BOT_NAMES = ['Rex', 'Viper', 'Ghost', 'Blaze', 'Tank', 'Shadow', 'Ace', 'Bolt'];
