@@ -17,12 +17,17 @@ function attachRealtime(httpServer, app, { matchOptions } = {}) {
     serveClient: false,
   });
 
+  app.locals.io = io;   // so the account routes can disconnect a player's sockets
   io.engine.use(sessionMiddleware);
   io.use((socket, next) => {
     const s = socket.request.session;
     if (!s?.userId) return next(new Error('Log in to play online'));
     socket.data.userId = s.userId;
     socket.data.username = s.username;
+    // Rooms per player and per session, so the HTTP side can drop this player's live
+    // sockets on "log out of all devices", a password change or account deletion.
+    socket.join(`user:${s.userId}`);
+    socket.join(`sid:${socket.request.sessionID}`);
     next();
   });
 
