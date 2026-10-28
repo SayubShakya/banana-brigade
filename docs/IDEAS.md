@@ -10,6 +10,8 @@ Things that would make Banana Brigade better, grouped by theme. Each one says wh
   inputs on the server, so offline scores are as trustworthy as online ones.
 - **Spectator mode** for full rooms.
 - **Seasonal leaderboards** that reset monthly.
+- **Daily challenge fairness:** show the solutions only after the day ends, and let a run started before
+  midnight UTC finish.
 
 ## Version control and teamwork
 - **Pull-request based reviews:** merge every branch through a GitHub pull request with the template and a
@@ -32,7 +34,8 @@ Things that would make Banana Brigade better, grouped by theme. Each one says wh
 - **OAuth / OpenID Connect** login with Google or GitHub, next to passwords.
 - **Friends list** and private invites to rooms, using the existing identity.
 - **Multi-factor authentication** (TOTP app codes) for admin accounts.
-- **Per-IP rate limiting** on login as well as per username, so nobody can lock another player out.
+- **Per-IP rate limiting** on login as well as per username, so nobody can lock another player out, and an
+  atomic failed-login counter so parallel guesses cannot slip past the limit of 5.
 - Email verification and password reset.
 - HTTPS in development with a local certificate (mkcert), so the cookie is always `Secure`.
 

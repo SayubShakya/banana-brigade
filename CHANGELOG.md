@@ -6,7 +6,24 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [1.0.0] - 2026-10-28
 
+Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `feature/polish` (ccb8657),
+`feature/api-hardening` (63b53da), `docs/readme-ci` (3abaa7f), `fix/review-findings` (90b97cd) and
+`docs/final-pass`.
+
 ### Added
+- Account tools: remember me (30 days), log out of all devices, change password, delete account, a live
+  username check and an active-session count on the profile.
+- Admin screen: list users, reset scores, promote and demote (but not yourself).
+- Banana API resilience: per-attempt timeout, up to 2 retries with backoff and jitter for transient failures,
+  a 2.5 s deadline on `take()`, an in-flight limit and a circuit breaker; latency, success rate and circuit
+  state in `/api/status` and in Settings; `docs/resilience.md`.
+- Online rooms: the host picks the bots' difficulty, checked on the server.
+- Procedural menu and battle music that crossfades on `game:state`; music and effects volume sliders and a
+  mute; a chime or buzzer for each Banana answer.
+- Accessibility: high contrast, large text and reduced motion, with focus outlines; a coloured puzzle timer.
+- Phones: a fullscreen button and a rotate-to-landscape hint.
+- `npm run demo` (in-memory MongoDB) and `npm run package` (source zip of `HEAD`).
+- The daily challenge carries on after a page reload (`GET /api/daily/current`).
 - Documentation: README rewrite, `docs/architecture.md`, `docs/events.md`, `docs/api.md`,
   `docs/evaluation.md`, `docs/IDEAS.md`, `docs/VIDEO-GUIDE.md`.
 - GitHub Actions CI: tests and the Vite build on every push and pull request.
@@ -15,6 +32,15 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ### Changed
 - Version 1.0.0 and an accurate package description.
+- Protected routes read the user and role from the database on every request, so a deleted or demoted account
+  loses access at once.
+- Settings split into Game, Sound, Accessibility and Account tabs.
+
+### Fixed
+- Daily challenge: an API outage no longer uses up the day's attempt, and two answers sent at once can no
+  longer score one puzzle twice (the run's position is advanced atomically in MongoDB).
+- A queued player no longer loses their place in the puzzle pool when another player times out.
+- CI downloads MongoDB into the cached folder, so the cache is used.
 
 ## Milestones before 1.0.0
 
@@ -22,7 +48,7 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 #### Added
 - `INCOMPLETE_TASKS.md`: what is done and what is left, theme by theme.
 
-### Campaign - 2026-10-28 (`feature/campaign`, b97fb75)
+### Campaign - 2026-10-28 (`feature/campaign`, b97fb75, tag `v0.5-campaign`)
 #### Added
 - 9 missions in 3 chapters with lives, kill targets, Banana continues and a difficulty ramp.
 - Server-checked unlocks and stars, saved per player.
@@ -55,14 +81,14 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - Controls shown at the start of a battle, key letters on buttons, an FPS option.
 - Menu simplified to three choices with an icon rail and a More Modes screen.
 
-### Online multiplayer - 2026-10-28 (`feature/multiplayer`, b8b4252)
+### Online multiplayer - 2026-10-28 (`feature/multiplayer`, b8b4252, tag `v0.4-multiplayer`)
 #### Added
 - Socket.io server that only accepts logged-in sessions.
 - Online matches run on the server with the shared engine.
 - Rooms with codes, ready checks and server-checked Banana puzzles; lobby screen.
 - Tests: socket login, rooms, faked scores ignored.
 
-### React screens - 2026-10-28 (`feature/react-screens`, 7cfa490)
+### React screens - 2026-10-28 (`feature/react-screens`, 7cfa490, tag `v0.3-mongo-react`)
 #### Changed
 - Vite and React set up; the engine moved into `client/`; the server serves the build.
 - Game loop split into `GameSession`, with event-bus hooks for React.
@@ -78,13 +104,13 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - Today's leaders, play time and wins; rank and XP; Profile, Scores and Settings screens.
 - Sight laser and a switch for kill-streak banners.
 
-### Gameplay - 2026-10-28 (`feature/gameplay`, f4e4b23)
+### Gameplay - 2026-10-28 (`feature/gameplay`, f4e4b23, tag `v0.2-gameplay`)
 #### Added
 - Game engine: jetpack physics, weapons, bots and four modes.
 - Canvas renderer, keyboard/mouse/touch input and Web Audio sounds.
 - Live game loop with Banana respawns, crates and saved scores.
 
-### Login - 2026-10-28 (`feature/login`, 3b4994b)
+### Login - 2026-10-28 (`feature/login`, 3b4994b, tag `v0.1-login`)
 #### Added
 - Register, login and logout with bcrypt and sessions; score saving, leaderboard and admin API.
 - SQLite storage for players, scores and login attempts.
