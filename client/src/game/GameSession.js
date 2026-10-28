@@ -18,7 +18,8 @@ import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission } from './world.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
-import { setListener, setMuted, unlockAudio } from './sound.js';
+import { setEffectsVolume, setListener, setMuted, unlockAudio } from './sound.js';
+import { setMusicMuted, setMusicVolume } from './music.js';
 import { askPuzzle, isPuzzleOpen } from '../puzzleBridge.js';
 
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
@@ -169,9 +170,13 @@ export function createGameSession() {
       hud.hide();
       setState('idle');
     },
-    applySettings({ sound, laser, banners, fps }) {
+    // Volumes are 0-100 from the Settings sliders; mute silences music and effects.
+    applySettings({ musicVolume = 60, sfxVolume = 80, muted = false, laser, banners, fps }) {
       meter.setVisible(!!fps);
-      setMuted(!sound);
+      setMuted(muted);
+      setEffectsVolume(sfxVolume / 100);
+      setMusicMuted(muted);
+      setMusicVolume(musicVolume / 100);
       renderer.setLaser(laser);
       hud.setBanners(banners);
     },

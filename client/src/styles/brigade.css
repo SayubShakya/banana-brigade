@@ -618,3 +618,10 @@ table.compact tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .mission-stars { display: flex; flex-direction: column; align-items: center; gap: 0.4cqh; color: var(--khaki); font-size: 2cqh; }
 .briefing { align-self: start; }
 .briefing .mbtn { margin-top: 0.6cqh; }
+
+/* Settings: music and effects volume sliders */
+.setting label { cursor: pointer; }
+.slider { display: inline-flex; align-items: center; gap: 1.2cqh; }
+.slider input[type="range"] { width: 24cqh; height: 2.4cqh; accent-color: var(--banana); cursor: pointer; }
+.slider input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }
+.slider output { min-width: 4.4cqh; text-align: right; font: 800 2cqh 'Rubik', sans-serif; color: var(--banana); }
