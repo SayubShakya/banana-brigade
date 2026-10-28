@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { Panel } from './common.jsx';
+import { Panel, Rank } from './common.jsx';
 
 const TABS = [['quick', 'Quick Play'], ['survival', 'Survival'], ['team', 'Team Battle'], ['online', 'Online']];
 
@@ -20,7 +20,7 @@ function Board({ title, rows, mode, me }) {
           {rows?.length === 0 && <tr className="empty-row"><td colSpan={4}>No scores yet.</td></tr>}
           {rows?.map((r, i) => (
             <tr key={r.id} className={r.username === me ? 'me' : ''}>
-              <td>{i + 1}</td><td>{r.username}</td><td>{mode === 'survival' ? r.wave : r.kills}</td><td>{r.puzzles_solved} / {r.puzzles_attempted}</td>
+              <td><Rank n={i + 1} /></td><td>{r.username}</td><td>{mode === 'survival' ? r.wave : r.kills}</td><td>{r.puzzles_solved} / {r.puzzles_attempted}</td>
             </tr>
           ))}
         </tbody>

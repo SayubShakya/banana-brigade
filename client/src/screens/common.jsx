@@ -5,6 +5,9 @@
 import { useEffect, useRef } from 'react';
 import { drawAvatarPreview, makeAvatar } from '../game/characters.js';
 
+// Position in a leaderboard: medals for the top three, a plain number after that.
+export const Rank = ({ n }) => (n <= 3 ? <span className={`medal m${n}`}>{n}</span> : n);
+
 export const Icon = ({ id, className = 'ico' }) => <svg className={className}><use href={`#i-${id}`} /></svg>;
 
 // A still picture of the player's soldier.

@@ -514,3 +514,38 @@ body.touch .hud-help { display: none; }
 .record dd { font-size: 2.6cqh; }
 .profile-main { gap: 1cqh; }
 .profile-main .rank-card.big { padding: 0.8cqh 1.4cqh; }
+
+/* Segmented choice (e.g. bot difficulty) */
+.segmented { display: flex; gap: 0.4cqh; padding: 0.4cqh; border-radius: 1cqh; background: rgba(255,255,255,0.08); }
+.segmented button { padding: 0.7cqh 1.4cqh; border: 0; border-radius: 0.8cqh; background: transparent; color: var(--khaki); font: 800 1.8cqh 'Rubik', sans-serif; text-transform: uppercase; cursor: pointer; }
+.segmented button[aria-checked="true"] { background: var(--banana); color: var(--ink); }
+
+/* ---------- Polish: livelier screens ---------- */
+/* Panel screens get the same hills and ground as the menu instead of a flat sky. */
+.panel-screen:not(.dim) {
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 2cqh, transparent 2cqh 6cqh) 0 100% / 100% 14% no-repeat,
+    linear-gradient(transparent 84%, #5fae3b 84% 86%, #7b5435 86%),
+    radial-gradient(ellipse at 18% 100%, #4a7a32 0 34%, transparent 35%),
+    radial-gradient(ellipse at 86% 104%, #3e6a2a 0 40%, transparent 41%),
+    linear-gradient(#7fbfe6, #cfe8d5 76%, #9cc7a4);
+}
+/* Panels and the puzzle card pop in. */
+.panel, .puzzle-card { animation: pop-in 0.22s ease-out; }
+@keyframes pop-in { from { transform: translateY(1.6cqh) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Buttons lift and glow when you point at them. */
+.mode-card, .tile, .mbtn, .daily-card { transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease; }
+.mode-card:hover { transform: translateY(-0.4cqh); box-shadow: 0 0.9cqh 0 var(--olive-dark), 0 0 0 0.3cqh rgba(255,225,53,0.55); }
+.mode-card.primary:hover { box-shadow: 0 0.9cqh 0 var(--banana-dark), 0 0 2.4cqh rgba(255,225,53,0.6); }
+.tile:hover, .daily-card:hover { transform: translateY(-0.3cqh); filter: brightness(1.12); }
+.mbtn:hover { transform: translateY(-0.2cqh); }
+/* The primary Quick Play card gently pulses to show where to start. */
+.menu.v2 .mode-card.primary .mode-tag { animation: nudge 2.4s ease-in-out infinite; }
+@keyframes nudge { 0%, 70%, 100% { transform: none; } 80% { transform: scale(1.08); } 90% { transform: scale(0.98); } }
+/* Leaderboards: medals for the top three. */
+table.compact tbody tr:nth-child(-n+3):not(.empty-row) td:first-child { font-weight: 800; }
+table.compact tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
+.medal { display: inline-grid; place-items: center; width: 3cqh; height: 3cqh; border-radius: 50%; font-size: 1.6cqh; font-weight: 800; color: var(--ink); }
+.medal.m1 { background: linear-gradient(#ffe866, #d4a800); }
+.medal.m2 { background: linear-gradient(#f2f2f2, #a9a9a9); }
+.medal.m3 { background: linear-gradient(#f0b27a, #a05a2c); }

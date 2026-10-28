@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { emit } from '../eventBus.js';
-import { Panel, Icon } from './common.jsx';
+import { Panel, Rank, Icon } from './common.jsx';
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
@@ -106,7 +106,7 @@ export default function Daily({ me, onBack }) {
               <thead><tr><th>#</th><th>Soldier</th><th>Points</th><th>Solved</th></tr></thead>
               <tbody>
                 {!board.length && <tr className="empty-row"><td colSpan={4}>Nobody has played today yet.</td></tr>}
-                {board.map((r, i) => <tr key={r.username} className={r.username === me ? 'me' : ''}><td>{i + 1}</td><td>{r.username}</td><td>{r.score}</td><td>{r.solved} / 5</td></tr>)}
+                {board.map((r, i) => <tr key={r.username} className={r.username === me ? 'me' : ''}><td><Rank n={i + 1} /></td><td>{r.username}</td><td>{r.score}</td><td>{r.solved} / 5</td></tr>)}
               </tbody>
             </table>
           </section>
