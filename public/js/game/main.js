@@ -18,13 +18,14 @@ import { createRenderer } from './render.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { openPuzzle, isPuzzleOpen } from './puzzle.js';
-import { initSound, setListener, setMuted, isMuted, unlockAudio } from './sound.js';
+import { initSound, setListener, setMuted, unlockAudio } from './sound.js';
 import { fetchMe, logout, initLoginScreen } from './auth.js';
+import { rankFor, xpFor, showRank, fetchMyRecord, loadProfile, loadBoards } from './profile.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-const SCREENS = ['login', 'menu', 'avatar', 'controls', 'battle', 'pause', 'results'];
+const SCREENS = ['login', 'menu', 'profile', 'scores', 'settings', 'avatar', 'controls', 'battle', 'pause', 'results'];
 const WEAPON_KEYS = Object.keys(WEAPONS);
 
 const store = {
@@ -41,6 +42,7 @@ initSound();
 
 let parts = readJson('avatar', DEFAULT_AVATAR);
 const stats = readJson('stats', { solved: 0, attempts: 0, streak: 0, best: 0 });
+const settings = readJson('settings', { sound: true, laser: true, banners: true });
 let account = null;   // { id, username, role } from the server session
 let world = null;
 let session = null;   // puzzle stats and start time for the current deployment
@@ -67,9 +69,11 @@ function setAccount(user, isNew = false) {
 }
 
 on('auth:login', ({ user, isNew }) => setAccount(user, isNew));
-$('btn-logout').addEventListener('click', async () => {
+async function logOut() {
   try { await logout(); } finally { account = null; leaveBattle(); show('login'); }
-});
+}
+$('btn-logout').addEventListener('click', logOut);
+$('btn-settings-logout').addEventListener('click', logOut);
 
 // ---------- Banana API status (menu chip) ----------
 async function refreshApiStatus() {
@@ -157,6 +161,51 @@ function toMenu() {
   renderMenuStats();
   show('menu');
   refreshApiStatus();
+  refreshRank();
+}
+
+// Rank and XP on the menu, worked out from the games saved on the server.
+async function refreshRank() {
+  if (!account) return;
+  try { showRank('menu', rankFor(xpFor((await fetchMyRecord()).totals))); } catch { /* keep the last rank shown */ }
+}
+
+// ---------- Profile, Scores and Settings ----------
+let board = 'quick';
+async function openProfile() {
+  $('profile-name').textContent = playerName();
+  $('profile-role').textContent = account?.role ?? 'player';
+  $('profile-role').dataset.role = account?.role ?? 'player';
+  drawAvatarPreview($('profile-avatar'), makeAvatar(parts));
+  show('profile');
+  try { await loadProfile(); } catch { $('profile-record').innerHTML = '<div><dt>Record</dt><dd>Offline</dd></div>'; }
+}
+
+function openScores(mode = board) {
+  board = mode;
+  document.querySelectorAll('#scores-tabs [data-board]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.board === mode)));
+  show('scores');
+  loadBoards(mode, account?.username).catch(() => {
+    $('board-today').innerHTML = $('board-all').innerHTML = '<tr class="empty-row"><td colspan="4">Could not load scores.</td></tr>';
+  });
+}
+
+function applySettings() {
+  setMuted(!settings.sound);
+  renderer.setLaser(settings.laser);
+  hud.setBanners(settings.banners);
+  document.querySelectorAll('[data-setting]').forEach((b) => {
+    const on = settings[b.dataset.setting];
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'On' : 'Off';
+  });
+  $('btn-mute').textContent = settings.sound ? 'Sound: On' : 'Sound: Off';
+}
+
+function toggleSetting(key) {
+  settings[key] = !settings[key];
+  store.set('settings', JSON.stringify(settings));
+  applySettings();
 }
 
 function resume() {
@@ -338,6 +387,12 @@ function animatePreview(dt) {
 // ---------- Buttons ----------
 document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => deploy(b.dataset.mode)));
 $('btn-avatar').addEventListener('click', () => { buildAvatarScreen(); show('avatar'); });
+$('btn-customize').addEventListener('click', () => { buildAvatarScreen(); show('avatar'); });
+$('btn-profile').addEventListener('click', openProfile);
+$('btn-scores').addEventListener('click', () => openScores());
+document.querySelectorAll('#scores-tabs [data-board]').forEach((t) => t.addEventListener('click', () => openScores(t.dataset.board)));
+$('btn-settings').addEventListener('click', () => show('settings'));
+document.querySelectorAll('[data-setting]').forEach((b) => b.addEventListener('click', () => toggleSetting(b.dataset.setting)));
 $('btn-controls').addEventListener('click', () => show('controls'));
 document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', toMenu));
 $('btn-resume').addEventListener('click', resume);
@@ -345,10 +400,7 @@ $('btn-end').addEventListener('click', () => { if (world) { resume(); endMatchNo
 $('btn-quit').addEventListener('click', toMenu);
 $('btn-again').addEventListener('click', () => { const m = mode; toMenu(); deploy(m); });
 $('btn-menu').addEventListener('click', toMenu);
-$('btn-mute').addEventListener('click', () => {
-  setMuted(!isMuted());
-  $('btn-mute').textContent = isMuted() ? 'Sound: Off' : 'Sound: On';
-});
+$('btn-mute').addEventListener('click', () => toggleSetting('sound'));
 
 // ---------- Game loop ----------
 let last = performance.now();
@@ -375,6 +427,7 @@ function frame(now) {
 }
 
 initLoginScreen();
+applySettings();
 drawAvatarPreview($('menu-avatar'), makeAvatar(parts));
 renderMenuStats();
 show('login');
@@ -400,4 +453,7 @@ function openPreview() {
     puzzle(purpose, { modeLabel: 'Quick Play', title: titles[purpose], subtitle: 'Preview of the puzzle screen.' });
   } else if (name === 'avatar') { buildAvatarScreen(); show('avatar'); }
   else if (name === 'controls') show('controls');
+  else if (name === 'profile') openProfile();
+  else if (name === 'scores') openScores(MODES[arg] ? arg : 'quick');
+  else if (name === 'settings') show('settings');
 }

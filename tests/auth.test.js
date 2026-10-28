@@ -109,8 +109,12 @@ test('puzzle counts on a saved score come from the server, not the browser', asy
     const board = await c.get('/api/scores/leaderboard?mode=quick');
     assert.equal(board.body.rows[0].username, 'solver');
     assert.equal(board.body.rows[0].kills, 5);
+    const today = await c.get('/api/scores/leaderboard?mode=quick&period=today');
+    assert.equal(today.body.period, 'today');
+    assert.equal(today.body.rows.length, 1);
     const mine = await c.get('/api/scores/me');
     assert.equal(mine.body.totals.games, 1);
+    assert.equal(mine.body.totals.seconds_played, 120);
   } finally { await s.close(); }
 });
 

@@ -7,12 +7,14 @@
 import { VIEW, TILE, WEAPONS, SOLDIER } from './config.js';
 import { drawSoldier } from './characters.js';
 import { activeGun } from './world.js';
+import { raycast } from './map.js';
 
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   const cam = { x: 0, y: 0 };
   let dpr = 1;
   let scale = 1;          // world zoom: 1 = normal, smaller = see further
+  let laser = true;       // sight laser from the gun to the crosshair (Settings)
   const vw = () => VIEW.width / scale;
   const vh = () => VIEW.height / scale;
 
@@ -233,6 +235,24 @@ export function createRenderer(canvas) {
     ctx.globalAlpha = 1;
   }
 
+  // A faint red sight line from the gun towards the crosshair; it stops at walls.
+  function drawLaser(mouse, world) {
+    const p = world.player;
+    if (!laser || !p.alive) return;
+    const gx = p.x + p.w / 2;
+    const gy = p.y + 25;
+    const aim = toWorld(mouse.x, mouse.y);
+    const hit = raycast(world.map, gx, gy, aim.x, aim.y, 8);
+    const from = toViewFromWorld(gx, gy);
+    const to = hit ? toViewFromWorld(hit.x, hit.y) : mouse;
+    ctx.strokeStyle = 'rgba(230, 57, 70, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+
   function drawCrosshair(mouse, world) {
     const p = world.player;
     const reloading = p.reloadTimer > 0;
@@ -265,8 +285,9 @@ export function createRenderer(canvas) {
       ctx.fillStyle = 'rgba(80,0,0,0.25)';
       ctx.fillRect(0, 0, VIEW.width, VIEW.height);
     }
+    drawLaser(mouse, world);
     drawCrosshair(mouse, world);
   }
 
-  return { render, toView, toWorld, toViewFromWorld };
+  return { render, toView, toWorld, toViewFromWorld, setLaser: (on) => { laser = on; } };
 }
