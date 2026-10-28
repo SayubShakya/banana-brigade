@@ -15,6 +15,10 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Download MongoDB into the cached folder (by default it goes under node_modules,
+      # which npm ci deletes, so the cache would never be used).
+      MONGOMS_DOWNLOAD_DIR: /home/runner/.cache/mongodb-binaries
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
