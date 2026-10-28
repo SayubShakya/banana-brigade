@@ -40,8 +40,10 @@ function useApiStatus() {
 export default function Menu({ account, isNew, parts, onDeploy, onOpen, onLogout }) {
   const status = useApiStatus();
   const [rank, setRank] = useState(rankFor(0));
+  const [daily, setDaily] = useState(null);
   useEffect(() => {
     api.myRecord().then(({ totals }) => setRank(rankFor(xpFor(totals)))).catch(() => {});
+    api.daily().then(setDaily).catch(() => {});
   }, []);
 
   return (
@@ -77,7 +79,14 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen, onLogout
             <span className="mode-tag">{m.tag}</span>
           </button>
         ))}
-        <p className="banana-note"><Icon id="banana" />Banana puzzles let you deploy, respawn early and open crates.</p>
+        <button className="daily-card" onClick={() => onOpen('daily')}>
+          <Icon id="banana" />
+          <span>Daily Banana Challenge
+            <small>{!daily ? '5 puzzles · same for everyone today'
+              : daily.played ? `Done today: ${daily.result.score} points · streak ${daily.streak}`
+                : `5 puzzles · not played today${daily.streak ? ` · streak ${daily.streak}` : ''}`}</small>
+          </span>
+        </button>
       </nav>
     </section>
   );
