@@ -47,7 +47,7 @@
         </div>
 
         <div class="hud-score">
-          <div>
+          <div class="score-pill">
             <div id="score">Kills 0 · Deaths 0</div>
             <div id="rank"></div>
           </div>
@@ -63,11 +63,11 @@
             <div class="reload-bar" id="reload-bar"><div id="reload-fill"></div></div>
           </div>
           <div class="action-buttons">
-            <button class="hud-btn" data-action="swap" title="Switch weapon (Q)">SWAP</button>
-            <button class="hud-btn" data-action="reload" title="Reload (R)">RELOAD</button>
-            <button class="hud-btn" data-action="melee" title="Melee (F)">MELEE</button>
-            <button class="hud-btn" data-action="grenade" title="Grenade (G)">NADE <b id="grenades">3</b></button>
-            <button class="hud-btn" data-action="zoom" title="Zoom (Z)">ZOOM <b id="zoom-label">1x</b></button>
+            <button class="hud-btn" data-action="swap" title="Switch weapon (Q)">SWAP <kbd>Q</kbd></button>
+            <button class="hud-btn" data-action="reload" title="Reload (R)">RELOAD <kbd>R</kbd></button>
+            <button class="hud-btn" data-action="melee" title="Melee (F)">MELEE <kbd>F</kbd></button>
+            <button class="hud-btn" data-action="grenade" title="Grenade (G)">NADE <b id="grenades">3</b> <kbd>G</kbd></button>
+            <button class="hud-btn" data-action="zoom" title="Zoom (Z)">ZOOM <b id="zoom-label">1x</b> <kbd>Z</kbd></button>
           </div>
         </div>
 
@@ -76,6 +76,11 @@
 
         <div id="center-msg" role="button" tabindex="0" hidden></div>
         <div id="hud-toast" role="status"></div>
+        <div id="hud-help" class="hud-help" hidden>
+          <span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> / <kbd>Space</kbd> jetpack</span><span><kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot</span>
+          <span class="banana"><kbd>E</kbd> open banana crate</span><span class="banana"><kbd>B</kbd> Banana respawn</span><span><kbd>Esc</kbd> menu</span>
+        </div>
+        <div id="fps" class="fps" hidden></div>
         <div id="hit-flash"></div>
 
         <div id="scoreboard" hidden>

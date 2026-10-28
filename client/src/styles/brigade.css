@@ -451,3 +451,32 @@ table.compact { font-size: 1.9cqh; }
 .room-code b { font: 400 5cqh 'Black Ops One', sans-serif; color: var(--banana); letter-spacing: 0.8cqh; }
 .room-code small { font-size: 1.8cqh; text-transform: none; }
 .mode-chip[data-state="offline"] { opacity: 0.6; }
+
+/* Battle HUD: readable score, key letters on buttons, controls banner, FPS */
+.score-pill { padding: 0.8cqh 1.6cqh; border-radius: 1.2cqh; background: rgba(24, 28, 15, 0.78); }
+.hud-btn kbd { min-width: 0; margin-left: 0.4cqh; padding: 0 0.6cqh; font-size: 1.4cqh; box-shadow: none; background: rgba(255,255,255,0.18); color: var(--paper); }
+body.touch .hud-btn kbd { display: none; }
+.hud-help {
+  position: absolute; left: 50%; bottom: 15cqh; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8cqh 1.8cqh;
+  max-width: 70%; padding: 1.2cqh 2cqh; border-radius: 1.4cqh; background: rgba(24, 28, 15, 0.82); color: var(--paper);
+  font: 600 1.9cqh 'Rubik', sans-serif; text-shadow: none; pointer-events: none; transition: opacity 0.8s ease;
+}
+.hud-help kbd { font-size: 1.6cqh; min-width: 2.6cqh; padding: 0.1cqh 0.6cqh; margin-right: 0.3cqh; }
+.hud-help .banana { color: var(--banana); }
+.hud-help.fade { opacity: 0; }
+body.touch .hud-help { display: none; }
+.fps { position: absolute; left: 2cqh; bottom: 1.4cqh; padding: 0.3cqh 0.8cqh; border-radius: 0.6cqh; background: rgba(0,0,0,0.55); color: #9ee37d; font: 700 1.6cqh monospace; }
+
+/* Menu (v2): icon rail | soldier and rank | three big choices */
+.menu.v2 { grid-template-columns: 12cqh 1fr 0.95fr; }
+.menu.v2 .menu-top { grid-column: 1 / -1; }
+.menu-rail { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 1.2cqh; }
+.menu-rail .tile { padding: 1.2cqh 0.4cqh; font-size: 1.6cqh; }
+.menu.v2 .menu-left { align-items: center; text-align: center; }
+.menu.v2 .logo { font-size: 11cqh; }
+.menu.v2 .menu-right { gap: 1.8cqh; }
+.mode-card.big { padding-top: 2.4cqh; padding-bottom: 2.4cqh; }
+.mode-card.big b { font-size: 4.4cqh; }
+.mode-card.big small { font-size: 2cqh; }
+.modes-list { display: flex; flex-direction: column; gap: 1.4cqh; }
+.modes-list .mode-card small { white-space: normal; line-height: 1.35; }

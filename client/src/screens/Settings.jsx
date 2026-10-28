@@ -4,7 +4,7 @@
 
 import { Panel } from './common.jsx';
 
-const OPTIONS = [['sound', 'Sound effects'], ['laser', 'Sight laser'], ['banners', 'Kill-streak banners']];
+const OPTIONS = [['sound', 'Sound effects'], ['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
 
 export default function Settings({ settings, onToggle, onControls, onLogout, onBack }) {
   return (
