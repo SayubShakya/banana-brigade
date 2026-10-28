@@ -1,0 +1,45 @@
+# Continuous integration for Banana Brigade.
+# On every push and pull request: install the exact packages from package-lock.json,
+# run the automated tests (they start a throw-away MongoDB with mongodb-memory-server,
+# which downloads a MongoDB binary on the runner) and build the React app with Vite.
+#
+# Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # mongodb-memory-server downloads a MongoDB binary into this folder on the
+      # first run; caching it makes later runs faster and less dependent on the download.
+      - name: Cache the MongoDB binary for the tests
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            mongodb-binaries-${{ runner.os }}-
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Run the tests
+        run: npm test
+
+      - name: Build the React app
+        run: npx vite build

@@ -1,7 +1,7 @@
 {
   "name": "banana-brigade",
-  "version": "0.1.0",
-  "description": "Banana Brigade: a 2D jetpack shooter where Banana API puzzles deploy, revive and arm your soldier.",
+  "version": "1.0.0",
+  "description": "Banana Brigade: a 2D jetpack shooter with a campaign, online multiplayer and a daily challenge, where Banana API puzzles deploy, revive and arm your soldier. Node.js, Express, MongoDB, Socket.io and React.",
   "main": "server/index.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
