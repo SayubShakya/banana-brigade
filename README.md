@@ -231,6 +231,8 @@ More detail, with sequence diagrams, is in [docs/architecture.md](docs/architect
 - **Forgot password:** a single-use link that lasts 30 minutes. Only its SHA-256 hash is stored; using it ends
   every session of the account. In development the link is printed in the server terminal (no email needed).
   The reply is the same for unknown names, and requests are limited to 5 per IP every 15 minutes.
+- New passwords are checked against **Have I Been Pwned** (k-anonymity: only 5 characters of the SHA-1 hash
+  leave the server; allowed with a logged warning if the service is down).
 - Login compares against a dummy hash when the user does not exist, so timing does not reveal usernames.
 - **Authorisation** is checked on the server: `requireLogin`, `requireAdmin`. The user and role are read from
   the database on every request, so a deleted account or a demoted admin loses access at once. An admin cannot

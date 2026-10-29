@@ -12,6 +12,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { requireLogin } = require('../middleware/auth');
 const { endSessionsFor, countSessionsFor, disconnectSocketsFor } = require('../sessions');
+const { noPwnedCheck } = require('../services/pwned');
 
 const USERNAME = /^[A-Za-z0-9_]{3,16}$/;
 const MIN_PASSWORD = 8;
@@ -42,6 +43,13 @@ const hashToken = (token) => crypto.createHash('sha256').update(token).digest('h
 // mail service. A real deployment would pass a function that sends an email.
 function logResetLink({ username, link, expiresAt }) {
   console.log(`[password reset] Link for ${username}, valid until ${new Date(expiresAt).toLocaleTimeString()}:\n  ${link}`);
+}
+
+// A message for a password found in data breaches (Have I Been Pwned), else null.
+async function breachMessage(pwnedCheck, password) {
+  const { pwned, count } = await pwnedCheck(password);
+  if (!pwned) return null;
+  return `This password has appeared in ${count.toLocaleString('en-GB')} data breach${count === 1 ? '' : 'es'} (Have I Been Pwned). Please choose another one.`;
 }
 
 const waitMinutes = (resetAt, now) => Math.max(1, Math.ceil((resetAt - now) / 60000));
@@ -82,7 +90,8 @@ function endThisSession(req, res) {
 // appUrl: the address put in reset links. In production it must come from settings
 // (APP_URL), never from the request's Host header, which an attacker can change to
 // make the server hand out links to their own site.
-function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logResetLink, appUrl = null }) {
+// pwnedCheck: the Have I Been Pwned check for new passwords (services/pwned.js).
+function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logResetLink, appUrl = null, pwnedCheck = noPwnedCheck }) {
   const router = express.Router();
 
   router.post('/register', async (req, res, next) => {
@@ -95,6 +104,8 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         return res.status(400).json({ error: `Password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
       }
       if (await db.findUserByName(username)) return res.status(409).json({ error: 'That username is taken' });
+      const breached = await breachMessage(pwnedCheck, password);
+      if (breached) return res.status(400).json({ error: breached, pwned: true });
       const hash = await bcrypt.hash(password, BCRYPT_COST);
       let user;
       try {
@@ -185,6 +196,8 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       if (!user || typeof current !== 'string' || !(await bcrypt.compare(current, user.password_hash))) {
         return res.status(403).json({ error: 'Your current password is not right' });
       }
+      const breached = await breachMessage(pwnedCheck, fresh);
+      if (breached) return res.status(400).json({ error: breached, pwned: true });
       await db.setPassword(user.id, await bcrypt.hash(fresh, BCRYPT_COST));
       // A changed password should also throw out anyone who got in with the old one.
       const ended = await endSessionsFor(req.sessionStore, user.id, { keepSid: req.sessionID });
@@ -255,6 +268,9 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       if (typeof password !== 'string' || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
         return res.status(400).json({ error: `Password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
       }
+      // Checked before the link is used up, so a refused password does not waste it.
+      const breached = await breachMessage(pwnedCheck, password);
+      if (breached) return res.status(400).json({ error: breached, pwned: true });
       const userId = typeof token === 'string' && token.length <= 100 ? await db.usePasswordReset(hashToken(token), now()) : null;
       const user = userId && await db.findUserById(userId);
       if (!user) return res.status(400).json({ error: 'This reset link is not valid any more. Ask for a new one.' });

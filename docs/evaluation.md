@@ -115,6 +115,21 @@ counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once ge
 | CAPTCHA after a few failures | Stops bots, not people | Needs a third-party service; worse for players |
 | `express-rate-limit` package | Ready-made | Counts in memory by default, so it resets on restart and is not shared between servers; ours is in MongoDB |
 
+**Breached passwords: Have I Been Pwned** (`server/services/pwned.js`, `feature/pwned-passwords`)
+
+New passwords (sign-up, change, reset) are checked against the 800+ million passwords seen in real breaches.
+Only the first 5 characters of the password's SHA-1 hash are sent (k-anonymity); the service returns every suffix
+with that prefix and the match is made on our server. If the service is down the password is allowed and a
+warning is logged (fail open).
+
+| Option | For | Against |
+|---|---|---|
+| **HIBP range API, fail open (chosen)** | Blocks the passwords attackers try first; the password never leaves the server | Depends on a third-party service; a 2.5 s timeout can slow sign-up when it is down |
+| HIBP, fail closed | Never lets a breached password through | Nobody can sign up while the service is down |
+| Download the HIBP list and check locally | No third party at run time | Tens of gigabytes to store and keep up to date |
+| Composition rules (must have a digit, a symbol…) | Easy | NIST SP 800-63B advises against them: they lead to `Password1!`; a breach list helps more |
+| Send the full hash | Simpler | The service (or anyone watching) learns the hash, which can be cracked |
+
 **Password reset: design choices**
 
 | Choice | Why | Alternative |
