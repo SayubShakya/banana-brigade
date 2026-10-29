@@ -1,0 +1,22 @@
+{
+  "name": "Banana Brigade",
+  "short_name": "Brigade",
+  "description": "A 2D jetpack shooter where Banana API puzzles decide when you deploy, respawn and power up.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#2f3a18",
+  "theme_color": "#4b5a2a",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "screenshots": [
+    { "src": "/img/gameplay.jpg", "sizes": "1280x720", "type": "image/jpeg", "form_factor": "wide", "label": "A battle on Snow Peak" }
+  ]
+}
