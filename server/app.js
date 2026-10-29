@@ -20,6 +20,7 @@ const express = require('express');
 const session = require('express-session');
 const { createPuzzleStore } = require('./puzzles');
 const { createPuzzlePool } = require('./pool');
+const { spec: openApiSpec } = require('./openapi');
 const { createEventLog } = require('./eventLog');
 const { createAuthRouter } = require('./routes/auth');
 const { createScoresRouter } = require('./routes/scores');
@@ -30,6 +31,13 @@ const { createAchievements } = require('./achievements');
 const { requireLogin } = require('./middleware/auth');
 
 const PURPOSES = ['deploy', 'respawn', 'crate'];
+const PUBLIC_MODES = ['quick', 'survival', 'team', 'online', 'campaign'];
+// Swagger UI (pinned version from a CDN) reading our OpenAPI file.
+const DOCS_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Banana Brigade API</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css"></head>
+<body><div id="ui"></div><script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+<script>SwaggerUIBundle({ url: '/api/v1/openapi.json', dom_id: '#ui' });</script></body></html>`;
 const SESSION_COOKIE = 'brigade.sid';
 
 function createApp({
@@ -50,7 +58,39 @@ function createApp({
   const app = express();
   app.set('sessionCookieName', SESSION_COOKIE);
   if (trustProxy) app.set('trust proxy', trustProxy);
+  // API versioning: /api/v1/... is the current API. The old paths without /v1 keep
+  // working (they are the same handlers), so an older browser tab does not break.
+  app.use((req, res, next) => {
+    if (req.url === '/api/v1' || req.url.startsWith('/api/v1/')) req.url = `/api${req.url.slice(7)}`;
+    next();
+  });
   app.use(express.json({ limit: '4kb' }));
+
+  // The API description (OpenAPI 3) and a page that shows it (Swagger UI from a CDN).
+  app.get('/api/openapi.json', (req, res) => res.json(openApiSpec));
+  app.get('/api/docs', (req, res) => res.type('html').send(DOCS_PAGE));
+
+  // Public, read-only leaderboard for other websites. CORS lets any origin read it;
+  // it sends no cookie and needs no login, so it can never act as a player. It runs
+  // before the session middleware, so no session is ever made for these requests.
+  app.use('/api/public', (req, res, next) => {
+    res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+  app.get('/api/public/leaderboard', async (req, res, next) => {
+    const mode = PUBLIC_MODES.includes(req.query.mode) ? req.query.mode : 'quick';
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 10));
+    try {
+      const rows = await db.leaderboard(mode, limit);
+      res.set('Cache-Control', 'public, max-age=30').json({
+        game: 'Banana Brigade', mode, updated: new Date().toISOString(),
+        rows: rows.map((r, i) => ({ rank: i + 1, username: r.username, kills: r.kills, deaths: r.deaths, wave: r.wave, puzzlesSolved: r.puzzles_solved, at: r.created_at })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
 
   const sessionMiddleware = session({
     name: SESSION_COOKIE,
