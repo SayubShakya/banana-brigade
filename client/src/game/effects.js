@@ -8,7 +8,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on } from '../eventBus.js';
+import { on } from '../lib/eventBus.js';
 import { VIEW, WEAPONS } from './config.js';
 import { raycast } from './map.js';
 

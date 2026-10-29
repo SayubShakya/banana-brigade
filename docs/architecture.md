@@ -14,25 +14,30 @@ The browser never talks to MongoDB or to the Banana API. Everything goes through
 
 | Component | Files | Job |
 |---|---|---|
-| Entry point | `server/index.js` | Reads `.env`, connects to MongoDB, creates the session store, starts HTTP and Socket.io on one port |
+| Settings | `server/config/index.js` | Every setting read from `.env` in one place (port, secret, MongoDB, Banana API, APP_URL) |
+| Entry point | `server/index.js` | Loads the settings, connects to MongoDB, creates the session store, starts HTTP and Socket.io on one port |
 | Express app | `server/app.js` | Session cookie, JSON body limit, routers, puzzle routes, `/api/status`, static files |
-| Routers | `server/routes/auth.js`, `scores.js`, `campaign.js`, `daily.js`, `admin.js` | Accounts, results, campaign progress, daily challenge, admin tools |
+| Routers | `server/routes/auth.js`, `scores.js`, `campaign.js`, `daily.js`, `admin.js`, `public.js`, `docs.js` | Accounts, results, campaign progress, daily challenge, admin tools, the public CORS leaderboard, OpenAPI + Swagger UI (`routes/openapi.js`, also written to `docs/openapi.yaml`) |
 | Access checks | `server/middleware/auth.js` | `requireLogin`, `requireAdmin`; load the user and role from the database on every request |
-| Session tools | `server/sessions.js` | Find and end every session of one player; close their open sockets |
-| Storage | `server/db.js`, `server/models.js` | Every database query, and the Mongoose schemas |
+| Session tools | `server/services/sessions.js` | List, find and end the sessions of one player; close their open sockets |
+| Rate limits | `server/services/rateLimiter.js` | Login (per name+IP and per IP), reset and guest limits, counted atomically in MongoDB |
+| Breach check | `server/services/pwned.js` | Have I Been Pwned range API (k-anonymity) for new passwords |
+| Event feed | `server/services/eventLog.js` | Server events for the admin Live events tab |
+| Storage | `server/models/db.js`, `server/models/index.js` | Every database query, and the Mongoose schemas |
 | Banana API client | `server/services/bananaApi.js` | The only file that calls the external API: timeout, up to 2 retries with backoff, parsing, call statistics |
-| Puzzle pool | `server/pool.js` | 3 ready puzzles, a reserve of 25, a 2.5 s deadline, at most 3 calls in flight, a circuit breaker, `/api/status` numbers |
-| Puzzle store | `server/puzzles.js` | Solutions by `puzzleId`; one answer each; 5-minute expiry |
-| Achievements | `server/achievements.js` | Rules that listen for game events and unlock badges |
+| Puzzle pool | `server/services/pool.js` | 3 ready puzzles, a reserve of 25, a 2.5 s deadline, at most 3 calls in flight, a circuit breaker, `/api/status` numbers |
+| Puzzle store | `server/services/puzzles.js` | Solutions by `puzzleId`; one answer each; 5-minute expiry |
+| Achievements | `server/services/achievements.js` | Rules that listen for game events and unlock badges |
 | Realtime | `server/realtime/socket.js`, `rooms.js`, `match.js` | Logged-in sockets only; rooms; matches run on the server |
 | Shared engine | `client/src/game/world.js`, `bots.js`, `map.js`, `config.js`, `campaign.js` | Used by the browser **and** the server (`match.js`, `routes/campaign.js`) |
-| Screens | `client/src/App.jsx`, `client/src/screens/*.jsx` | React screen state machine, including Settings (four tabs) and the Admin screen |
+| Screens | `client/src/App.jsx`, `client/src/screens/` | React screen state machine; one file per screen, folders for `Login/` and `Admin/` |
+| Shared UI | `client/src/components/` | Panel, Icon, Skeleton (`common.jsx`), Toasts, PuzzleModal, PowerPicker |
 | Sound and music | `client/src/game/sound.js`, `music.js` | Effects and procedural music on separate volume buses, driven by bus events |
-| Phone and accessibility | `client/src/fullscreen.js`, `a11y-*` classes in `styles/brigade.css` | Fullscreen, rotate hint, high contrast, large text, reduced motion |
+| Phone and accessibility | `client/src/lib/fullscreen.js`, `a11y-*` classes in `styles/brigade.css` | Fullscreen, rotate hint, high contrast, large text, reduced motion |
 | Demo | `scripts/demo.js` | `npm run demo`: the server with an in-memory MongoDB |
 | Battle loop | `client/src/game/GameSession.js` | Fixed 1/60 s steps: input, bots, world, renderer, HUD |
 | Online view | `client/src/net/NetGame.js`, `net/socket.js` | Sends controls; draws server snapshots with blending |
-| Glue | `client/src/eventBus.js`, `hooks.js`, `puzzleBridge.js`, `api.js` | Event bus, React hook, puzzle window opener, HTTP calls |
+| Glue | `client/src/lib/eventBus.js`, `hooks/useBus.js`, `lib/puzzleBridge.js`, `lib/api.js` | Event bus, React hook, puzzle window opener, HTTP calls |
 
 ```mermaid
 flowchart TB

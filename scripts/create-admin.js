@@ -4,7 +4,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 const bcrypt = require('bcryptjs');
-const { openDatabase } = require('../server/db');
+const { openDatabase } = require('../server/models/db');
 const { USERNAME, MIN_PASSWORD } = require('../server/routes/auth');
 
 const [username, password] = process.argv.slice(2);

@@ -3,9 +3,9 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
-import { rankFor, xpFor } from '../rank.js';
-import { Icon, AvatarCanvas, RankCard, Sky } from './common.jsx';
+import { api } from '../lib/api.js';
+import { rankFor, xpFor } from '../lib/rank.js';
+import { Icon, AvatarCanvas, RankCard, Sky } from '../components/common.jsx';
 
 // Three clear choices, like the original's Quick Play / Online / Local menu.
 const MAIN = [

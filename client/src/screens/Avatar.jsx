@@ -6,7 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { PARTS, DEFAULT_AVATAR, makeAvatar, drawSoldier } from '../game/characters.js';
 import { WEAPONS } from '../game/config.js';
-import { Panel } from './common.jsx';
+import { Panel } from '../components/common.jsx';
 
 const WEAPON_KEYS = Object.keys(WEAPONS);
 const randomOf = (arr) => arr[Math.floor(Math.random() * arr.length)];

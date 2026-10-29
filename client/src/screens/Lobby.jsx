@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSocket, request } from '../net/socket.js';
-import { Panel, Icon } from './common.jsx';
+import { Panel, Icon } from '../components/common.jsx';
 import { DIFFICULTY } from '../game/config.js';
 
 const botLevel = (key) => DIFFICULTY[key]?.name ?? 'Medium';

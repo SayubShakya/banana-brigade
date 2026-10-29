@@ -4,6 +4,18 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
+## [Unreleased]
+
+### Changed (`chore/folder-structure`)
+- **Tidy folders**, moved with `git mv` so each file keeps its history:
+  client `lib/` (api, eventBus, storage, rank, fullscreen, bridges), `hooks/` (useBus), `components/` (common,
+  Toasts, PuzzleModal, PowerPicker), `screens/Login/` and `screens/Admin/`; server `config/` (all settings),
+  `models/` (schemas and queries), `services/` (pool, puzzles, sessions, achievements, eventLog, new
+  rateLimiter), `routes/docs.js` and `routes/public.js` (out of `app.js`); tests in `unit/`, `integration/` and
+  `e2e/`; `INCOMPLETE_TASKS.md` is now `docs/TASKS.md`.
+- `docs/openapi.yaml`, written from `server/routes/openapi.js` by `npm run openapi`; a test checks it is current.
+- README project layout, `docs/architecture.md` and all file:line pointers (README, VIDEO-GUIDE, events) updated.
+
 ## [1.3.2] - 2026-10-29
 
 The last findings of the UI audit, merged from `fix/ui-audit-remaining`.

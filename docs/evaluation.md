@@ -28,7 +28,7 @@ Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-
 - One developer: branches rarely conflict, so the history shows little real merge-conflict resolution.
 - Most work happened on two days (14 and 28 October), so the dates show bursts rather than steady progress.
 - The history keeps a real design change: SQLite (`fadda7c`) replaced by MongoDB (`75afbbd`). Because
-  `server/db.js` hid the database behind functions, the swap touched only `db.js`, `models.js` and the session
+  `server/models/db.js` hid the database behind functions, the swap touched only `db.js`, `models.js` (now in `server/models/`) and the session
   store; the routes did not change. That is evidence the modular structure worked.
 - CI checks tests and the build, but there is no linter or test-coverage gate.
 
@@ -92,7 +92,7 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
 |---|---|---|
 | Version in the path (`/api/v1`) | Visible, easy to route and cache, easy to show | Header versioning (`Accept: application/vnd.brigade.v1+json`) keeps URLs clean but is harder to test in a browser |
 | Old paths kept as an alias | Nothing breaks for an open tab or old client | Two names for one thing until the old one is retired |
-| OpenAPI written by hand in `server/openapi.js`, checked by a test against the routes | No extra library; the test stops it drifting | Generating it from code (e.g. JSDoc or a schema library) keeps it closer to the code but adds a dependency |
+| OpenAPI written by hand in `server/routes/openapi.js`, checked by a test against the routes | No extra library; the test stops it drifting | Generating it from code (e.g. JSDoc or a schema library) keeps it closer to the code but adds a dependency |
 | Swagger UI from a pinned CDN version | No build step | Needs internet; a self-hosted copy would work offline |
 | Public leaderboard with CORS `*`, no cookie, only public fields, 30 s cache | Other sites can show our scores safely; it can never act as a player | Anyone can read it (it is public on purpose); heavy use would need a rate limit |
 | CORS only on `/api/public` | Private routes stay same-origin, so another site cannot call them with the player's cookie | — |
@@ -117,8 +117,8 @@ The first version locked a *username* after 5 wrong passwords. That had two prob
 could lock you out for 10 minutes, and the check ("fewer than 5 failures?") and the record ("one more failure")
 were two separate steps, so guesses sent in parallel could all pass the check before any was recorded.
 Now every try is counted *before* the password is checked, with one atomic `findOneAndUpdate` + `$inc` on a
-counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
-5 are checked and 7 are refused (`tests/password-reset.test.js`). A correct password takes its try back.
+counter document (`server/models/db.js`, `bumpCounter`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
+5 are checked and 7 are refused (`tests/integration/password-reset.test.js`). A correct password takes its try back.
 
 | Option | For | Against |
 |---|---|---|

@@ -11,21 +11,15 @@ const crypto = require('node:crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { requireLogin } = require('../middleware/auth');
-const { endSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle } = require('../sessions');
+const { endSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle } = require('../services/sessions');
 const { noPwnedCheck } = require('../services/pwned');
+const { createRateLimiter } = require('../services/rateLimiter');
 
 const USERNAME = /^[A-Za-z0-9_]{3,16}$/;
 const MIN_PASSWORD = 8;
 const MAX_PASSWORD = 72;           // bcrypt only uses the first 72 bytes
-const LOCKOUT_ATTEMPTS = 5;        // wrong passwords for one name from one IP
-const IP_ATTEMPTS = 20;            // wrong passwords from one IP, whatever the name
-const LOCKOUT_MS = 10 * 60 * 1000;
 const RESET_MS = 30 * 60 * 1000;   // a reset link works for 30 minutes
-const RESETS_PER_IP = 5;           // reset requests from one IP per 15 minutes
-const RESET_WINDOW_MS = 15 * 60 * 1000;
 const GUEST_MS = 7 * 24 * 60 * 60 * 1000;   // a guest (and its cookie) lasts 7 days unless it is saved
-const GUESTS_PER_IP = 10;                    // new guests from one IP per hour
-const GUEST_WINDOW_MS = 60 * 60 * 1000;
 const BCRYPT_COST = 10;
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;   // "remember me": 30 days instead of 2 hours
 const AVAILABLE_PER_MINUTE = 20;
@@ -55,7 +49,6 @@ async function breachMessage(pwnedCheck, password) {
   return `This password has appeared in ${count.toLocaleString('en-GB')} data breach${count === 1 ? '' : 'es'} (Have I Been Pwned). Please choose another one.`;
 }
 
-const waitMinutes = (resetAt, now) => Math.max(1, Math.ceil((resetAt - now) / 60000));
 
 // A short, readable name for the device from its User-Agent header, e.g.
 // "Chrome on macOS", for the "where you're signed in" list. Only this short name is
@@ -111,6 +104,7 @@ function endThisSession(req, res) {
 // pwnedCheck: the Have I Been Pwned check for new passwords (services/pwned.js).
 function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logResetLink, appUrl = null, pwnedCheck = noPwnedCheck, eventLog = null }) {
   const log = (kind, user, text) => eventLog?.record(kind, user, text);
+  const limiter = createRateLimiter({ db, now });
   const router = express.Router();
 
   router.post('/register', async (req, res, next) => {
@@ -149,27 +143,13 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
         return res.status(400).json({ error: 'Enter your username and password' });
       }
-      // Two limits, counted per IP address:
-      //  - 5 tries for one name from one IP. A stranger typing wrong passwords for your
-      //    name only locks themselves out, not you on your own network.
-      //  - 20 tries from one IP across all names, so one machine cannot guess
-      //    passwords for many accounts.
-      // Every try is counted *before* the password is checked, with an atomic $inc, so
-      // a burst of parallel guesses cannot all slip in under the limit. A correct
-      // password takes its try back off again.
+      // Counted per IP before the password is checked (services/rateLimiter.js):
+      // 5 tries for this name from this IP, 20 from this IP for any name.
       const name = username.toLowerCase();
-      const pairKey = `login:${name}|${req.ip}`;
-      const ipKey = `login-ip:${req.ip}`;
-      const t = now();
-      const opts = { windowMs: LOCKOUT_MS, now: t, ip: req.ip };
-      const [pair, fromIp] = await Promise.all([
-        db.bumpCounter(pairKey, { ...opts, username: name }),
-        db.bumpCounter(ipKey, opts),
-      ]);
-      if (pair.n > LOCKOUT_ATTEMPTS || fromIp.n > IP_ATTEMPTS) {
-        const resetAt = pair.n > LOCKOUT_ATTEMPTS ? pair.resetAt : fromIp.resetAt;
+      const attempt = await limiter.login(name, req.ip);
+      if (attempt.blocked) {
         log('security', name, `was blocked after too many tries (from ${req.ip})`);
-        return res.status(429).json({ error: `Too many failed attempts. Try again in ${waitMinutes(resetAt, t)} min.` });
+        return res.status(429).json({ error: `Too many failed attempts. Try again in ${attempt.waitMin} min.` });
       }
       const user = await db.findUserByName(username);
       // Compare even when the user does not exist, so the response time does not
@@ -178,11 +158,10 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       const hash = user && !user.guest ? user.password_hash : getDummyHash();
       const ok = (await bcrypt.compare(password, hash)) && !user?.guest;
       if (!user || !ok) {
-        const left = LOCKOUT_ATTEMPTS - pair.n;
         log('security', name, 'typed a wrong password');
-        return res.status(401).json({ error: left > 0 ? `Wrong username or password (${left} tries left)` : 'Wrong username or password. Locked for 10 min on this network.' });
+        return res.status(401).json({ error: attempt.left > 0 ? `Wrong username or password (${attempt.left} tries left)` : 'Wrong username or password. Locked for 10 min on this network.' });
       }
-      await Promise.all([db.clearCounter(pairKey), db.undoCounter(ipKey)]);
+      await attempt.succeeded();
       if (user.suspended) {
         log('security', user.username, 'tried to log in while suspended');
         return res.status(403).json({ error: `This account is suspended: ${user.suspended.reason}`, suspended: true });
@@ -253,7 +232,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         return res.status(403).json({ error: 'That password is not right' });
       }
       await db.deleteUser(user.id);
-      await db.clearFailedLogins(user.username);
+      await limiter.clearName(user.username);
       await endSessionsFor(req.sessionStore, user.id);
       disconnectSocketsFor(req.app.locals.io, user.id);
       await endThisSession(req, res);
@@ -269,9 +248,9 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
   router.post('/guest', async (req, res, next) => {
     try {
       const t = now();
-      const limit = await db.bumpCounter(`guest-ip:${req.ip}`, { windowMs: GUEST_WINDOW_MS, now: t, ip: req.ip });
-      if (limit.n > GUESTS_PER_IP) {
-        return res.status(429).json({ error: `Too many guest accounts from this network. Try again in ${waitMinutes(limit.resetAt, t)} min.` });
+      const limit = await limiter.hit('guest', req.ip);
+      if (!limit.allowed) {
+        return res.status(429).json({ error: `Too many guest accounts from this network. Try again in ${limit.waitMin} min.` });
       }
       let user = null;
       for (let i = 0; !user && i < 5; i++) {
@@ -335,9 +314,9 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         return res.status(400).json({ error: 'Enter your username' });
       }
       const t = now();
-      const limit = await db.bumpCounter(`reset-ip:${req.ip}`, { windowMs: RESET_WINDOW_MS, now: t, ip: req.ip });
-      if (limit.n > RESETS_PER_IP) {
-        return res.status(429).json({ error: `Too many reset requests. Try again in ${waitMinutes(limit.resetAt, t)} min.` });
+      const limit = await limiter.hit('reset', req.ip);
+      if (!limit.allowed) {
+        return res.status(429).json({ error: `Too many reset requests. Try again in ${limit.waitMin} min.` });
       }
       const user = await db.findUserByName(username);
       if (user && !user.guest) {   // guests have no password to reset
@@ -387,7 +366,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       await db.setPassword(user.id, await bcrypt.hash(password, BCRYPT_COST));
       const ended = await endSessionsFor(req.sessionStore, user.id);
       disconnectSocketsFor(req.app.locals.io, user.id);
-      await db.clearFailedLogins(user.username);
+      await limiter.clearName(user.username);
       log('security', user.username, `reset their password (${ended} session${ended === 1 ? '' : 's'} ended)`);
       res.json({ ok: true, username: user.username, ended });
     } catch (err) {

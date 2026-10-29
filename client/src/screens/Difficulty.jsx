@@ -4,7 +4,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { DIFFICULTY, MODES } from '../game/config.js';
-import { Panel, Icon } from './common.jsx';
+import { Panel, Icon } from '../components/common.jsx';
 
 const ABOUT = {
   easy: ['Bots aim badly and react slowly', 'Bots hit you softly', 'Long puzzle timers'],

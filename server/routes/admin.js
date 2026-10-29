@@ -9,7 +9,7 @@
 
 const express = require('express');
 const { requireAdmin } = require('../middleware/auth');
-const { endSessionsFor, disconnectSocketsFor } = require('../sessions');
+const { endSessionsFor, disconnectSocketsFor } = require('../services/sessions');
 
 const ROLES = ['player', 'admin'];
 

@@ -5,8 +5,8 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
-import { Icon, Sky } from './common.jsx';
+import { api } from '../lib/api.js';
+import { Icon, Sky } from '../components/common.jsx';
 
 const PUZZLES = [
   ['Deploy', 'Solve one to drop into a battle.'],

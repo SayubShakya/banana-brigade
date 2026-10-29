@@ -11,7 +11,7 @@
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
-const { cleanPowers } = require('../achievements');
+const { cleanPowers } = require('../services/achievements');
 const { CHAPTERS, MISSIONS, missionById, isUnlocked, starsFor, totalStars, chapterOf } = require('../../client/src/game/campaign.js');
 
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
