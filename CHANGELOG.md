@@ -15,6 +15,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/live-events`)
+- **Live events** tab in Admin: logins, wrong passwords, guests, puzzles, scores, achievements, online kills and
+  admin actions appear as they happen, pushed over Socket.io from a server `EventEmitter` (`server/eventLog.js`).
+  Filter by kind, pause and clear. Only admins can watch (role checked in the database).
+
 ### Added (`feature/guest-play`)
 - **Play as guest** (home page and login): a temporary account `guest_xxxxxx` with no password, kept 7 days
   (cookie and a MongoDB TTL index) and left off the leaderboards. **Save your progress** turns it into a full

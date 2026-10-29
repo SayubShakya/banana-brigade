@@ -151,3 +151,27 @@ _Written with help from a generative AI coding assistant; reviewed by Sayub Shak
 | `power:choose` (Socket.io, player → server, ack) | `NetGame.js` | `server/realtime/rooms.js` → `match.choosePower` | `{ power }` → `{ power }` |
 
 Online, `power:start/warning/end` travel inside snapshots as `fx` events and are re-emitted on the browser's bus.
+
+## Live event feed for admins (added on `feature/live-events`)
+
+`server/eventLog.js` is a Node `EventEmitter` hub with a ring buffer of the last 100 events
+(`{ id, kind, at, user, text }`). Code that does something worth watching calls `eventLog.record(kind, user, text)`;
+it does not know who is listening (observer pattern).
+
+| Event kind | Recorded by | Example |
+|---|---|---|
+| `auth` | `server/routes/auth.js` (register, login, logout, guest, upgrade) | "sayub logged in" |
+| `security` | `auth.js` (wrong password, blocked, reset asked, password reset) | "sayub typed a wrong password" |
+| `puzzle`, `score`, `campaign`, `daily`, `power`, `achievement` | `eventLog.watchAchievements` listens to the achievement engine's `EventEmitter` | "sayub solved a respawn puzzle" |
+| `kill` | `server/realtime/match.js` `onKill` → `rooms.js` (only kills involving a real player) | "sayub killed Rex (Sniper) in room KQ7P2D" |
+| `admin` | `server/routes/admin.js` (audit log, see below) | "boss suspended cheater: aimbot" |
+
+Delivery: `server/realtime/socket.js` subscribes once with `eventLog.onEvent` and emits every event to the
+Socket.io room `admins` as `server:event`. An admin joins that room with `events:watch` (the role is read from the
+database at that moment; players get `{ error: 'Admins only' }`) and receives the recent list in the
+acknowledgement. `client/src/screens/LiveEvents.jsx` listens for `server:event`, with a filter and pause.
+
+Why push (WebSocket) rather than poll: events appear at once and the server sends nothing when nobody is
+watching. Polling `/api/admin/events` every few seconds would be simpler (plain HTTP, easy to cache) but is
+always late and costs a request per admin per interval. The ring buffer is in memory, so the feed starts empty
+after a restart; the audit log (MongoDB) is the permanent record.

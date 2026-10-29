@@ -1,4 +1,5 @@
-// Admin tools: every account, with buttons to reset scores and to promote or demote.
+// Admin tools: every account, with buttons to reset scores and to promote or demote,
+// and the live event feed from the server.
 // This screen is only shown to admins, but that is just convenience: the server
 // checks the role in the database on every admin request and answers 403 otherwise.
 //
@@ -7,12 +8,16 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Panel } from './common.jsx';
+import LiveEvents from './LiveEvents.jsx';
+
+const TABS = [['players', 'Players'], ['events', 'Live events']];
 
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function Admin({ account, onBack }) {
   const [users, setUsers] = useState(null);
   const [msg, setMsg] = useState('');
+  const [tab, setTab] = useState('players');
 
   const load = () => api.adminUsers().then(({ users: list }) => setUsers(list)).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, []);
@@ -25,6 +30,11 @@ export default function Admin({ account, onBack }) {
   return (
     <Panel wide title="Admin" subtitle="The server checks the role on every request; hiding this screen is not what protects it."
       footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
+      <div className="tabs" role="tablist">
+        {TABS.map(([key, label]) => <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>)}
+      </div>
+      {tab === 'events' && <LiveEvents />}
+      {tab === 'players' && <>
       <table className="results compact admin-table">
         <thead><tr><th>Player</th><th>Role</th><th>Joined</th><th>Games</th><th>Kills</th><th>Puzzles</th><th>Actions</th></tr></thead>
         <tbody>
@@ -50,6 +60,7 @@ export default function Admin({ account, onBack }) {
         </tbody>
       </table>
       <p className="setting-note" role="status">{msg}</p>
+      </>}
     </Panel>
   );
 }

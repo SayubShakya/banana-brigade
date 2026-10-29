@@ -39,8 +39,9 @@ function soldierState(s) {
  * @param {'easy'|'medium'|'hard'} [o.difficulty]  how good the bots are (checked by rooms.js)
  * @param {(event:string, payload:object, userId?:string) => void} o.send  to everyone, or to one player
  * @param {(result:object) => void} o.onEnd
+ * @param {(killer:string|null, victim:string, weapon:string, headshot:boolean) => void} [o.onKill]  for the live event feed
  */
-function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, timeLimit }) {
+function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit }) {
   const matchId = crypto.randomUUID();
   const outbox = [];                          // events for this tick, sent with the snapshot
   const near = new Set();                     // players standing at a banana crate this tick
@@ -55,7 +56,11 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
   const sid = (userId) => `u${userId}`;
   const emit = (event, p) => {
     switch (event) {
-      case 'soldier:killed': outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon, headshot: !!p.headshot }]); break;
+      case 'soldier:killed':
+        outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon, headshot: !!p.headshot }]);
+        // Only kills that involve a real player go to the event feed (bot-on-bot is noise).
+        if (p.victim.id.startsWith('u') || p.killer?.id.startsWith('u')) onKill?.(p.killer?.name ?? null, p.victim.name, p.weapon, !!p.headshot);
+        break;
       case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount), headshot: !!p.headshot }]); break;
       case 'soldier:respawned': outbox.push(['respawned', { soldier: p.soldier.id }]); break;
       case 'power:start': case 'power:warning': case 'power:end':

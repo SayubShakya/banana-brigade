@@ -95,7 +95,8 @@ function endThisSession(req, res) {
 // (APP_URL), never from the request's Host header, which an attacker can change to
 // make the server hand out links to their own site.
 // pwnedCheck: the Have I Been Pwned check for new passwords (services/pwned.js).
-function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logResetLink, appUrl = null, pwnedCheck = noPwnedCheck }) {
+function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logResetLink, appUrl = null, pwnedCheck = noPwnedCheck, eventLog = null }) {
+  const log = (kind, user, text) => eventLog?.record(kind, user, text);
   const router = express.Router();
 
   router.post('/register', async (req, res, next) => {
@@ -121,6 +122,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         throw err;
       }
       await startSession(req, user);
+      log('auth', user.username, 'created an account');
       res.status(201).json({ user: publicUser(user) });
     } catch (err) {
       next(err);
@@ -152,6 +154,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       ]);
       if (pair.n > LOCKOUT_ATTEMPTS || fromIp.n > IP_ATTEMPTS) {
         const resetAt = pair.n > LOCKOUT_ATTEMPTS ? pair.resetAt : fromIp.resetAt;
+        log('security', name, `was blocked after too many tries (from ${req.ip})`);
         return res.status(429).json({ error: `Too many failed attempts. Try again in ${waitMinutes(resetAt, t)} min.` });
       }
       const user = await db.findUserByName(username);
@@ -162,11 +165,13 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       const ok = (await bcrypt.compare(password, hash)) && !user?.guest;
       if (!user || !ok) {
         const left = LOCKOUT_ATTEMPTS - pair.n;
+        log('security', name, 'typed a wrong password');
         return res.status(401).json({ error: left > 0 ? `Wrong username or password (${left} tries left)` : 'Wrong username or password. Locked for 10 min on this network.' });
       }
       await Promise.all([db.clearCounter(pairKey), db.undoCounter(ipKey)]);
       await db.touchLogin(user.id);
       await startSession(req, user, { remember: remember === true });
+      log('auth', user.username, `logged in${remember === true ? ' (remember me)' : ''}`);
       res.json({ user: publicUser(user) });
     } catch (err) {
       next(err);
@@ -174,6 +179,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
   });
 
   router.post('/logout', (req, res, next) => {
+    if (req.session.username) log('auth', req.session.username, 'logged out');
     endThisSession(req, res).then(() => res.json({ ok: true }), next);
   });
 
@@ -260,6 +266,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       }
       if (!user) return res.status(503).json({ error: 'Could not make a guest name. Try again.' });
       await startSession(req, user, { maxAge: GUEST_MS });
+      log('auth', user.username, 'started playing as a guest');
       res.status(201).json({ user: publicUser(user) });
     } catch (err) {
       next(err);
@@ -292,6 +299,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       }
       if (!user) return res.status(400).json({ error: 'This account is already saved' });
       await startSession(req, user);
+      log('auth', user.username, `saved guest ${req.user.username} as a full account`);
       res.json({ user: publicUser(user) });
     } catch (err) {
       next(err);
@@ -318,6 +326,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         const expiresAt = t + RESET_MS;
         await db.createPasswordReset(user.id, hashToken(token), new Date(expiresAt));
         const base = appUrl ?? `${req.protocol}://${req.get('host')}`;
+        log('security', user.username, 'asked for a password reset link');
         await sendResetLink({ username: user.username, link: `${base}/#reset=${token}`, expiresAt });
       }
       res.json({ ok: true, message: 'If that account exists, a reset link has been sent. It works once, for 30 minutes.' });
@@ -346,6 +355,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       const ended = await endSessionsFor(req.sessionStore, user.id);
       disconnectSocketsFor(req.app.locals.io, user.id);
       await db.clearFailedLogins(user.username);
+      log('security', user.username, `reset their password (${ended} session${ended === 1 ? '' : 's'} ended)`);
       res.json({ ok: true, username: user.username, ended });
     } catch (err) {
       next(err);

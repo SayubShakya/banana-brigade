@@ -47,6 +47,7 @@ only shows pictures and sends controls and answers.
 - **Accounts:** register (with a live "name is free" check), log in with an optional "remember me" (30 days),
   bcrypt-hashed passwords, an HttpOnly session cookie, login limits per IP address, "forgot password" with a
   single-use reset link (30 minutes), and roles.
+- **Live event feed** (Admin → Live events): server events pushed over Socket.io as they happen.
 - **Admin screen:** every account with its games, kills and puzzles; reset a player's scores; promote or demote.
 - **Phones:** touch sticks, a fullscreen button and a "turn your phone sideways" hint.
 
@@ -264,6 +265,7 @@ verification.
 | Event-driven | Music crossfades on `game:state` | `client/src/game/music.js:131-136` |
 | Event-driven | DOM events to bus events | `client/src/game/input.js:62-70` |
 | Event-driven | Server `EventEmitter` achievements | `server/achievements.js:36-94` |
+| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/eventLog.js`, `server/realtime/socket.js`, `client/src/screens/LiveEvents.jsx` |
 | Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:140-257`, `server/realtime/match.js:130-132` |
 | Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:91-164` (`createBananaApi` to `fetchPuzzle`) |
 | Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:43-80` |

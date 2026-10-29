@@ -11,7 +11,7 @@ const { Server } = require('socket.io');
 const { createRooms } = require('./rooms');
 
 function attachRealtime(httpServer, app, { matchOptions } = {}) {
-  const { sessionMiddleware, db, pool, puzzleStore, achievements } = app.locals;
+  const { sessionMiddleware, db, pool, puzzleStore, achievements, eventLog } = app.locals;
   const io = new Server(httpServer, {
     maxHttpBufferSize: 16 * 1024,     // controls and answers are tiny
     serveClient: false,
@@ -31,7 +31,21 @@ function attachRealtime(httpServer, app, { matchOptions } = {}) {
     next();
   });
 
-  const rooms = createRooms({ io, db, pool, puzzleStore, achievements, matchOptions });
+  const rooms = createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchOptions });
+
+  // Live event feed for admins. The role is read from the database when the admin
+  // asks to watch (not trusted from the session), and every event is pushed to the
+  // "admins" room as it happens.
+  eventLog.onEvent((event) => io.to('admins').emit('server:event', event));
+  io.on('connection', (socket) => {
+    socket.on('events:watch', async (ack) => {
+      const user = await db.findUserById(socket.data.userId).catch(() => null);
+      if (user?.role !== 'admin') return typeof ack === 'function' && ack({ error: 'Admins only' });
+      socket.join('admins');
+      if (typeof ack === 'function') ack({ ok: true, recent: eventLog.recent() });
+    });
+    socket.on('events:stop', () => socket.leave('admins'));
+  });
   return { io, rooms };
 }
 
