@@ -44,32 +44,41 @@ export const SOLDIER = {
 
 // type: 'bullet' (tracer), 'rocket' (slow, explodes) or 'flame' (short-lived fire puffs)
 // falloff: damage drops after `start` px of travel down to `min` x at full range (shotgun).
-// headshot: damage multiplier when the bullet enters the top 30% of the soldier's box.
+// headshot: damage multiplier for a bullet that hits the head (see HEADSHOT_ZONE below).
+//   Every bullet gun has one; rockets and flames never headshot.
 // selfDamage: share of its own blast the shooter takes (rocket jumps hurt less).
 // drag: how quickly flame puffs slow down (per second).
 //
 // Time to kill a full-health (100 HP) soldier, every shot hitting, no armour:
-//   weapon     dmg/hit         shots  TTK (s)   notes
-//   Magnum     25              4      1.02      sidearm, infinite ammo
-//   SMG        10              10     0.63      wide spread: real TTK is close range only
-//   Rifle      15              7      0.66      tight spread, the all-rounder
-//   Shotgun    7x12 = 84       2      0.80      point blank; ~50 per shot at 300 px (falloff)
-//   Sniper     70 / 112 head   2 / 1  1.30 / 0  one-shot only on a headshot
-//   Rocket     ~70 direct      2      1.20      splash; 40% self-damage
-//   Flamer     4 per puff      25     ~1.0      25 puffs/s, short range (~250 px)
+//   weapon     dmg/hit (body / head)    shots body / head  TTK body / head (s)  notes
+//   Magnum     25 / 37.5                4 / 3              1.02 / 0.68          sidearm, infinite ammo
+//   SMG        10 / 13                  10 / 8             0.63 / 0.49          wide spread: real TTK is close range only
+//   Rifle      15 / 22.5                7 / 5              0.66 / 0.44          tight spread, the all-rounder
+//   Shotgun    7x12 = 84 / 7x15 = 105   2 / 1              0.80 / 0             point blank; ~50 per shot at 300 px (falloff)
+//   Sniper     70 / 140                 2 / 1              1.30 / 0             one-shot only on a headshot
+//   Rocket     ~70 direct               2                  1.20                 splash; 40% self-damage; never a headshot
+//   Flamer     4 per puff               25                 ~1.0                 25 puffs/s, short range (~250 px); never a headshot
+// (A shotgun headshot needs all 7 pellets in the head at point blank, so it is rare.)
 // The Magnum is the slowest on purpose (always available); every crate weapon beats it.
 export const WEAPONS = {
-  magnum:  { name: 'Magnum',          type: 'bullet', damage: 25, rate: 0.34, mag: 8,   spareMags: Infinity, reload: 1.2, speed: 1600, spread: 0.025, pellets: 1, range: 950,  color: '#ffe08a' },
-  smg:     { name: 'SMG',             type: 'bullet', damage: 10, rate: 0.07, mag: 32,  spareMags: 3, reload: 1.6, speed: 1600, spread: 0.09, pellets: 1, range: 800,  color: '#ffd166' },
-  rifle:   { name: 'Assault Rifle',   type: 'bullet', damage: 15, rate: 0.11, mag: 30,  spareMags: 3, reload: 1.9, speed: 1900, spread: 0.04, pellets: 1, range: 1100, color: '#ffd166' },
-  shotgun: { name: 'Shotgun',         type: 'bullet', damage: 12, rate: 0.8,  mag: 6,   spareMags: 3, reload: 2.0, speed: 1400, spread: 0.22, pellets: 7, range: 430,  color: '#ffb703', falloff: { start: 120, min: 0.3 } },
-  sniper:  { name: 'Sniper',          type: 'bullet', damage: 70, rate: 1.3,  mag: 5,   spareMags: 3, reload: 2.4, speed: 2800, spread: 0.0,  pellets: 1, range: 2000, color: '#ffffff', zoom: 3, headshot: 1.6 },
+  magnum:  { name: 'Magnum',          type: 'bullet', damage: 25, rate: 0.34, mag: 8,   spareMags: Infinity, reload: 1.2, speed: 1600, spread: 0.025, pellets: 1, range: 950,  color: '#ffe08a', headshot: 1.5 },
+  smg:     { name: 'SMG',             type: 'bullet', damage: 10, rate: 0.07, mag: 32,  spareMags: 3, reload: 1.6, speed: 1600, spread: 0.09, pellets: 1, range: 800,  color: '#ffd166', headshot: 1.3 },
+  rifle:   { name: 'Assault Rifle',   type: 'bullet', damage: 15, rate: 0.11, mag: 30,  spareMags: 3, reload: 1.9, speed: 1900, spread: 0.04, pellets: 1, range: 1100, color: '#ffd166', headshot: 1.5 },
+  shotgun: { name: 'Shotgun',         type: 'bullet', damage: 12, rate: 0.8,  mag: 6,   spareMags: 3, reload: 2.0, speed: 1400, spread: 0.22, pellets: 7, range: 430,  color: '#ffb703', falloff: { start: 120, min: 0.3 }, headshot: 1.25 },
+  sniper:  { name: 'Sniper',          type: 'bullet', damage: 70, rate: 1.3,  mag: 5,   spareMags: 3, reload: 2.4, speed: 2800, spread: 0.0,  pellets: 1, range: 2000, color: '#ffffff', zoom: 3, headshot: 2.0 },
   rocket:  { name: 'Rocket Launcher', type: 'rocket', damage: 75, rate: 1.2,  mag: 2,   spareMags: 2, reload: 2.5, speed: 720,  spread: 0.01, pellets: 1, range: 1600, color: '#ff6b35', blastRadius: 120, selfDamage: 0.4 },
   flamer:  { name: 'Flamethrower',    type: 'flame',  damage: 4,  rate: 0.04, mag: 100, spareMags: 1, reload: 2.2, speed: 620,  spread: 0.15, pellets: 1, range: 320,  color: '#ff7b00', drag: 1.0 },
 };
 
-// A hit in the top share of the soldier's box counts as a headshot (for weapons with `headshot`).
-export const HEADSHOT_ZONE = 0.3;
+// Headshots. The head is drawn as a circle (characters.js) centred 9 px below the top of
+// the 50 px soldier box with a 14.5 px radius, so it covers roughly y-5.5 .. y+23.5.
+// A bullet counts as a headshot when it enters the top 45% of the box (22.5 px), or
+// when it clips the small "head cap" box that sticks HEAD_CAP_ABOVE px above the
+// soldier box, HEAD_CAP_HALF_WIDTH px either side of the centre (over the drawn head).
+// Bots fire through the same code, so they follow the same rules.
+export const HEADSHOT_ZONE = 0.45;
+export const HEAD_CAP_ABOVE = 6;
+export const HEAD_CAP_HALF_WIDTH = 9;
 
 export const SIDEARM = 'magnum';
 // Weapons found in crates and given as a random starting primary.

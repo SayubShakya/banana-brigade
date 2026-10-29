@@ -49,9 +49,11 @@ export function createHud() {
   }
   const nameTag = (s) => `<span class="${s.isPlayer ? 'me' : s.team === 'blue' ? 'team-blue' : s.team === 'red' ? 'team-red' : ''}">${esc(s.name)}</span>`;
 
-  on('soldier:killed', ({ victim, killer, weapon }) => {
+  // A headshot kill gets a small gold chip after the weapon. Names still go through esc().
+  const headTag = '<span class="headshot-tag" title="Headshot">🎯 HEADSHOT</span>';
+  on('soldier:killed', ({ victim, killer, weapon, headshot }) => {
     if (victim.isDummy) return;
-    if (killer && killer !== victim) feed(`${nameTag(killer)} <span class="weapon">[${esc(weapon)}]</span> ${nameTag(victim)}`);
+    if (killer && killer !== victim) feed(`${nameTag(killer)} <span class="weapon">[${esc(weapon)}]</span>${headshot ? ` ${headTag}` : ''} ${nameTag(victim)}`);
     else feed(`${nameTag(victim)} <span class="weapon">blew themselves up</span>`);
     if (banners && killer?.isPlayer && killer !== victim && killer.streak >= 3) toast(killer.streak >= 5 ? `Banana Rampage! ${killer.streak} kills` : `${killer.streak}-kill streak!`);
   });

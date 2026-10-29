@@ -901,3 +901,5 @@ body.a11y-contrast .mode-card, body.a11y-contrast .tile, body.a11y-contrast .hom
 /* Touch screens have no keyboard: hide key badges in the Banana Power picker too. */
 body.touch .power-card kbd { display: none; }
 .auth-for { display: block; margin-top: 0.4cqh; font: 600 1.9cqh 'Rubik', sans-serif; color: var(--khaki); }
+/* Kill feed: the gold HEADSHOT chip shown after the weapon on a headshot kill. */
+.feed-row .headshot-tag { display: inline-block; margin-left: 0.4cqh; padding: 0 0.7cqh; border-radius: 0.6cqh; background: linear-gradient(180deg, #ffe066, #f4b400); color: #3a2a00; font-weight: 800; font-size: 0.8em; letter-spacing: 0.05em; vertical-align: middle; box-shadow: 0 0 0.6cqh rgba(255, 209, 102, 0.6); }
