@@ -1,5 +1,5 @@
-// MongoDB document shapes (Mongoose schemas) for players, match results, failed
-// logins and the Daily Banana Challenge.
+// MongoDB document shapes (Mongoose schemas) for players, match results, login
+// limits, password reset links and the Daily Banana Challenge.
 //
 // Compared with the old SQLite tables, a player's achievements and daily streak
 // live inside the player document itself, so one read gives the whole profile.
@@ -51,11 +51,28 @@ scoreSchema.index({ user: 1, createdAt: -1 });
 
 // MongoDB deletes these by itself 10 minutes after the failed attempt (TTL index),
 // which is exactly how long a lockout lasts.
-const loginAttemptSchema = new Schema({
-  username: { type: String, required: true, lowercase: true },
-  failedAt: { type: Date, default: Date.now, expires: 600 },
+// One counter per key and time window, for login limits and reset requests. Keys look
+// like "login:sayub|1.2.3.4" (this name from this IP) or "login-ip:1.2.3.4" (this IP,
+// any name). The counter goes up with an atomic $inc, so many requests sent at the
+// same moment each get their own number and none can slip past the limit.
+// MongoDB deletes the document once expiresAt has passed (TTL index).
+const rateLimitSchema = new Schema({
+  key: { type: String, required: true, unique: true },
+  username: { type: String, lowercase: true, default: null },   // so deleting an account can clear its counters
+  ip: { type: String, default: null },
+  n: { type: Number, default: 0 },
+  expiresAt: { type: Date, required: true, expires: 0 },
 });
-loginAttemptSchema.index({ username: 1, failedAt: -1 });
+
+// "Forgot password" links. Only a SHA-256 hash of the token is stored, so someone
+// who reads the database still cannot use a link. A link works once (usedAt) and
+// MongoDB deletes it 30 minutes after it was made (TTL index on expiresAt).
+const passwordResetSchema = new Schema({
+  tokenHash: { type: String, required: true, unique: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  usedAt: { type: Date, default: null },
+  expiresAt: { type: Date, required: true, expires: 0 },
+});
 
 const dailySchema = new Schema({
   date: { type: String, required: true, unique: true },   // 'YYYY-MM-DD' (UTC)
@@ -81,7 +98,8 @@ function registerModels(conn) {
   return {
     User: conn.model('User', userSchema),
     Score: conn.model('Score', scoreSchema),
-    LoginAttempt: conn.model('LoginAttempt', loginAttemptSchema),
+    RateLimit: conn.model('RateLimit', rateLimitSchema),
+    PasswordReset: conn.model('PasswordReset', passwordResetSchema),
     Daily: conn.model('Daily', dailySchema),
     DailyResult: conn.model('DailyResult', dailyResultSchema),
   };

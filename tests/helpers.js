@@ -34,9 +34,10 @@ after(async () => {
 const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 const fakeApi = (solution = 7) => ({ fetchPuzzle: async () => ({ image: IMAGE, solution }) });
 
-async function startServer({ bananaApi = fakeApi(), db, matchOptions } = {}) {
+// appOptions go to createApp (e.g. trustProxy, sendResetLink).
+async function startServer({ bananaApi = fakeApi(), db, matchOptions, appOptions = {} } = {}) {
   db ??= await freshDatabase();
-  const app = createApp({ db, bananaApi, sessionSecret: 'test-secret' });
+  const app = createApp({ db, bananaApi, sessionSecret: 'test-secret', ...appOptions });
   const server = http.createServer(app);
   const realtime = attachRealtime(server, app, { matchOptions });
   server.listen(0);
@@ -46,13 +47,14 @@ async function startServer({ bananaApi = fakeApi(), db, matchOptions } = {}) {
   return { base, db, realtime, close };
 }
 
-// Remembers the session cookie between requests, as a browser would.
-function client(base) {
+// Remembers the session cookie between requests, as a browser would. headers are
+// sent with every request (e.g. X-Forwarded-For to act as another IP address).
+function client(base, { headers = {} } = {}) {
   let cookie = '';
   const call = async (method, path, body) => {
     const res = await fetch(base + path, {
       method,
-      headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+      headers: { 'Content-Type': 'application/json', ...headers, ...(cookie ? { Cookie: cookie } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const set = res.headers.get('set-cookie');
