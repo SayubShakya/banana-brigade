@@ -6,6 +6,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`feature/gun-pickups`)
+- **Weapon pickups are drawn as the gun itself**, not a wooden box: the same detailed gun a soldier holds, floating
+  over a soft glow with a shadow and a gentle tilt, with its name above. A gun dropped by a soldier lies flat on
+  the ground.
+
 ### Changed (`feature/character-art`)
 - **Soldiers redrawn** after the doodle-army reference: big bald head with a headband whose tails flutter (or
   other headgear), chunky goggles with a bridge and strap, an ear and a determined mouth, a jacket with collar,
