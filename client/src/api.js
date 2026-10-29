@@ -22,6 +22,8 @@ export const api = {
   me: () => call('GET', '/api/auth/me'),
   login: (username, password, remember = false) => call('POST', '/api/auth/login', { username, password, remember }),
   register: (username, password) => call('POST', '/api/auth/register', { username, password }),
+  forgot: (username) => call('POST', '/api/auth/forgot', { username }),
+  resetPassword: (token, password) => call('POST', '/api/auth/reset', { token, password }),
   logout: () => call('POST', '/api/auth/logout'),
   logoutAll: () => call('POST', '/api/auth/logout-all'),
   changePassword: (current, next) => call('POST', '/api/auth/password', { current, next }),

@@ -89,7 +89,8 @@ export default function App() {
   // Already logged in (the session cookie is still valid)? Skip the login screen.
   useEffect(() => {
     api.me().then(({ user }) => {
-      if (!user) { setScreen('login'); return; }
+      // A password reset link (#reset=...) always opens the login screen's reset form.
+      if (!user || location.hash.startsWith('#reset=')) { setScreen('login'); return; }
       setAccount(user);
       setScreen('menu');
       openPreview(location.hash.slice(1));
