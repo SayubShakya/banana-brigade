@@ -39,6 +39,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== location.origin) return;
   if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) return;   // never cached
+  if (url.pathname.startsWith('/media/')) return;   // videos stream with range requests, so they skip the cache
 
   if (request.mode === 'navigate') {
     event.respondWith(

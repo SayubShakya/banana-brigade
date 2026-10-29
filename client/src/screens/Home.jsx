@@ -1,6 +1,7 @@
 // The public home page, shown before anyone logs in: what the game is, a picture of
 // a battle, how the Banana puzzles fit in, the modes, and a live line saying
-// whether the Banana API is answering. Play leads to the login screen.
+// whether the Banana API is answering. Play leads to the login screen, and
+// "Watch trailer" plays the short animated trailer (/media/trailer.mp4).
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
@@ -38,8 +39,26 @@ export function useApiLine() {
   return line;
 }
 
+// The trailer opens over the page; Esc, the close button or a click outside closes it.
+function Trailer({ onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="trailer" role="dialog" aria-label="Banana Brigade trailer" onClick={onClose}>
+      <div className="trailer-box" onClick={(e) => e.stopPropagation()}>
+        <video src="/media/trailer.mp4" poster="/media/trailer-poster.jpg" controls autoPlay playsInline />
+        <button className="mbtn" onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Home({ onPlay, onGuest, onOpen }) {
   const apiLine = useApiLine();
+  const [trailer, setTrailer] = useState(false);
   return (
     <section className="screen home">
       <Sky />
@@ -51,6 +70,7 @@ export default function Home({ onPlay, onGuest, onOpen }) {
             <div className="home-actions">
               <button className="mbtn primary" onClick={onPlay}>Play</button>
               {onGuest && <button className="mbtn" onClick={onGuest}>Play as guest</button>}
+              <button className="mbtn" onClick={() => setTrailer(true)}>Watch trailer</button>
             </div>
             <span className="api-chip" data-state={apiLine.state}><i className="dot" />{apiLine.text}</span>
           </div>
@@ -79,6 +99,7 @@ export default function Home({ onPlay, onGuest, onOpen }) {
           <span>A student project by Sayub Shakya · CIS046-3</span>
         </footer>
       </div>
+      {trailer && <Trailer onClose={() => setTrailer(false)} />}
     </section>
   );
 }
