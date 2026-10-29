@@ -6,7 +6,16 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
-On `feature/password-reset-ip-limit`.
+### Added (`feature/public-pages`)
+- **Public home page** before login: the game in one line, a battle screenshot, Play, how the Banana puzzles
+  work, the game modes and a live Banana API line from `/api/status`.
+- **Privacy** (what the `brigade.sid` cookie and the server store, where and for how long) and **Terms** pages,
+  open to everyone (`#privacy`, `#terms`).
+- **404:** unknown addresses get status 404 and a "page not found" screen; unknown `/api` paths get JSON.
+- **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
+  on by itself.
+
+### From `feature/password-reset-ip-limit`
 
 ### Added
 - **Forgot password.** "Forgot password?" on the login screen asks for a reset link by username. The link works

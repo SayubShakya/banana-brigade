@@ -14,6 +14,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
+const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const session = require('express-session');
@@ -117,6 +118,15 @@ function createApp({
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
   // The built React app (npm run build).
   app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+
+  // Any other address is a 404. Browsers get the React page with status 404 (it shows
+  // the "page not found" screen); anything else gets plain text.
+  const indexHtml = path.join(__dirname, '..', 'client', 'dist', 'index.html');
+  app.use((req, res) => {
+    res.status(404);
+    if ((req.method === 'GET' || req.method === 'HEAD') && req.accepts('html') && fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
+    res.type('text').send('Not found');
+  });
 
   app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON' });

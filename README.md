@@ -13,6 +13,9 @@ only shows pictures and sends controls and answers.
 
 ## Features
 
+- **Public pages:** a home page before login (pitch, screenshot, how the Banana puzzles work, the modes, live
+  API status), Privacy and Terms, a 404 page and a "server down" screen that keeps checking `/api/status`.
+
 - **Campaign:** 9 missions in 3 chapters (Boot Camp, Jungle Front, Banana Storm). Each mission has a kill
   target, a time limit and a number of lives. Up to 3 stars per mission. Chapters unlock with stars, and the
   server checks unlocks and stars. Bots get a little sharper every minute inside a mission.
