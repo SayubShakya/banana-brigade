@@ -147,7 +147,7 @@ test('admin pages are refused for players (403) and allowed for admins', async (
     assert.equal(users.status, 200);
     assert.equal(users.body.users.length, 2);
     const playerId = users.body.users.find((u) => u.username === 'player1').id;
-    assert.equal((await admin.del(`/api/admin/users/${playerId}/scores`)).status, 200);
-    assert.equal((await admin.del('/api/admin/users/not-an-id/scores')).status, 404);
+    assert.equal((await admin.del(`/api/admin/users/${playerId}/scores`, { reason: 'test reset' })).status, 200);
+    assert.equal((await admin.del('/api/admin/users/not-an-id/scores', { reason: 'test reset' })).status, 404);
   } finally { await s.close(); }
 });

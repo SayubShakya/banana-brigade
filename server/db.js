@@ -18,7 +18,7 @@ const CASE_INSENSITIVE = { locale: 'en', strength: 2 };
 const userRow = (u) => u && ({
   id: String(u._id), username: u.username, role: u.role, password_hash: u.passwordHash,
   created_at: u.createdAt, last_login_at: u.lastLoginAt ?? null,
-  guest: !!u.guest,
+  guest: !!u.guest, suspended: u.suspended?.at ? u.suspended : null,
   achievements: u.achievements ?? [], daily: u.daily ?? { lastDate: '', streak: 0, best: 0 },
 });
 const scoreRow = (s) => ({
@@ -77,9 +77,12 @@ async function openDatabase(uri) {
       const rows = await m.User.aggregate([
         { $sort: { createdAt: 1 } },
         { $lookup: { from: 'scores', localField: '_id', foreignField: 'user', as: 's' } },
-        { $project: { username: 1, role: 1, createdAt: 1, games: { $size: '$s' }, kills: { $sum: '$s.kills' }, puzzles_solved: { $sum: '$s.puzzlesSolved' } } },
+        { $project: { username: 1, role: 1, guest: 1, suspended: 1, createdAt: 1, games: { $size: '$s' }, kills: { $sum: '$s.kills' }, puzzles_solved: { $sum: '$s.puzzlesSolved' } } },
       ]);
-      return rows.map((r) => ({ id: String(r._id), username: r.username, role: r.role, created_at: r.createdAt, games: r.games, kills: r.kills, puzzles_solved: r.puzzles_solved }));
+      return rows.map((r) => ({
+        id: String(r._id), username: r.username, role: r.role, guest: !!r.guest, suspended: r.suspended?.at ? r.suspended : null,
+        created_at: r.createdAt, games: r.games, kills: r.kills, puzzles_solved: r.puzzles_solved,
+      }));
     },
     // Adds an achievement once; returns true only the first time (write-once).
     async unlockAchievement(userId, id) {
@@ -193,6 +196,17 @@ async function openDatabase(uri) {
       delete t._id;
       return { ...zero, ...t };
     },
+    // ----- suspensions and the admin audit log -----
+    suspendUser: (id, reason, by) => m.User.updateOne({ _id: oid(id) }, { suspended: { at: new Date(), reason, by } }),
+    restoreUser: (id) => m.User.updateOne({ _id: oid(id) }, { $unset: { suspended: 1 } }),
+    async addAudit({ actor, actorName, action, target, targetName, reason, detail }) {
+      await m.AuditLog.create({ actor: oid(actor), actorName, action, target: target ? oid(target) : undefined, targetName, reason, detail });
+    },
+    async listAudit(limit = 50) {
+      const rows = await m.AuditLog.find().sort({ at: -1, _id: -1 }).limit(limit).lean();
+      return rows.map((r) => ({ id: String(r._id), at: r.at, actor: r.actorName, action: r.action, target: r.targetName ?? null, reason: r.reason, detail: r.detail ?? null }));
+    },
+
     // Everything stored about one player, for "download my data" (GDPR right of
     // access). The password hash is left out: it is not useful to the player and
     // should never leave the server.

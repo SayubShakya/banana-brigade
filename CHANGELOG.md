@@ -15,6 +15,15 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/admin-audit`)
+- **Audit log:** every admin action (reset scores, promote/demote, suspend, restore) needs a reason and is saved
+  with who, what, to whom and when (MongoDB `auditlogs`); Admin → Audit log shows it. Actions also appear in
+  the live event feed.
+- **Suspend and restore** a player with a reason: all their sessions end and their sockets close at once; they
+  cannot log in (the reason is shown) or open a WebSocket until restored. Admins must be demoted first.
+- **API health** tab: Banana API online state, circuit breaker, ready and reserve puzzles, retries, and charts
+  of median latency and success rate (a sample every 30 s for the last hour, `/api/admin/health`).
+
 ### Added (`feature/sessions-export`)
 - **Where you're signed in** (Settings → Account): every live session with its device ("Chrome on macOS"),
   when it started and when it was last used, read from the MongoDB session store; **Sign out** ends one other

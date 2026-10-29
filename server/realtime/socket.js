@@ -19,9 +19,12 @@ function attachRealtime(httpServer, app, { matchOptions } = {}) {
 
   app.locals.io = io;   // so the account routes can disconnect a player's sockets
   io.engine.use(sessionMiddleware);
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const s = socket.request.session;
     if (!s?.userId) return next(new Error('Log in to play online'));
+    // Checked in the database, like every HTTP request: deleted or suspended accounts stay out.
+    const user = await db.findUserById(s.userId).catch(() => null);
+    if (!user || user.suspended) return next(new Error('Log in to play online'));
     socket.data.userId = s.userId;
     socket.data.username = s.username;
     // Rooms per player and per session, so the HTTP side can drop this player's live

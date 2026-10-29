@@ -58,6 +58,7 @@ async function main() {
   server.listen(PORT, () => {
     console.log(`Banana Brigade running at http://localhost:${PORT} (MongoDB connected, WebSocket ready)`);
     pool.warmUp(); // have puzzles ready before the first player asks
+    pool.startSampling(); // Banana API health history for the admin screen
   });
 }
 

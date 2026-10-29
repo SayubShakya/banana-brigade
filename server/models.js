@@ -31,6 +31,8 @@ const userSchema = new Schema({
   // Campaign progress: best stars and fastest win per mission.
   campaign: [{ _id: false, mission: Number, stars: Number, bestS: Number }],
   powersUsed: [String],   // Banana Powers this player has used at least once
+  // Set by an admin; a suspended player is logged out and cannot log in until restored.
+  suspended: { at: Date, reason: String, by: String },
   lastLoginAt: Date,
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 userSchema.index({ username: 1 }, { unique: true, collation: CASE_INSENSITIVE });
@@ -66,6 +68,20 @@ const rateLimitSchema = new Schema({
   n: { type: Number, default: 0 },
   expiresAt: { type: Date, required: true, expires: 0 },
 });
+
+// The audit log: one row for every admin action (who, what, to whom, when and why).
+// Kept when the target account is deleted (names are stored as text), so the
+// record of what admins did stays complete.
+const auditLogSchema = new Schema({
+  actor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  actorName: { type: String, required: true },
+  action: { type: String, enum: ['reset-scores', 'set-role', 'suspend', 'restore'], required: true },
+  target: { type: Schema.Types.ObjectId, ref: 'User' },
+  targetName: String,
+  reason: { type: String, required: true },
+  detail: String,
+}, { timestamps: { createdAt: 'at', updatedAt: false } });
+auditLogSchema.index({ at: -1 });
 
 // "Forgot password" links. Only a SHA-256 hash of the token is stored, so someone
 // who reads the database still cannot use a link. A link works once (usedAt) and
@@ -103,6 +119,7 @@ function registerModels(conn) {
     Score: conn.model('Score', scoreSchema),
     RateLimit: conn.model('RateLimit', rateLimitSchema),
     PasswordReset: conn.model('PasswordReset', passwordResetSchema),
+    AuditLog: conn.model('AuditLog', auditLogSchema),
     Daily: conn.model('Daily', dailySchema),
     DailyResult: conn.model('DailyResult', dailyResultSchema),
   };
