@@ -47,6 +47,8 @@ only shows pictures and sends controls and answers.
 - **Accounts:** register (with a live "name is free" check), log in with an optional "remember me" (30 days),
   bcrypt-hashed passwords, an HttpOnly session cookie, login limits per IP address, "forgot password" with a
   single-use reset link (30 minutes), and roles.
+- **Open API:** `/api/v1` with an OpenAPI 3 file and Swagger UI at `/api/docs`, plus a public read-only
+  leaderboard (`/api/v1/public/leaderboard`, CORS) that other websites can use.
 - **Live event feed** (Admin → Live events): server events pushed over Socket.io as they happen.
 - **Admin screen:** every account with its games, kills and puzzles; reset a player's scores; promote or demote.
 - **Phones:** touch sticks, a fullscreen button and a "turn your phone sideways" hint.
@@ -272,6 +274,7 @@ verification.
 | Interoperability | Pool, reserve, deadline, circuit breaker | `server/pool.js:65-99`, `server/pool.js:136-171` |
 | Interoperability | API health in `/api/status` | `server/pool.js:173-186` |
 | Interoperability | Our own REST API for the browser | `server/app.js:79-112`, `client/src/api.js:9-19` |
+| Interoperability | API versioning, OpenAPI 3 + Swagger UI, public CORS leaderboard | `server/app.js` (v1 rewrite, `/api/public`), `server/openapi.js`, `tests/openapi.test.js` |
 | Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:25-30` |
 | Virtual identity | Session cookie settings | `server/app.js:48-60` |
 | Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:88-160`, `server/db.js` (`bumpCounter`) |
