@@ -785,3 +785,22 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .role-badge[data-role="guest"] { background: var(--khaki); color: var(--ink); }
 .welcome.guest-save { border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: 2.2cqh; text-align: left; }
 .welcome.guest-save b { color: var(--olive-dark); text-decoration: underline; }
+
+/* ---------- Admin: live events ---------- */
+.live-events { display: flex; flex-direction: column; gap: 1cqh; margin-top: 1.2cqh; }
+.live-bar { display: flex; align-items: center; gap: 1.4cqh; flex-wrap: wrap; color: var(--khaki); font-size: 1.9cqh; }
+.live-bar select { font: inherit; padding: 0.4cqh 0.8cqh; border-radius: 0.6cqh; }
+.live-status { display: inline-flex; align-items: center; gap: 0.8cqh; font-weight: 800; color: var(--paper); margin-right: auto; }
+.live-status i { width: 1.2cqh; height: 1.2cqh; border-radius: 50%; background: var(--khaki); }
+.live-status[data-live="true"] i { background: var(--bad); box-shadow: 0 0 0 0.4cqh rgba(230,57,70,0.3); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.event-list { list-style: none; margin: 0; padding: 0; max-height: 46cqh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4cqh; }
+.event-list li { display: grid; grid-template-columns: 11cqh 13cqh 1fr; gap: 1cqh; align-items: baseline; padding: 0.7cqh 1cqh; border-radius: 0.8cqh; background: rgba(255,255,255,0.05); color: var(--paper); font-size: 1.8cqh; }
+.event-list li.empty-row { display: block; color: var(--khaki); }
+.event-list time { color: var(--khaki); font-variant-numeric: tabular-nums; }
+.event-kind { justify-self: start; padding: 0.2cqh 0.9cqh; border-radius: 2cqh; background: rgba(255,255,255,0.12); font-weight: 800; font-size: 1.5cqh; text-transform: uppercase; }
+.event-list li[data-kind="security"] .event-kind { background: var(--bad); }
+.event-list li[data-kind="kill"] .event-kind { background: var(--warn); color: var(--ink); }
+.event-list li[data-kind="auth"] .event-kind { background: var(--good); color: var(--ink); }
+.event-list li[data-kind="admin"] .event-kind { background: var(--banana); color: var(--ink); }
+.event-list b { color: var(--banana); }
