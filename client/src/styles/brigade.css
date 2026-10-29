@@ -121,7 +121,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 @keyframes idle { 50% { transform: translateY(-0.6cqh); } }
 .rock { position: absolute; bottom: 0; width: 24cqh; height: 6cqh; border-radius: 50% 50% 1.2cqh 1.2cqh; background: linear-gradient(#8a8f98, #5e636b); box-shadow: inset 0 0.8cqh 0 rgba(255,255,255,0.18); }
 /* ---------- Login ---------- */
-.login { display: grid; place-items: center; background: radial-gradient(ellipse at 22% 112%, #4a7a32 0 40%, transparent 41%), radial-gradient(ellipse at 88% 125%, #3e6a2a 0 46%, transparent 47%), linear-gradient(#7fbfe6, #cfe8d5 72%, #9cc7a4); }
+.login { display: grid; justify-items: center; align-content: start; padding-top: 5cqh; overflow-y: auto; background: radial-gradient(ellipse at 22% 112%, #4a7a32 0 40%, transparent 41%), radial-gradient(ellipse at 88% 125%, #3e6a2a 0 46%, transparent 47%), linear-gradient(#7fbfe6, #cfe8d5 72%, #9cc7a4); }
 .login-wrap { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2cqh; width: min(92%, 64cqh); }
 .logo.small { font-size: 8cqh; align-self: center; text-align: center; }
 .login-panel { width: 100%; gap: 1.4cqh; }
@@ -140,7 +140,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .meter[data-level="3"] i:nth-child(-n+3) { background: var(--banana); }
 .meter[data-level="4"] i { background: var(--good); }
 .meter-text { font-size: 1.7cqh; color: var(--khaki); min-height: 2cqh; }
-.auth-error { margin: 0; min-height: 2.6cqh; color: var(--red); font-weight: 600; font-size: 2cqh; }
+.auth-error { margin: 0; color: var(--red); font-weight: 600; font-size: 2cqh; }
 .auth-note { margin: 0; font-size: 1.6cqh; color: var(--khaki); text-align: center; }
 .auth-title { margin: 0; font-size: 2.8cqh; color: var(--banana); text-align: center; }
 .auth-info { margin: 0; font-size: 1.9cqh; color: var(--good); font-weight: 600; }
@@ -192,7 +192,11 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .panel.narrow .mbtn { width: 100%; }
 .panel-head h2 { margin: 0.4cqh 0 0; font: 400 5.4cqh 'Black Ops One', sans-serif; color: var(--banana); letter-spacing: 0.3cqh; }
 .panel-head p { margin: 0.4cqh 0 0; font-size: 2.1cqh; color: var(--khaki); }
-.panel-foot { display: flex; justify-content: flex-end; gap: 1.2cqh; margin-top: 0.6cqh; }
+/* The footer (Back and the main buttons) stays visible at the bottom of a long panel. */
+.panel-foot {
+  display: flex; justify-content: flex-end; gap: 1.2cqh; margin: 0.6cqh -3.6cqh -2.6cqh; padding: 1.2cqh 3.6cqh 2.6cqh;
+  position: sticky; bottom: -2.6cqh; background: linear-gradient(rgba(29, 33, 18, 0), #1d2112 40%);
+}
 
 /* Avatar */
 .avatar-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 3cqh; align-items: stretch; }
@@ -552,8 +556,8 @@ body.touch .hud-help { display: none; }
 .menu.v2 .mode-card.primary .mode-tag { animation: nudge 2.4s ease-in-out infinite; }
 @keyframes nudge { 0%, 70%, 100% { transform: none; } 80% { transform: scale(1.08); } 90% { transform: scale(0.98); } }
 /* Leaderboards: medals for the top three. */
-table.compact tbody tr:nth-child(-n+3):not(.empty-row) td:first-child { font-weight: 800; }
-table.compact tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
+table.leaderboard tbody tr:nth-child(-n+3):not(.empty-row) td:first-child { font-weight: 800; }
+table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .medal { display: inline-grid; place-items: center; width: 3cqh; height: 3cqh; border-radius: 50%; font-size: 1.6cqh; font-weight: 800; color: var(--ink); }
 .medal.m1 { background: linear-gradient(#ffe866, #d4a800); }
 .medal.m2 { background: linear-gradient(#f2f2f2, #a9a9a9); }
@@ -646,6 +650,12 @@ table.compact tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .admin-actions { display: flex; gap: 0.8cqh; justify-content: flex-end; }
 .admin-actions .toggle { min-width: 0; font-size: 1.5cqh; }
 .toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+.mbtn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; transform: none; box-shadow: none; }
+.admin-table th:last-child { text-align: right; }
+.admin-table td:first-child { white-space: nowrap; }
+.admin-table td:first-child .suspended-note { white-space: normal; max-width: 26cqh; }
+.admin-table tr[data-asking="true"] td { background: rgba(255,225,53,0.12); }
+.status-line { margin: 0.6cqh 0 0; color: var(--khaki); font-size: 1.9cqh; text-align: center; }
 /* Settings: music and effects volume sliders */
 .setting label { cursor: pointer; }
 .slider { display: inline-flex; align-items: center; gap: 1.2cqh; }
@@ -765,12 +775,13 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .home-block p { margin: 0 0 1.4cqh; font-size: 2cqh; line-height: 1.45; }
 .home-block a { color: var(--banana); }
 .home-puzzles, .home-modes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(30cqh, 1fr)); gap: 1.2cqh; }
+.home-modes { grid-template-columns: repeat(3, 1fr); }   /* 6 modes: two even rows */
 .home-puzzles li, .home-modes li { display: grid; grid-template-columns: auto 1fr; column-gap: 1cqh; align-items: center; padding: 1.2cqh 1.4cqh; border-radius: 1cqh; background: rgba(255,255,255,0.06); }
 .home-puzzles .ico, .home-modes .ico { grid-row: span 2; width: 3.6cqh; height: 3.6cqh; color: var(--banana); }
 .home-puzzles b, .home-modes b { font-size: 2.1cqh; color: var(--banana); }
 .home-puzzles span, .home-modes span { font-size: 1.8cqh; color: var(--khaki); }
-.home-foot { display: flex; gap: 2cqh; align-items: center; justify-content: center; font-size: 1.7cqh; color: var(--ink); }
-.home-foot .link-btn { color: var(--ink); }
+.home-foot { display: flex; gap: 2cqh; align-items: center; justify-content: center; align-self: center; padding: 0.8cqh 2.4cqh; border-radius: 4cqh; background: rgba(24, 28, 15, 0.82); font-size: 1.8cqh; color: var(--khaki); }
+.home-foot .link-btn { color: var(--banana); }
 .legal { color: var(--paper); font-size: 2cqh; line-height: 1.45; }
 .legal h3 { margin: 1.6cqh 0 0.6cqh; color: var(--banana); font-size: 2.4cqh; }
 .legal p { margin: 0 0 1cqh; }
@@ -792,7 +803,7 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .live-bar select { font: inherit; padding: 0.4cqh 0.8cqh; border-radius: 0.6cqh; }
 .live-status { display: inline-flex; align-items: center; gap: 0.8cqh; font-weight: 800; color: var(--paper); margin-right: auto; }
 .live-status i { width: 1.2cqh; height: 1.2cqh; border-radius: 50%; background: var(--khaki); }
-.live-status[data-live="true"] i { background: var(--bad); box-shadow: 0 0 0 0.4cqh rgba(230,57,70,0.3); animation: pulse 1.4s ease-in-out infinite; }
+.live-status[data-live="true"] i { background: var(--good); box-shadow: 0 0 0 0.4cqh rgba(82,183,136,0.3); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.35; } }
 .event-list { list-style: none; margin: 0; padding: 0; max-height: 46cqh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4cqh; }
 .event-list li { display: grid; grid-template-columns: 11cqh 13cqh 1fr; gap: 1cqh; align-items: baseline; padding: 0.7cqh 1cqh; border-radius: 0.8cqh; background: rgba(255,255,255,0.05); color: var(--paper); font-size: 1.8cqh; }
@@ -821,7 +832,6 @@ a.toggle { text-decoration: none; display: inline-flex; align-items: center; }
 .reason-form .field { flex: 1; }
 .admin-table tr[data-suspended="true"] td { opacity: 0.75; }
 .suspended-note { display: block; color: var(--red); font-size: 1.5cqh; }
-.toggle.danger { color: var(--red); }
 .health { display: flex; flex-direction: column; gap: 1.4cqh; margin-top: 1.2cqh; }
 .health-chips { display: flex; flex-wrap: wrap; gap: 1cqh; }
 .chip[data-circuit="open"] b { color: var(--red); }
@@ -838,3 +848,41 @@ a.toggle { text-decoration: none; display: inline-flex; align-items: center; }
 .toast.error .ico { color: var(--bad); }
 .toast.error small { color: var(--red); }
 body.a11y-calm .skeleton-row { animation: none; }
+.room-actions { display: flex; gap: 1.2cqh; justify-content: center; }
+.admin-msg { min-height: 2.4cqh; margin: 1cqh 0 0.4cqh; }
+.save-form { display: flex; flex-direction: column; gap: 1cqh; }
+
+/* ---------- UI audit fixes (29 Oct 2026) ---------- */
+/* Actions (log out everywhere, download, privacy, sign out) are outlined buttons, so
+   they do not look like a switch that is "On". */
+.toggle.action { background: transparent; color: var(--banana); border-color: var(--banana-dark); }
+.toggle.action:hover { background: rgba(255,225,53,0.12); }
+.name-case { text-transform: none; }
+.toast.info { border-color: var(--good); }
+.toast.info .ico { color: var(--good); }
+.daily-last { display: block; margin-top: 0.6cqh; font-size: 1.8cqh; }
+.daily-last[data-kind="good"] { color: var(--good); }
+.daily-last[data-kind="bad"] { color: var(--red); }
+.profile-main { padding-bottom: 6cqh; }   /* room under the sticky Back button */
+
+/* Large text also reaches the menu, cards, lists and the record tiles. */
+body.a11y-large .mode-card, body.a11y-large .menu-rail .tile, body.a11y-large .daily-card, body.a11y-large .name-tag,
+body.a11y-large .panel li, body.a11y-large .record, body.a11y-large .results, body.a11y-large .field,
+body.a11y-large .legal, body.a11y-large .home-block, body.a11y-large .toggle { zoom: 1.12; }
+/* High contrast: locked campaign missions and cards stay readable. */
+body.a11y-contrast .node.locked, body.a11y-contrast .chapter.locked { opacity: 1; filter: none; color: #fff; }
+body.a11y-contrast .mode-card, body.a11y-contrast .tile, body.a11y-contrast .home-block { border-color: #fff; }
+
+/* Phones held sideways: the stage is only about 390 px tall, so sizes in cqh get tiny.
+   Small text gets a floor of 11-12 px and buttons a finger-sized minimum height. */
+@media (max-height: 520px) {
+  .setting-note, .auth-note, .name-hint, .meter-text, .remember, .remember small, .field, .panel-head p, .legal, .legal table,
+  .home-block p, .home-puzzles span, .home-modes span, .home-foot, .chip, .mode-chip, .rule-chip, .api-chip,
+  .results td, .results th, .event-list li, .devices li, .devices small, .daily-card small, .mode-card small,
+  .xp-bar span, #puzzle-sub, .suspended-note, .status-line, .admin-msg, .room-code small, .live-bar, .link-btn { font-size: max(1.9cqh, 12px); }
+  .toggle, .admin-actions .toggle, .menu-rail .tile, .auth-tabs button, .tabs button { font-size: max(1.9cqh, 11px); min-height: 32px; }
+  .mbtn, .keypad button { font-size: max(2.4cqh, 13px); min-height: 36px; }
+  .field input { font-size: max(2.4cqh, 14px); }
+  .hud-btn { min-height: 34px; font-size: max(1.9cqh, 11px); }
+  #rank, #center-msg { font-size: max(2cqh, 12px); }
+}

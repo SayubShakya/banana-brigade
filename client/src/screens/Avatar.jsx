@@ -35,10 +35,10 @@ function Preview({ parts, weaponLabel }) {
   useEffect(() => {
     let raf = 0;
     let t = 0;
-    let last = performance.now();
+    let last = null;   // the first frame's time (frame times can be earlier than performance.now())
     const avatar = makeAvatar(parts);
     const draw = (now) => {
-      t += Math.min(0.05, (now - last) / 1000);
+      t += last === null ? 0 : Math.max(0, Math.min(0.05, (now - last) / 1000));
       last = now;
       const c = ref.current;
       const ctx = c.getContext('2d');

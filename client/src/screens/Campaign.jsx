@@ -38,7 +38,7 @@ export default function Campaign({ onPlay, onBack }) {
   return (
     <Panel wide title="Campaign" chip={<span className="mode-chip">★ {stars} / {MISSIONS.length * 3}</span>}
       subtitle="Reach the kill target before time runs out. Earn up to 3 stars per mission to unlock new chapters."
-      footer={<button className="mbtn ghost" onClick={onBack}>Back</button>}>
+      footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
       {error && <p className="auth-error" role="alert">{error}</p>}
       {!progress && !error && <Skeleton rows={3} height="10cqh" />}
       {progress && <div className="campaign">

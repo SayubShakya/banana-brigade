@@ -14,9 +14,9 @@ const ABOUT = {
 
 export default function Difficulty({ mode, current, onPick, onBack }) {
   return (
-    <Panel wide title="Choose difficulty" chip={<span className="mode-chip">{MODES[mode].name}</span>}
+    <Panel wide title="Choose Difficulty" chip={<span className="mode-chip">{MODES[mode].name}</span>}
       subtitle="Then solve a Banana puzzle to deploy."
-      footer={<button className="mbtn ghost" onClick={onBack}>Back</button>}>
+      footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
       <div className="levels">
         {Object.entries(DIFFICULTY).map(([key, d]) => (
           <button key={key} className={`level-card ${key}${key === current ? ' last' : ''}`} onClick={() => onPick(key)}>
