@@ -249,7 +249,10 @@ function ricochet(x, y) {
 
 // ---------- Player feedback ----------
 const hitMarker = () => { if (allow('hitmarker', 50)) tone(ui(0.05), 2400, 0.035, { volume: 0.07, type: 'sine' }); };
+// At most one ding per 120 ms, so a shotgun blast or a headshot kill (damage + kill
+// events in the same frame) does not stack several dings on top of each other.
 function headshotDing() {
+  if (!allow('headshot', 120)) return;
   const v = ui(0.5);
   tone(v, 1760, 0.4, { volume: 0.1, type: 'sine' });
   tone(v, 2637, 0.3, { volume: 0.05, type: 'sine', delay: 0.01 });
