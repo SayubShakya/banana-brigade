@@ -10,9 +10,13 @@
 // On touch screens the left stick moves and flies (push up), the right stick aims
 // and fires when pushed far enough, like the original dual-stick layout.
 //
+// Auto-fire (on by default, Settings → Auto-fire): just aim at an enemy with the
+// mouse or the right stick and the gun fires by itself (see autoFire.js).
+//
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit } from '../eventBus.js';
+import { isAimedAtEnemy } from './autoFire.js';
 
 const MOVE_KEYS = {
   KeyA: 'left', ArrowLeft: 'left',
@@ -55,6 +59,7 @@ export function createInput(canvas, renderer) {
   const touchMove = { x: 0, y: 0 };
   let zoom = 0;
   let enabled = false;
+  let autoFire = true;
 
   const press = (action) => { if (enabled) pending[action] = true; };
   const cycleZoom = () => { zoom = (zoom + 1) % 3; emit('input:zoom', { level: zoom }); };
@@ -113,8 +118,10 @@ export function createInput(canvas, renderer) {
       enabled = on;
       if (!on) Object.keys(held).forEach((k) => { held[k] = false; });
     },
-    // Copy the current input into the player's controls once per frame.
-    apply(player) {
+    setAutoFire(on) { autoFire = on !== false; },
+    // Copy the current input into the player's controls once per frame. `world` is
+    // the match the player is in (local world or online view), used by auto-fire.
+    apply(player, world) {
       const c = player.controls;
       c.left = held.left || touchMove.x < -0.3;
       c.right = held.right || touchMove.x > 0.3;
@@ -132,6 +139,8 @@ export function createInput(canvas, renderer) {
         c.aimX = aim.x;
         c.aimY = aim.y;
       }
+      // Auto-fire once the aim (worked out above) is on an enemy in range and in sight.
+      if (autoFire && !c.fire && world) c.fire = isAimedAtEnemy(player, world);
       for (const k of Object.keys(pending)) {
         if (pending[k]) { c[k] = true; pending[k] = false; }
       }

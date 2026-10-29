@@ -8,7 +8,7 @@ import { api } from '../api.js';
 import { Panel } from './common.jsx';
 import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
 
-const OPTIONS = [['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
+const OPTIONS = [['autoFire', 'Auto-fire when aimed at an enemy'], ['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
 const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];
 const VOLUMES = [['musicVolume', 'Music volume'], ['sfxVolume', 'Effects volume']];
 

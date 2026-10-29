@@ -5,7 +5,7 @@
 import { Panel } from './common.jsx';
 
 const KEYS = [
-  [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim'], [['Click'], 'Shoot'],
+  [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim (auto-fires on enemies)'], [['Click'], 'Shoot'],
   [['Q'], 'Switch weapon'], [['R'], 'Reload'], [['G'], 'Grenade'], [['F'], 'Melee'], [['Z'], 'Zoom'],
   [['E'], 'Banana crate: solve, then pick a power', true], [['B'], 'Banana respawn', true], [['0', '9'], 'Answer a puzzle', true],
   [['Tab'], 'Scoreboard'], [['Esc'], 'Pause'],
@@ -28,7 +28,7 @@ export default function Controls({ onBack }) {
             <div className="stick-demo left"><i /></div>
             <div className="stick-demo right"><i /></div>
             <span className="lbl l">Move · push up to fly</span>
-            <span className="lbl r">Aim · push to the edge to fire</span>
+            <span className="lbl r">Aim · fires by itself on enemies</span>
           </div>
         </div>
       </div>
