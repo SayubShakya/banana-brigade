@@ -128,6 +128,20 @@ counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once ge
 | CAPTCHA after a few failures | Stops bots, not people | Needs a third-party service; worse for players |
 | `express-rate-limit` package | Ready-made | Counts in memory by default, so it resets on restart and is not shared between servers; ours is in MongoDB |
 
+**Installable app (PWA)** (`feature/pwa`)
+
+One codebase runs as a website, an installed desktop app and a phone app. The service worker caches only the
+app itself; every `/api` and `/socket.io` request goes to the network, so the server stays the only authority.
+
+| Option | For | Against |
+|---|---|---|
+| **PWA: manifest + service worker (chosen)** | One codebase, no app store, installs from the browser, opens offline | iOS supports fewer PWA features; the player must find "Add to Home Screen" |
+| Native apps (Swift/Kotlin) | Full device access, store presence | Two more codebases to keep in step with the web version |
+| Capacitor / Electron wrappers | Reuse the web code, store presence | A build per platform; Electron ships a whole browser |
+| No offline support | Simplest | The installed app shows a browser error page with no connection |
+
+Limit: the offline app cannot play (puzzles and scores must come from the server, by design); it explains this.
+
 **Admin accountability: audit log and suspension** (`feature/admin-audit`)
 
 | Choice | For | Against / alternative |

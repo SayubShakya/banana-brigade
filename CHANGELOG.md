@@ -15,6 +15,13 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/pwa`)
+- **Installable app (PWA):** a web app manifest (name, icons, fullscreen, landscape) and a service worker
+  (`client/public/sw.js`). On a phone it can be added to the home screen; on a desktop it installs from Chrome.
+  The app itself (page, scripts, styles, pictures) opens offline and shows "You are offline"; logins, puzzles,
+  scores and battles always go to the server and are never cached.
+- The offline screen now tells "this device is offline" apart from "the server is down".
+
 ### Added (`feature/loading-states`)
 - **Loading skeletons** (shimmering placeholders) on Profile, Scores, Daily, Campaign, Settings → Account and
   every Admin tab, so screens do not jump when data arrives. They stop shimmering with Reduced motion.
