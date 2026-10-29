@@ -51,7 +51,7 @@ const tokenFromHash = () => (location.hash.startsWith('#reset=') ? location.hash
 const SUBMIT = { login: 'Log in', register: 'Create account', forgot: 'Send reset link', reset: 'Save new password' };
 const TITLES = { forgot: 'Forgot your password?', reset: 'Choose a new password' };
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onHome }) {
   const [resetToken] = useState(tokenFromHash);
   const [mode, setMode] = useState(resetToken ? 'reset' : 'login');
   const [username, setUsername] = useState('');
@@ -134,6 +134,7 @@ export default function Login({ onLogin }) {
           <button className="mbtn primary" type="submit" disabled={busy}>{SUBMIT[mode]}</button>
           {mode === 'login' && <button type="button" className="link-btn" onClick={() => switchTo('forgot')}>Forgot password?</button>}
           {TITLES[mode] && <button type="button" className="link-btn" onClick={() => switchTo('login')}>Back to log in</button>}
+          {!TITLES[mode] && onHome && <button type="button" className="link-btn" onClick={onHome}>Back to the home page</button>}
           <p className="auth-note">Passwords are stored only as bcrypt hashes. You stay signed in with a secure, HttpOnly session cookie.</p>
         </form>
       </div>

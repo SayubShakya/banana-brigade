@@ -6,12 +6,19 @@
 
 import { emit } from './eventBus.js';
 
+// fetch only throws when the server cannot be reached at all; that error is marked
+// `offline` so the app can show the "Server down" screen instead of a message.
 async function call(method, path, body) {
-  const res = await fetch(path, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw Object.assign(new Error('Cannot reach the game server'), { offline: true });
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
   for (const a of data.unlocked ?? []) emit('achievement:unlocked', a);

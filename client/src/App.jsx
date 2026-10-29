@@ -38,6 +38,9 @@ import { chapterOf, missionById } from './game/campaign.js';
 import { mapName } from './game/maps.js';
 import { DIFFICULTY } from './game/config.js';
 import Toasts from './screens/Toasts.jsx';
+import Home from './screens/Home.jsx';
+import Offline from './screens/Offline.jsx';
+import { NotFound, Privacy, Terms } from './screens/Legal.jsx';
 
 // One game session for the whole page; it owns the battle canvas and HUD.
 let gameSession = null;
@@ -56,6 +59,9 @@ function loadSettings() {
   const withDefaults = { ...DEFAULT_SETTINGS, ...saved };   // new options (e.g. autoFire) get their default
   return sound === false ? { ...withDefaults, muted: true } : withDefaults;
 }
+
+// Pages anyone can open by hash, logged in or not.
+const PUBLIC = ['privacy', 'terms'];
 
 export default function App() {
   const [screen, setScreen] = useState('loading');
@@ -86,15 +92,30 @@ export default function App() {
     document.body.classList.toggle('a11y-calm', !!settings.calm);
   }, [settings.contrast, settings.largeText, settings.calm]);
 
-  // Already logged in (the session cookie is still valid)? Skip the login screen.
-  useEffect(() => {
+  // Who is this? Already logged in (the session cookie is still valid): the menu.
+  // Otherwise the public home page, or a public page asked for by its hash
+  // (#login, #privacy, #terms; a reset link #reset=... opens the login screen's
+  // reset form). Any other path than / is a 404, and no answer at all means the
+  // server is down.
+  const start = useCallback(() => {
+    if (location.pathname !== '/') { setScreen('notfound'); return; }
     api.me().then(({ user }) => {
-      // A password reset link (#reset=...) always opens the login screen's reset form.
-      if (!user || location.hash.startsWith('#reset=')) { setScreen('login'); return; }
+      const hash = location.hash.slice(1);
+      if (!user || hash.startsWith('reset=')) {
+        setScreen(hash.startsWith('reset=') || hash === 'login' ? 'login' : PUBLIC.includes(hash) ? hash : 'home');
+        return;
+      }
       setAccount(user);
       setScreen('menu');
-      openPreview(location.hash.slice(1));
-    }).catch(() => setScreen('login'));
+      openPreview(hash);
+    }).catch((err) => setScreen(err.offline ? 'offline' : 'home'));
+  }, []);
+  useEffect(start, [start]);
+  // Links such as #privacy also work on a page that is already open.
+  useEffect(() => {
+    const onHash = () => { const h = location.hash.slice(1); if (PUBLIC.includes(h)) setScreen(h); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
   // Engine → React: battle state changes and the end of a match.
@@ -152,7 +173,9 @@ export default function App() {
   };
   // Back to the login screen once the server has ended the session (logout,
   // log out everywhere or a deleted account).
-  const signedOut = () => { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('login'); };
+  const signedOut = () => { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('home'); };
+  // Privacy and Terms go back to wherever the player came from: the menu or the home page.
+  const leavePublic = () => setScreen(account ? 'menu' : 'home');
   const logout = async () => {
     try { await api.logout(); } finally { signedOut(); }
   };
@@ -177,13 +200,18 @@ export default function App() {
     else if (name === 'power') askPower(powerChoices());
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
-    else if (['profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
+    else if (['privacy', 'terms', 'profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
   }
 
   const back = () => setScreen('menu');
   return (
     <>
-      {screen === 'login' && <Login onLogin={(user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); }} />}
+      {screen === 'home' && <Home onPlay={() => setScreen('login')} onOpen={setScreen} />}
+      {screen === 'privacy' && <Privacy onBack={leavePublic} />}
+      {screen === 'terms' && <Terms onBack={leavePublic} />}
+      {screen === 'notfound' && <NotFound onHome={() => { location.replace('/'); }} />}
+      {screen === 'offline' && <Offline onBack={start} />}
+      {screen === 'login' && <Login onHome={() => setScreen('home')} onLogin={(user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); }} />}
       {screen === 'menu' && <Menu account={account} isNew={isNew} parts={parts} onDeploy={deploy} onOpen={setScreen} />}
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
