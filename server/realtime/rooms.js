@@ -9,9 +9,10 @@
 //   browser → server                       server → browser
 //   rooms:list                (ack)        room:update   { code, host, players, state, ... }
 //   room:create {teamMode, isPublic, difficulty}  rooms:changed (someone made / closed a room)
-//   room:join   {code}        (ack)        match:start   { matchId, me, teamMode, map, roster }
+//   room:join   {code}        (ack)        match:start   { matchId, me, teamMode, map, difficulty, roster }
 //   room:leave, room:ready {ready}         match:snapshot / match:end
-//   room:start               (ack)         puzzle:offer  { purpose: 'crate' }
+//   room:start               (ack)         puzzle:offer  { purpose: 'crate', seconds }
+//                                          puzzle:closed { purpose: 'crate', reason: 'time' }  the server gave up waiting
 //   input       {controls}
 //   puzzle:get  {purpose}     (ack)  →  { puzzleId, image, source }
 //   puzzle:answer {puzzleId, answer} (ack)  →  { correct, solution }
@@ -133,7 +134,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     });
     for (const p of players) {
       io.to(`user:${p.userId}`).emit('match:start', {
-        matchId: room.match.matchId, me: `u${p.userId}`, teamMode: room.teamMode, map: room.match.mapId, roster: room.match.roster(),
+        matchId: room.match.matchId, me: `u${p.userId}`, teamMode: room.teamMode, map: room.match.mapId, difficulty: room.difficulty, roster: room.match.roster(),
       });
     }
     update(room);
@@ -152,7 +153,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       const p = existing.players.get(userId);
       p.connected = true;
       if (existing.match?.rejoin(userId)) {
-        socket.emit('match:start', { matchId: existing.match.matchId, me: `u${userId}`, teamMode: existing.teamMode, map: existing.match.mapId, roster: existing.match.roster() });
+        socket.emit('match:start', { matchId: existing.match.matchId, me: `u${userId}`, teamMode: existing.teamMode, map: existing.match.mapId, difficulty: existing.difficulty, roster: existing.match.roster() });
       }
       socket.emit('room:update', view(existing));
     }
@@ -228,6 +229,9 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       }
       try {
         const { image, solution, source } = await pool.take();
+        // Check again: the player may have respawned, or asked twice, while the puzzle was fetched.
+        if (room.match?.canAsk(userId, purpose) !== true) return ack(cb)({ error: 'No puzzle needed right now' });
+        room.match.puzzleIssued(userId, purpose);
         const puzzleId = puzzleStore.add(solution, purpose);
         issued.set(puzzleId, { userId, purpose });
         ack(cb)({ puzzleId, image, purpose, source });

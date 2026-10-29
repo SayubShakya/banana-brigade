@@ -14,6 +14,9 @@ import { hasLineOfSight, isSolid } from './map.js';
 import { center, activeGun } from './world.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
+// Players bots leave alone: shielded, busy with a crate puzzle online, or in the
+// short grace after that (graceUntil is set by the server's match.js).
+const leaveAlone = (world, s) => s.shieldTimer > 0 || s.busy || world.time < (s.graceUntil ?? 0);
 
 function brainFor(bot, level) {
   if (!bot.brain) {
@@ -72,7 +75,7 @@ function blastThreat(world, bot, me) {
 
 function think(world, bot, b, level) {
   const me = center(bot);
-  const enemies = world.soldiers.filter((s) => s !== bot && s.alive && s.shieldTimer <= 0 && s.team !== bot.team);
+  const enemies = world.soldiers.filter((s) => s !== bot && s.alive && !leaveAlone(world, s) && s.team !== bot.team);
 
   // Prefer a visible enemy; otherwise remember the closest one. Smarter bots spread
   // out: a target other bots are already on counts as further away.
@@ -218,7 +221,7 @@ export function updateBots(world, dt) {
 
     // Aim and shoot.
     const t = b.target;
-    if (t && t.soldier.alive) {
+    if (t && t.soldier.alive && !t.soldier.busy) {   // stop shooting at once when the target opens a crate
       const tc = center(t.soldier);
       const lead = Math.min(0.25, t.d / 1600);
       c.aimX = tc.x + t.soldier.vx * lead + b.aimErr.x;

@@ -12,7 +12,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on, emit } from '../lib/eventBus.js';
-import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS } from '../game/config.js';
+import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS, DIFFICULTY } from '../game/config.js';
 import { BOT_AVATARS, makeAvatar } from '../game/characters.js';
 import { createMap, isSolid } from '../game/map.js';
 import { emptyControls, activeGun } from '../game/world.js';
@@ -49,10 +49,13 @@ export function createNetGame() {
   let stats = null;
   let started = 0;
   let near = false;
+  let level = DIFFICULTY.medium;  // the room's difficulty: puzzle times
+  let crateOpen = false;        // the open puzzle window is a crate puzzle
 
   const soldierById = (id) => view?.soldiers.find((s) => s.id === id) ?? null;
 
-  socket.on('match:start', ({ me: myId, teamMode, map, roster }) => {
+  socket.on('match:start', ({ me: myId, teamMode, map, difficulty, roster }) => {
+    level = DIFFICULTY[difficulty] ?? DIFFICULTY.medium;
     view = {
       map: createMap(map), mode: teamMode ? 'team' : 'quick', cfg: MODES.online, teamMode, over: false, wave: 0,
       time: 0, timeLeft: MODES.online.timeLimit, teamKills: { blue: 0, red: 0 },
@@ -111,10 +114,20 @@ export function createNetGame() {
     }, 1500);
   });
 
-  socket.on('puzzle:offer', async ({ purpose }) => {
-    if (!active || purpose !== 'crate') return;
-    const result = await openPuzzle('crate', { title: 'Banana crate', subtitle: 'Solve it to choose a Banana Power. You are shielded while you solve it.', cancelText: 'Leave it' });
+  // The server sends the time limit (the room difficulty), the same as single player.
+  socket.on('puzzle:offer', async ({ purpose, seconds }) => {
+    if (!active || purpose !== 'crate' || isPuzzleOpen()) return;
+    crateOpen = true;
+    const result = await openPuzzle('crate', { title: 'Banana crate', subtitle: 'Solve it to choose a Banana Power. You are shielded while you solve it.', cancelText: 'Leave it', seconds: seconds ?? level.puzzle.crate });
+    crateOpen = false;
     if (result === 'cancelled') socket.emit('puzzle:cancel', { purpose: 'crate' });
+  });
+
+  // The server stopped waiting for this crate puzzle (no answer in time). Close the
+  // window the same way the Esc key does, so the player is not stuck behind it.
+  socket.on('puzzle:closed', ({ purpose }) => {
+    if (purpose !== 'crate' || !crateOpen || !isPuzzleOpen()) return;
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }));
   });
 
   // A solved crate online: the server offers powers; the choice goes back to the server.
@@ -141,9 +154,11 @@ export function createNetGame() {
     return result;
   }
 
+  // One Banana respawn try per death, as in single player (the server checks it too).
   async function bananaRespawn() {
-    if (!active || me.alive || isPuzzleOpen()) return;
-    await openPuzzle('respawn', { title: 'Banana respawn', subtitle: 'Solve it to respawn right now instead of waiting.', cancelText: 'Wait instead' });
+    if (!active || me.alive || me.bananaUsed || isPuzzleOpen()) return;
+    const result = await openPuzzle('respawn', { title: 'Banana respawn', subtitle: 'Solve it to respawn right now instead of waiting. One try.', cancelText: 'Wait instead', seconds: level.puzzle.respawn });
+    if (result !== 'solved' && view && !me.alive) me.bananaUsed = true;   // the next snapshot says the same
   }
   on('input:banana', bananaRespawn);
   document.getElementById('center-msg').addEventListener('click', bananaRespawn);

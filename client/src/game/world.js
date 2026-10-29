@@ -304,9 +304,10 @@ function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
     const wall = raycast(world.map, x, y, c.x, c.y, 6);
     if (wall && Math.hypot(wall.x - x, wall.y - y) > 14) continue;
     const falloff = 1 - d / radius;
-    const push = hasPower(s, 'bubble') ? 0 : 600 * falloff;   // the bubble also stops the shove
+    const still = hasPower(s, 'bubble') || s.busy;   // the bubble, or solving a crate puzzle online, stops the shove
+    const push = still ? 0 : 600 * falloff;
     s.vx += ((c.x - x) / (d || 1)) * push;
-    s.vy += ((c.y - y) / (d || 1)) * push - 150 * falloff;
+    s.vy += ((c.y - y) / (d || 1)) * push - (still ? 0 : 150 * falloff);
     const scale = s === owner ? selfDamage : 1;
     damage(world, s, Math.round(dmg * (0.35 + 0.65 * falloff) * scale), owner, weaponName);
   }
