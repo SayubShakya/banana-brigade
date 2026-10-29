@@ -20,6 +20,7 @@ const express = require('express');
 const session = require('express-session');
 const { createPuzzleStore } = require('./puzzles');
 const { createPuzzlePool } = require('./pool');
+const { createEventLog } = require('./eventLog');
 const { createAuthRouter } = require('./routes/auth');
 const { createScoresRouter } = require('./routes/scores');
 const { createAdminRouter } = require('./routes/admin');
@@ -44,6 +45,7 @@ function createApp({
   sendResetLink,                         // how reset links reach the player (default: the server log)
   appUrl = null,                         // the site address used in reset links (APP_URL)
   pwnedCheck,                            // Have I Been Pwned check for new passwords (off unless given)
+  eventLog = createEventLog(),           // live event feed for the admin screen
 }) {
   const app = express();
   app.set('sessionCookieName', SESSION_COOKIE);
@@ -65,9 +67,10 @@ function createApp({
   });
   app.use(sessionMiddleware);
   // The WebSocket server (realtime/) reuses the same sessions and puzzle store.
-  Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements });
+  Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements, eventLog });
+  eventLog.watchAchievements(achievements.events, db);
 
-  app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl, pwnedCheck }));
+  app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl, pwnedCheck, eventLog }));
   app.use('/api/scores', createScoresRouter({ db, achievements }));
   app.use('/api/admin', createAdminRouter({ db }));
   app.use('/api/daily', createDailyRouter({ db, pool, achievements }));

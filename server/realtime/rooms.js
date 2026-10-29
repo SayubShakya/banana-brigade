@@ -41,7 +41,7 @@ function cleanParts(p) {
   return out;
 }
 
-function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {} }) {
+function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchOptions = {} }) {
   // Achievement unlocks are pushed to the player straight away.
   const award = async (userId, eventName, data) => {
     try {
@@ -117,6 +117,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, matchOptions = {
       teamMode: room.teamMode,
       difficulty: room.difficulty,
       onPower: (userId, power) => award(userId, 'power:used', { powers: [power] }),
+      onKill: (killer, victim, weapon, headshot) => eventLog?.record('kill', killer, `${killer ? 'killed' : 'took out'} ${victim} (${weapon}${headshot ? ', headshot' : ''}) in room ${room.code}`),
       send: (event, payload, userId) => io.to(userId ? `user:${userId}` : `room:${room.code}`).emit(event, payload),
       onEnd: async (summary) => {
         await saveResults(summary);
