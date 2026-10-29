@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { rankFor, xpFor, MODE_NAMES } from '../rank.js';
-import { Panel, AvatarCanvas, RankCard, Icon } from './common.jsx';
+import { Panel, AvatarCanvas, RankCard, Icon, Skeleton, SkeletonRows } from './common.jsx';
 
 const playTime = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`);
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -52,10 +52,12 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
           <RankCard big rank={rankFor(t ? xpFor(t) : 0)} />
           <dl className="record">
             {error && <div><dt>Record</dt><dd>Offline</dd></div>}
-            {items.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+            {!data && !error && <Skeleton rows={2} />}
+            {data && items.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
           </dl>
           <h3 className="sub-head">Achievements {badges && `· ${have.size} / ${badges.all.length}`}</h3>
           <div className="badges">
+            {!badges && <Skeleton rows={1} />}
             {badges?.all.map((a) => (
               <div key={a.id} className={`badge-item${have.has(a.id) ? '' : ' locked'}`} title={`${a.text}${have.has(a.id) ? ` (unlocked ${when(have.get(a.id))})` : ''}`}>
                 <Icon id="trophy" />{a.name}
@@ -66,6 +68,7 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
           <table className="results compact">
             <thead><tr><th>Mode</th><th>Kills</th><th>Deaths</th><th>Puzzles</th><th>Result</th><th>When</th></tr></thead>
             <tbody>
+              {!data && !error && <SkeletonRows cols={6} />}
               {data && !data.recent.length && <tr className="empty-row"><td colSpan={6}>No battles yet. Deploy to start your record.</td></tr>}
               {data?.recent.slice(0, 4).map((r) => (
                 <tr key={r.id}>

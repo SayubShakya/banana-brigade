@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { Panel } from './common.jsx';
+import { Panel, Skeleton } from './common.jsx';
 import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
 
 const OPTIONS = [['autoFire', 'Auto-fire when aimed at an enemy'], ['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
@@ -55,7 +55,7 @@ function Devices() {
   return (
     <div className="devices">
       <h4>Where you're signed in</h4>
-      {!list && !error && <div className="skeleton-row" aria-label="Loading" />}
+      {!list && !error && <Skeleton rows={2} />}
       <ul>
         {list?.map((d) => (
           <li key={d.handle}>

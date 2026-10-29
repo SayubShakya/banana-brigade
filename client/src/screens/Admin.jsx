@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { Panel } from './common.jsx';
+import { Panel, Skeleton, SkeletonRows } from './common.jsx';
 import LiveEvents from './LiveEvents.jsx';
 
 const TABS = [['players', 'Players'], ['audit', 'Audit log'], ['health', 'API health'], ['events', 'Live events']];
@@ -44,7 +44,7 @@ function Players({ account }) {
       <table className="results compact admin-table">
         <thead><tr><th>Player</th><th>Role</th><th>Joined</th><th>Games</th><th>Kills</th><th>Puzzles</th><th>Actions</th></tr></thead>
         <tbody>
-          {!users && [0, 1, 2].map((i) => <tr key={i}><td colSpan={7}><div className="skeleton-row" /></td></tr>)}
+          {!users && <SkeletonRows cols={7} />}
           {users?.map((u) => {
             const me = u.id === account.id;
             const next = u.role === 'admin' ? 'player' : 'admin';
@@ -81,7 +81,7 @@ function Audit() {
     <table className="results compact admin-table">
       <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Player</th><th>Reason</th></tr></thead>
       <tbody>
-        {!rows && !error && [0, 1, 2].map((i) => <tr key={i}><td colSpan={5}><div className="skeleton-row" /></td></tr>)}
+        {!rows && !error && <SkeletonRows cols={5} />}
         {error && <tr className="empty-row"><td colSpan={5}>{error}</td></tr>}
         {rows?.length === 0 && <tr className="empty-row"><td colSpan={5}>No admin actions yet.</td></tr>}
         {rows?.map((r) => (
@@ -121,7 +121,7 @@ function Health() {
     return () => clearInterval(timer);
   }, []);
   if (error) return <p className="auth-error">{error}</p>;
-  if (!data) return <div className="skeleton-row" />;
+  if (!data) return <Skeleton rows={3} height="8cqh" />;
   const { now, history } = data;
   return (
     <div className="health">
@@ -131,8 +131,8 @@ function Health() {
         <span className="chip">Ready <b>{now.ready}</b> · reserve <b>{now.reserve}</b></span>
         <span className="chip">Retries <b>{now.retriesUsed}</b></span>
       </div>
-      <Sparkline label="Median latency" unit=" ms" max={Math.max(500, ...history.map((h) => h.p50LatencyMs ?? 0))} values={history.map((h) => h.p50LatencyMs)} />
-      <Sparkline label="Success rate" unit="%" max={100} values={history.map((h) => h.successRate)} />
+      <Sparkline label="Median latency" unit=" ms" max={Math.max(500, ...history.map((h) => h.p50LatencyMs ?? 0)) * 1.25} values={history.map((h) => h.p50LatencyMs)} />
+      <Sparkline label="Success rate" unit="%" max={110} values={history.map((h) => h.successRate)} />
       <p className="setting-note">{history.length} samples, one every 30 s (the last hour). Refreshes every 10 s.</p>
     </div>
   );

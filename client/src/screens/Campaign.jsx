@@ -9,7 +9,7 @@ import { api } from '../api.js';
 import { CHAPTERS, MISSIONS, isUnlocked, totalStars } from '../game/campaign.js';
 import { DIFFICULTY } from '../game/config.js';
 import { mapName } from '../game/maps.js';
-import { Panel, Icon } from './common.jsx';
+import { Panel, Icon, Skeleton } from './common.jsx';
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const Stars = ({ n, big = false }) => (
@@ -40,7 +40,8 @@ export default function Campaign({ onPlay, onBack }) {
       subtitle="Reach the kill target before time runs out. Earn up to 3 stars per mission to unlock new chapters."
       footer={<button className="mbtn ghost" onClick={onBack}>Back</button>}>
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <div className="campaign">
+      {!progress && !error && <Skeleton rows={3} height="10cqh" />}
+      {progress && <div className="campaign">
         <div className="map">
           {CHAPTERS.map((c) => {
             const chapterOpen = stars >= c.needStars;
@@ -88,7 +89,7 @@ export default function Campaign({ onPlay, onBack }) {
               : <p className="locked-note"><Icon id="lock" />{stars < chapter.needStars ? `Earn ${chapter.needStars} ★ to open ${chapter.name}.` : `Complete mission ${picked.id - 1} first.`}</p>}
           </aside>
         )}
-      </div>
+      </div>}
     </Panel>
   );
 }
