@@ -451,10 +451,35 @@ export function createRenderer(canvas) {
     ctx.fillText(text, x, y);
   }
 
+  // A player busy solving a banana-crate puzzle (online): a banana-yellow bubble round
+  // them and a small "🍌?" badge over their head with a ring turning round it.
+  function drawSolvingBubble(cx, cy, iconY, time) {
+    const calm = effects.calm();
+    ctx.fillStyle = 'rgba(255,225,53,0.16)';
+    ctx.strokeStyle = 'rgba(255,225,53,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 38 + (calm ? 0 : Math.sin(time * 3) * 1.5), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(40,30,0,0.75)';
+    ctx.beginPath(); ctx.arc(cx, iconY, 15, 0, Math.PI * 2); ctx.fill();
+    const turn = calm ? 0 : time * 4;
+    ctx.strokeStyle = '#ffe135';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(cx, iconY, 18.5, turn, turn + Math.PI * 1.3); ctx.stroke();
+    ctx.font = 'bold 13px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffe135';
+    ctx.fillText('🍌?', cx, iconY + 1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
   function drawSoldiers(world, time) {
     for (const s of world.soldiers) {
       if (!s.alive) continue;
-      const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0, recoil: effects.recoilOf(s) };
+      // A player solving a banana-crate puzzle online is protected too, but shows the
+      // solving bubble instead of the spawn-shield flicker.
+      const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0 && !s.busy, recoil: effects.recoilOf(s) };
+      effects.applyPose(s, view);   // lean, landing squash, reload/swap/melee/throw poses
       // A Banana Power makes the soldier glow in the power's colour (it flickers near the end).
       const pw = s.power && POWERS[s.power.id ?? s.power];
       if (pw && !(s.power.timer < 2 && Math.floor(time * 8) % 2)) {
@@ -473,6 +498,7 @@ export function createRenderer(canvas) {
       }
       drawSoldier(ctx, view, s.avatar, time);
       const cx = view.x + s.w / 2;
+      if (s.busy) drawSolvingBubble(cx, view.y + s.h / 2, view.y - 52, time);
       const tagColor = s.isPlayer ? '#ffe135' : s.team === 'blue' ? '#7ec8ff' : s.team === 'red' ? '#ff8a8a' : '#ffffff';
       label(s.name, cx, view.y - 22, 12, tagColor);
       if (!s.isPlayer) {
@@ -642,6 +668,7 @@ export function createRenderer(canvas) {
     drawBackground(world.time, world.map);
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
     drawTerrain(world.map);
+    effects.drawUnder(ctx, cam, world.time);   // scorch marks and ragdoll corpses
     drawPickups(world, world.time);
     drawSoldiers(world, world.time);
     drawProjectiles(world);
