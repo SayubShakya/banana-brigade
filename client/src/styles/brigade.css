@@ -804,3 +804,14 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .event-list li[data-kind="auth"] .event-kind { background: var(--good); color: var(--ink); }
 .event-list li[data-kind="admin"] .event-kind { background: var(--banana); color: var(--ink); }
 .event-list b { color: var(--banana); }
+
+/* ---------- Settings: signed-in devices ---------- */
+.devices { display: flex; flex-direction: column; gap: 0.8cqh; margin: 0.6cqh 0 1cqh; }
+.devices h4 { margin: 0; color: var(--khaki); font-size: 2cqh; }
+.devices ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6cqh; }
+.devices li { display: flex; justify-content: space-between; align-items: center; gap: 1cqh; padding: 0.9cqh 1.2cqh; border-radius: 1cqh; background: rgba(255,255,255,0.06); color: var(--paper); font-size: 1.9cqh; }
+.devices li > span { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4cqh 1cqh; }
+.devices small { flex-basis: 100%; color: var(--khaki); font-size: 1.6cqh; }
+a.toggle { text-decoration: none; display: inline-flex; align-items: center; }
+.skeleton-row { height: 5cqh; border-radius: 1cqh; background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.05) 100%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }

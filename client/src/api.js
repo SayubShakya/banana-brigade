@@ -42,6 +42,7 @@ export const api = {
   deleteAccount: (password) => call('DELETE', '/api/auth/account', { password }),
   available: (name) => call('GET', `/api/auth/available?u=${encodeURIComponent(name)}`),
   sessions: () => call('GET', '/api/auth/sessions'),
+  endSession: (handle) => call('DELETE', `/api/auth/sessions/${encodeURIComponent(handle)}`),
   adminUsers: () => call('GET', '/api/admin/users'),
   resetScores: (id) => call('DELETE', `/api/admin/users/${id}/scores`),
   setRole: (id, role) => call('PATCH', `/api/admin/users/${id}/role`, { role }),
