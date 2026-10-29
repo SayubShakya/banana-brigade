@@ -115,6 +115,22 @@ counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once ge
 | CAPTCHA after a few failures | Stops bots, not people | Needs a third-party service; worse for players |
 | `express-rate-limit` package | Ready-made | Counts in memory by default, so it resets on restart and is not shared between servers; ours is in MongoDB |
 
+**Guest play** (`feature/guest-play`)
+
+A guest is a real account record with `guest: true`, no password and a TTL date 7 days ahead; the session cookie
+also lasts 7 days. Saving it (`/upgrade`) sets a name and bcrypt hash on the same record (one atomic update that
+only matches while `guest: true`), clears the TTL date and regenerates the session.
+
+| Option | For | Against |
+|---|---|---|
+| **Guest = account record without a password (chosen)** | Everything (scores, achievements, campaign) already works by user id, so saving keeps it all | Unsaved guests fill the database for 7 days; a guest who clears cookies loses the account |
+| Progress only in `localStorage`, copied up on sign-up | No server records for visitors | The browser could invent any progress; the server could not check it |
+| No guests | Simplest | Visitors must sign up before they see the game |
+| Anonymous sign-in from a provider (e.g. Firebase) | Ready-made | A third party holds the identity |
+
+Limits: a guest's matches stay in `scores` after its record expires (they are hidden from leaderboards);
+guest creation is limited to 10 an hour per IP.
+
 **Breached passwords: Have I Been Pwned** (`server/services/pwned.js`, `feature/pwned-passwords`)
 
 New passwords (sign-up, change, reset) are checked against the 800+ million passwords seen in real breaches.
