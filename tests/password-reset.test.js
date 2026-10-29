@@ -31,6 +31,9 @@ test('a reset link sets a new password, works once and ends every session', asyn
     assert.match(sent[0].link, /\/#reset=[\w-]{43}$/);
 
     const token = tokenOf(sent[0]);
+    // Checking the link shows the account and does not use it up.
+    assert.deepEqual((await client(s.base).post('/api/auth/reset/check', { token })).body, { ok: true, username: 'forgetful' });
+    assert.equal((await client(s.base).post('/api/auth/reset/check', { token: 'not-a-real-token' })).status, 400);
     const used = await client(s.base).post('/api/auth/reset', { token, password: NEW_PW });
     assert.equal(used.status, 200);
     assert.equal(used.body.username, 'forgetful');
@@ -43,6 +46,7 @@ test('a reset link sets a new password, works once and ends every session', asyn
     const again = await client(s.base).post('/api/auth/reset', { token, password: 'third-password-1' });
     assert.equal(again.status, 400);
     assert.match(again.body.error, /not valid/);
+    assert.equal((await client(s.base).post('/api/auth/reset/check', { token })).status, 400);   // used links are refused
   } finally { await s.close(); }
 });
 

@@ -47,6 +47,7 @@ export const api = {
   login: (username, password, remember = false) => call('POST', '/api/auth/login', { username, password, remember }),
   register: (username, password) => call('POST', '/api/auth/register', { username, password }),
   forgot: (username) => call('POST', '/api/auth/forgot', { username }),
+  checkReset: (token) => call('POST', '/api/auth/reset/check', { token }),
   resetPassword: (token, password) => call('POST', '/api/auth/reset', { token, password }),
   guest: () => call('POST', '/api/auth/guest'),
   upgrade: (username, password) => call('POST', '/api/auth/upgrade', { username, password }),

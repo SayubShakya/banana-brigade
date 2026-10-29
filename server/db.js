@@ -261,6 +261,11 @@ async function openDatabase(uri) {
       await m.PasswordReset.deleteMany({ user: oid(userId) });
       await m.PasswordReset.create({ user: oid(userId), tokenHash, expiresAt });
     },
+    // The player a reset link belongs to, if it is still valid (does not use it up).
+    async peekPasswordReset(tokenHash, now = Date.now()) {
+      const doc = await m.PasswordReset.findOne({ tokenHash, usedAt: null, expiresAt: { $gt: new Date(now) } }).lean();
+      return doc ? String(doc.user) : null;
+    },
     // Marks the link used and returns its player id, in one atomic step, so the same
     // link sent twice at once still works only once. Null if unknown, used or expired.
     async usePasswordReset(tokenHash, now = Date.now()) {
