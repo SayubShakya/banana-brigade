@@ -52,3 +52,17 @@ export const Sky = () => (
     <div className="menu-ground" aria-hidden="true" />
   </>
 );
+
+// Grey shimmering placeholders shown while a screen's data is on its way, so the
+// layout does not jump when it arrives. Screen readers hear "Loading" once.
+export function Skeleton({ rows = 3, height }) {
+  return (
+    <div className="skeleton" role="status" aria-label="Loading">
+      {Array.from({ length: rows }, (_, i) => <div key={i} className="skeleton-row" style={height ? { height } : undefined} />)}
+    </div>
+  );
+}
+// The same inside a table body.
+export const SkeletonRows = ({ cols, rows = 3 }) => Array.from({ length: rows }, (_, i) => (
+  <tr key={`sk${i}`} aria-hidden={i > 0}><td colSpan={cols}><div className="skeleton-row" role={i === 0 ? 'status' : undefined} aria-label={i === 0 ? 'Loading' : undefined} /></td></tr>
+));

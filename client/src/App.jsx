@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import { useBus } from './hooks.js';
+import { emit } from './eventBus.js';
 import { askPuzzle } from './puzzleBridge.js';
 import { readJson, store } from './storage.js';
 import { MODES } from './game/config.js';
@@ -180,7 +181,7 @@ export default function App() {
     try {
       const { user } = await api.guest();
       setAccount(user); setIsNew(true); setScreen('menu');
-    } catch (err) { alert(err.message); }
+    } catch (err) { if (!err.offline && !(err.status >= 500)) emit('toast:error', { text: err.message }); }   // api.js already shows the others
   };
   // Privacy and Terms go back to wherever the player came from: the menu or the home page.
   const leavePublic = () => setScreen(account ? 'menu' : 'home');
