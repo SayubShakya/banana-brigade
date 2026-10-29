@@ -146,16 +146,19 @@ const enemiesOf = (world, s) => world.soldiers.filter((o) => o !== s && o.alive 
 function spawn(world, s, initial = false) {
   const enemies = enemiesOf(world, s);
   let best = world.map.spawns[0];
-  let bestScore = -1;
+  let bestScore = -Infinity;
   for (const p of world.map.spawns) {
     const d = enemies.length ? Math.min(...enemies.map((e) => Math.hypot(center(e).x - p.x, center(e).y - p.y))) : rand(0, 1000);
-    const score = d + rand(0, 250);
+    // Soldiers spawn away from enemies; training dummies spawn near the player, so
+    // there is something on screen to shoot at.
+    const score = (s.isDummy ? -d : d) + rand(0, 250);
     if (score > bestScore) { bestScore = score; best = p; }
   }
   Object.assign(s, {
     x: best.x - s.w / 2, y: best.y + TILE / 2 - s.h - 1, vx: 0, vy: 0,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, alive: true,
     shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0, armor: 0, armorTimer: 0, fuelBoost: 0, power: null,
+    bananaUsed: false,   // one Banana respawn try per death
     sidearm: newGun(SIDEARM), primary: newGun(pick(CRATE_WEAPONS)), current: 'primary', grenades: SOLDIER.grenades,
   });
   if (!initial) world.emit('soldier:respawned', { soldier: s });

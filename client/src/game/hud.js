@@ -142,7 +142,7 @@ export function createHud() {
       switch (world.mode) {
         case 'training':
           el.timer.textContent = 'TRAINING';
-          el.rank.textContent = 'Shoot the dummies · Esc to leave';
+          el.rank.textContent = 'Shoot the dummies · pause (II) to leave';
           break;
         case 'survival': {
           const left = world.soldiers.filter((s) => s.team === 'enemy').length;
@@ -157,7 +157,7 @@ export function createHud() {
           break;
         case 'team':
           el.timer.textContent = fmtTime(world.timeLeft);
-          el.rank.textContent = `Blue ${world.teamKills.blue} – ${world.teamKills.red} Red · first to ${world.cfg.killLimit}`;
+          el.rank.textContent = `You are ${p.team === 'red' ? 'Red' : 'Blue'} · Blue ${world.teamKills.blue} – ${world.teamKills.red} Red · first to ${world.cfg.killLimit}`;
           break;
         default: {
           const better = players.filter((s) => s.kills > p.kills).length;
@@ -172,6 +172,7 @@ export function createHud() {
         el.msg.innerHTML = world.mode === 'campaign' && p.lives <= 0 ? `${by}: <b>out of lives</b>`
           : world.mode === 'survival'
           ? `${by} — <b>solve a Banana puzzle to revive</b> (B)`
+          : p.bananaUsed ? `${by} — respawning in ${Math.ceil(p.respawnTimer)}`
           : `${by} — respawning in ${Math.ceil(p.respawnTimer)} · <b>Banana respawn now</b> (B)`;
         el.msg.hidden = false;
       } else el.msg.hidden = true;

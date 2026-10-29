@@ -56,7 +56,7 @@ export default function PowerPicker() {
           <div>
             <span className="mode-chip">Banana crate opened</span>
             <h2 id="power-title">Choose your Banana Power</h2>
-            <p id="puzzle-sub">Press 1, 2 or 3, or R for a random power with +{BANANA_CRATE.randomBonus} s.</p>
+            <p id="puzzle-sub">Tap a card (or press 1, 2, 3, or R for Random with +{BANANA_CRATE.randomBonus} s). Random is picked when time runs out.</p>
           </div>
           <div className="timer-ring" aria-label="Seconds left">
             <svg viewBox="0 0 60 60">
