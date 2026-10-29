@@ -9,7 +9,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../lib/eventBus.js';
-import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, POWERS } from './config.js';
+import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, HEAD_CAP_ABOVE, HEAD_CAP_HALF_WIDTH, POWERS } from './config.js';
 import { createMap, moveBox, raycast, isSolid, MAPS, randomMapId } from './map.js';
 import { RAMP } from './campaign.js';
 
@@ -63,6 +63,18 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
   };
   if (clip(-dx, x0 - b.x) && clip(dx, b.x + b.w - x0) && clip(-dy, y0 - b.y) && clip(dy, b.y + b.h - y0)) return t0;
   return null;
+}
+
+// A bullet hits a soldier if it crosses the soldier's box, or the small head cap just
+// above it (the drawn head pokes out of the top of the box; see HEAD_CAP_ABOVE in config.js).
+// Returns the entry distance (0..1) of whichever is hit first, or null.
+function bulletHitsSoldier(x0, y0, x1, y1, s) {
+  const body = segmentHitsBox(x0, y0, x1, y1, s);
+  const cap = { x: s.x + s.w / 2 - HEAD_CAP_HALF_WIDTH, y: s.y - HEAD_CAP_ABOVE, w: HEAD_CAP_HALF_WIDTH * 2, h: HEAD_CAP_ABOVE };
+  const head = segmentHitsBox(x0, y0, x1, y1, cap);
+  if (body === null) return head;
+  if (head === null) return body;
+  return Math.min(body, head);
 }
 
 // mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
@@ -164,7 +176,7 @@ function spawn(world, s, initial = false) {
   if (!initial) world.emit('soldier:respawned', { soldier: s });
 }
 
-// info.headshot marks a sniper-style headshot (already multiplied into amount).
+// info.headshot marks a bullet headshot (already multiplied into amount).
 export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
   if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
@@ -545,7 +557,10 @@ function updateSoldier(world, s, dt) {
   c.reload = c.swap = c.grenade = c.melee = c.pickup = false;
 }
 
-// Damage for one bullet hit: distance falloff (shotgun) and the headshot bonus (sniper).
+// Damage for one bullet hit: distance falloff (shotgun) and the headshot bonus.
+// A hit in the top HEADSHOT_ZONE of the box, or on the head cap above it (hitY above
+// victim.y), is a headshot for any bullet with a `headshot` multiplier. Shotgun pellets
+// are multiplied after falloff. Rockets and flames never come through here.
 export function bulletDamage(b, victim, hitY, dist) {
   let amount = b.damage;
   if (b.falloff && dist > b.falloff.start) {
@@ -570,7 +585,7 @@ function updateProjectiles(world, dt) {
     let best = Infinity;
     for (const s of world.soldiers) {
       if (s === b.owner || !s.alive) continue;
-      const t = segmentHitsBox(b.x, b.y, endX, endY, s);
+      const t = bulletHitsSoldier(b.x, b.y, endX, endY, s);
       if (t !== null && t < best) { best = t; victim = s; }
     }
     b.px = b.x; b.py = b.y;
