@@ -121,17 +121,17 @@ test('only admins can change roles, and an admin cannot demote themselves', asyn
   try {
     const { c: player, id: playerId } = await registered(s, 'grunt');
     const boss = await s.db.createUser('boss', bcrypt.hashSync(PW, 4), 'admin');
-    assert.equal((await player.patch(`/api/admin/users/${playerId}/role`, { role: 'admin' })).status, 403);
+    assert.equal((await player.patch(`/api/admin/users/${playerId}/role`, { role: 'admin', reason: 'test promotion' })).status, 403);
 
     const admin = (await loggedIn(s, 'boss')).c;
-    assert.equal((await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'king' })).status, 400);
-    assert.equal((await admin.patch(`/api/admin/users/${boss.id}/role`, { role: 'player' })).status, 400);
-    const promoted = await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'admin' });
+    assert.equal((await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'king', reason: 'test' })).status, 400);
+    assert.equal((await admin.patch(`/api/admin/users/${boss.id}/role`, { role: 'player', reason: 'test demotion' })).status, 400);
+    const promoted = await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'admin', reason: 'test promotion' });
     assert.equal(promoted.status, 200);
     assert.equal((await s.db.findUserById(playerId)).role, 'admin');
     // The role is read from the database, so it applies to the next request, no re-login.
     assert.equal((await player.get('/api/admin/users')).status, 200);
-    assert.equal((await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'player' })).status, 200);
+    assert.equal((await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'player', reason: 'test demotion' })).status, 200);
     assert.equal((await player.get('/api/admin/users')).status, 403);
   } finally { await s.close(); }
 });

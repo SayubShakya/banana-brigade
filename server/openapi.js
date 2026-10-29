@@ -31,6 +31,7 @@ const q = (name, schema, description) => ({ name, in: 'query', schema, descripti
 const p = (name, description) => ({ name, in: 'path', required: true, schema: str, description });
 const credentials = obj({ username: { type: 'string', pattern: '^[A-Za-z0-9_]{3,16}$' }, password: { type: 'string', minLength: 8, maxLength: 72 } }, ['username', 'password']);
 const userReply = json(obj({ user: ref('User') }));
+const reasonBody = obj({ reason: { type: 'string', minLength: 3, maxLength: 200 } }, ['reason']);
 
 const spec = {
   openapi: '3.0.3',
@@ -84,8 +85,12 @@ const spec = {
     '/daily/current': { get: op('daily', 'The running daily puzzle (after a reload)', { ok: json({ type: 'object' }) }) },
     '/daily/leaderboard': { get: op('daily', 'Today\'s daily leaderboard', { ok: json(obj({ date: str, rows: { type: 'array', items: { type: 'object' } } })) }) },
     '/admin/users': { get: op('admin', 'Every account with games, kills and puzzles (admins)', { ok: json(obj({ users: { type: 'array', items: { type: 'object' } } })), errors: { 403: err('Admins only') } }) },
-    '/admin/users/{id}/scores': { delete: op('admin', 'Reset a player\'s scores (admins)', { params: [p('id', 'User id')], ok: json(obj({ deleted: int })), errors: { 403: err('Admins only') } }) },
-    '/admin/users/{id}/role': { patch: op('admin', 'Promote or demote (admins)', { params: [p('id', 'User id')], req: obj({ role: { type: 'string', enum: ['player', 'admin'] } }, ['role']), ok: json(obj({ user: ref('User') })), errors: { 400: err('Bad role or self-demotion'), 403: err('Admins only') } }) },
+    '/admin/users/{id}/scores': { delete: op('admin', 'Reset a player\'s scores (admins, reason logged)', { params: [p('id', 'User id')], req: reasonBody, ok: json(obj({ deleted: int })), errors: { 400: err('No reason'), 403: err('Admins only') } }) },
+    '/admin/users/{id}/suspend': { post: op('admin', 'Suspend a player: signed out at once, cannot log in (admins, reason logged)', { params: [p('id', 'User id')], req: reasonBody, ok: json(obj({ ok: bool, ended: int })), errors: { 400: err('No reason, yourself or an admin'), 403: err('Admins only'), 409: err('Already suspended') } }) },
+    '/admin/users/{id}/restore': { post: op('admin', 'Restore a suspended player (admins, reason logged)', { params: [p('id', 'User id')], req: reasonBody, errors: { 400: err('No reason'), 403: err('Admins only'), 409: err('Not suspended') } }) },
+    '/admin/audit': { get: op('admin', 'The audit log: who did what to whom, when and why (admins)', { params: [q('limit', int)], ok: json(obj({ rows: { type: 'array', items: obj({ id: str, at: str, actor: str, action: str, target: str, reason: str, detail: str }) } })), errors: { 403: err('Admins only') } }) },
+    '/admin/health': { get: op('admin', 'Banana API health now and every 30 s for the last hour (admins)', { ok: json(obj({ now: ref('Status'), history: { type: 'array', items: obj({ at: str, online: bool, ready: int, reserve: int, p50LatencyMs: int, successRate: int, circuit: str }) } })), errors: { 403: err('Admins only') } }) },
+    '/admin/users/{id}/role': { patch: op('admin', 'Promote or demote (admins)', { params: [p('id', 'User id')], req: obj({ role: { type: 'string', enum: ['player', 'admin'] }, reason: str }, ['role', 'reason']), ok: json(obj({ user: ref('User') })), errors: { 400: err('Bad role or self-demotion'), 403: err('Admins only') } }) },
     '/status': { get: op('status', 'Banana API health: puzzles ready, latency, success rate, circuit breaker', { ok: json(ref('Status')), auth: false }) },
     '/public/leaderboard': {
       get: {

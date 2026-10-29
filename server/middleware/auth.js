@@ -3,7 +3,7 @@
 // body, so a player cannot pretend to be someone else by sending another id.
 //
 // The user (and their role) is read from the database on every request rather than
-// trusted from the session: a deleted account or a demoted admin loses access at
+// trusted from the session: a deleted, suspended or demoted account loses access at
 // once, not when the cookie runs out. The cost is one small lookup by _id per request.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
@@ -20,6 +20,13 @@ async function loadUser(req, res) {
     await new Promise((resolve) => req.session.destroy(() => resolve()));
     res.clearCookie(req.app.get('sessionCookieName'), { path: '/' });
     res.status(401).json({ error: 'Please log in first' });
+    return null;
+  }
+  // A suspended player is thrown out at once, even with a live session.
+  if (user.suspended) {
+    await new Promise((resolve) => req.session.destroy(() => resolve()));
+    res.clearCookie(req.app.get('sessionCookieName'), { path: '/' });
+    res.status(403).json({ error: `Your account is suspended: ${user.suspended.reason}`, suspended: true });
     return null;
   }
   req.user = user;

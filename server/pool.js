@@ -185,7 +185,25 @@ function createPuzzlePool({
     };
   }
 
+  // Health over time for the admin screen: a small sample of status() every 30 s
+  // (started by index.js), the last 120 kept (one hour).
+  const samples = [];
+  function sample() {
+    const s = status();
+    samples.push({ at: new Date(now()).toISOString(), online: s.online, ready: s.ready, reserve: s.reserve, p50LatencyMs: s.p50LatencyMs, successRate: s.successRate, circuit: s.circuit.state });
+    if (samples.length > 120) samples.shift();
+  }
+  function startSampling(everyMs = 30_000) {
+    const first = setTimeout(sample, 5000);   // after the warm-up calls have had time to answer
+    const timer = setInterval(sample, everyMs);
+    first.unref?.(); timer.unref?.();
+    return () => { clearTimeout(first); clearInterval(timer); };
+  }
+
   return {
+    sample,
+    startSampling,
+    history: () => [...samples],
     // Returns { image, solution, source } where source is 'live' or 'reserve'.
     take,
     warmUp: refill,

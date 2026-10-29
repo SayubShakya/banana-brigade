@@ -118,7 +118,7 @@ function createApp({
 
   app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl, pwnedCheck, eventLog }));
   app.use('/api/scores', createScoresRouter({ db, achievements }));
-  app.use('/api/admin', createAdminRouter({ db }));
+  app.use('/api/admin', createAdminRouter({ db, eventLog }));
   app.use('/api/daily', createDailyRouter({ db, pool, achievements }));
   app.use('/api/campaign', createCampaignRouter({ db, achievements }));
 

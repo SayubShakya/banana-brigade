@@ -183,6 +183,10 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         return res.status(401).json({ error: left > 0 ? `Wrong username or password (${left} tries left)` : 'Wrong username or password. Locked for 10 min on this network.' });
       }
       await Promise.all([db.clearCounter(pairKey), db.undoCounter(ipKey)]);
+      if (user.suspended) {
+        log('security', user.username, 'tried to log in while suspended');
+        return res.status(403).json({ error: `This account is suspended: ${user.suspended.reason}`, suspended: true });
+      }
       await db.touchLogin(user.id);
       await startSession(req, user, { remember: remember === true });
       log('auth', user.username, `logged in${remember === true ? ' (remember me)' : ''}`);
@@ -447,7 +451,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
     try {
       if (!req.session.userId) return res.json({ user: null });
       const user = await db.findUserById(req.session.userId);
-      if (!user) return res.json({ user: null });
+      if (!user || user.suspended) return res.json({ user: null });
       res.json({ user: publicUser(user), puzzles: req.session.puzzles ?? { solved: 0, attempted: 0 } });
     } catch (err) {
       next(err);
