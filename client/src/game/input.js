@@ -103,6 +103,8 @@ export function createInput(canvas, renderer) {
 
   // Touch: show the joysticks the first time the screen is touched.
   window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') document.body.classList.add('touch'); }, { once: false });
+  // A phone or tablet: touch layout from the start (sticks, no keyboard hints).
+  if (window.matchMedia?.('(pointer: coarse)').matches) document.body.classList.add('touch');
   joystick(document.getElementById('stick-move'), (x, y) => { touchMove.x = x; touchMove.y = y; });
   joystick(document.getElementById('stick-aim'), (x, y) => {
     stickAim.active = Math.hypot(x, y) > 0.15;

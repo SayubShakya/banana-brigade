@@ -354,6 +354,20 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
     }
   });
 
+  // Before the new-password form: is this link still valid, and for which account?
+  // Only someone holding the link learns the name, and the link is not used up.
+  router.post('/reset/check', async (req, res, next) => {
+    try {
+      const { token } = req.body ?? {};
+      const userId = typeof token === 'string' && token.length <= 100 ? await db.peekPasswordReset(hashToken(token), now()) : null;
+      const user = userId && await db.findUserById(userId);
+      if (!user) return res.status(400).json({ error: 'This reset link is not valid any more. Ask for a new one.' });
+      res.json({ ok: true, username: user.username });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Forgot password, step 2: the link's token plus a new password. The token is
   // marked used in the same step that checks it, so it works only once. Every
   // session of the account is ended (whoever had the old password is thrown out),

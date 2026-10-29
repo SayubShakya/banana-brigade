@@ -35,6 +35,12 @@ export default function Login({ onLogin, onHome, onGuest }) {
 
   // Take the token out of the address bar once it has been read.
   useEffect(() => { if (resetToken) history.replaceState(null, '', location.pathname); }, [resetToken]);
+  // Which account the reset link is for (or that it has expired), before typing a new password.
+  const [resetFor, setResetFor] = useState(null);
+  useEffect(() => {
+    if (!resetToken) return;
+    api.checkReset(resetToken).then(({ username: name }) => setResetFor(name)).catch((err) => setError(err.message));
+  }, [resetToken]);
 
   function switchTo(next) { setMode(next); setError(''); setInfo(''); setPassword(''); setConfirm(''); }
 
@@ -69,7 +75,7 @@ export default function Login({ onLogin, onHome, onGuest }) {
       <div className="login-wrap">
         <div className="brand"><img className="emblem" src="/logo.svg" alt="" /><h1 className="logo small">BANANA<span>BRIGADE</span></h1></div>
         <form id="auth-form" className="panel login-panel" data-mode={mode} noValidate onSubmit={submit}>
-          {TITLES[mode] ? <h2 className="auth-title">{TITLES[mode]}</h2> : (
+          {TITLES[mode] ? <h2 className="auth-title">{TITLES[mode]}{mode === 'reset' && resetFor ? <small className="auth-for">for {resetFor}</small> : null}</h2> : (
             <div className="auth-tabs" role="tablist">
               <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => switchTo('login')}>Log in</button>
               <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => switchTo('register')}>Create account</button>
