@@ -13,7 +13,7 @@ function Board({ title, rows, mode, me }) {
   return (
     <section>
       <h3 className="sub-head">{title}</h3>
-      <table className="results compact">
+      <table className="results compact leaderboard">
         <thead><tr><th>#</th><th>Soldier</th><th>{main}</th><th>Puzzles</th></tr></thead>
         <tbody>
           {rows === null && <SkeletonRows cols={4} />}

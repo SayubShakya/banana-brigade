@@ -12,7 +12,7 @@ const MODES = [
 
 export default function Modes({ onDeploy, onBack }) {
   return (
-    <Panel wide title="More modes" subtitle="Every mode starts with a Banana puzzle: solve it to deploy."
+    <Panel wide title="More Modes" subtitle="Every mode starts with a Banana puzzle: solve it to deploy."
       footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
       <div className="modes-list">
         {MODES.map((m) => (

@@ -41,11 +41,16 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
   }, [game]);
 
   return (
-    <Panel wide title={outcome.title} chip={<span className="mode-chip">{mission ? `Mission ${mission.id}` : MODES[result.mode].name}{game.difficulty ? ` · ${game.difficulty}` : ''}</span>} footer={mission ? <>
+    <Panel wide title={outcome.title} chip={<span className="mode-chip">{mission ? `Mission ${mission.id}` : MODES[result.mode].name}{game.difficulty && result.mode !== 'training' ? ` · ${game.difficulty}` : ''}</span>} footer={mission ? <>
+      <button className="mbtn ghost" onClick={onMenu}>Menu</button>
       <button className="mbtn ghost" onClick={onMap}>Mission map</button>
-      <button className="mbtn ghost" onClick={() => onMission(mission)}>Retry</button>
-      {camp && missionById(mission.id + 1) && (camp.unlockedNext || camp.progress[mission.id]?.stars > 0)
-        && <button className="mbtn primary" onClick={() => onMission(missionById(mission.id + 1))}>Next mission</button>}
+      {(() => {
+        const next = camp && missionById(mission.id + 1) && (camp.unlockedNext || camp.progress[mission.id]?.stars > 0);
+        return <>
+          <button className={`mbtn ${next ? 'ghost' : 'primary'}`} onClick={() => onMission(mission)}>Retry</button>
+          {next && <button className="mbtn primary" onClick={() => onMission(missionById(mission.id + 1))}>Next mission</button>}
+        </>;
+      })()}
     </> : <>
       <button className="mbtn ghost" onClick={onMenu}>Menu</button>
       <button className="mbtn primary" onClick={onAgain}>{game.online ? 'Back to the room' : 'Deploy again'}</button>
@@ -66,7 +71,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
       <div className="purpose-row" aria-label="Puzzles by type">
         {PURPOSES.map(([k, label]) => <div key={k}>{label}<b>{s.byPurpose[k].solved} / {s.byPurpose[k].attempts}</b></div>)}
       </div>
-      <table className="results">
+      {result.mode !== 'training' && <table className="results">
         <thead><tr><th>#</th><th>Soldier</th><th>Kills</th><th>Deaths</th></tr></thead>
         <tbody>
           {result.ranking.map((r, i) => (
@@ -75,7 +80,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
       <p className="results-saved" data-state={saved.state}>{saved.text}</p>
     </Panel>
   );

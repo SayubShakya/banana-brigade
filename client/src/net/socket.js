@@ -12,6 +12,9 @@ export function getSocket() {
   if (!socket) {
     socket = io({ autoConnect: false, transports: ['websocket', 'polling'] });
     socket.on('achievement:unlocked', (a) => emit('achievement:unlocked', a));   // unlocked in an online match
+    // The server closed this socket on purpose: the account was signed out from
+    // another device, its password was reset, or an admin suspended it.
+    socket.on('disconnect', (reason) => { if (reason === 'io server disconnect') emit('session:ended', { text: 'You were signed out by the server (another device, a password change or a suspension).' }); });
   }
   if (!socket.connected) socket.connect();
   return socket;

@@ -24,10 +24,11 @@ function createAdminRouter({ db, eventLog = null }) {
   const router = express.Router();
   router.use(requireAdmin);
 
-  // Writes the audit row and tells the live feed.
-  async function audit(req, action, target, reason, detail) {
+  // Writes the audit row and tells the live feed. `said` is the feed's wording,
+  // e.g. "suspended sam (2 sessions ended)".
+  async function audit(req, action, target, reason, detail, said) {
     await db.addAudit({ actor: req.user.id, actorName: req.user.username, action, target: target?.id, targetName: target?.username, reason, detail });
-    eventLog?.record('admin', req.user.username, `${detail ?? action}${target ? ` (${target.username})` : ''}: ${reason}`);
+    eventLog?.record('admin', req.user.username, `${said}. Reason: ${reason}`);
   }
 
   router.get('/users', async (req, res, next) => {
@@ -52,7 +53,7 @@ function createAdminRouter({ db, eventLog = null }) {
       const user = await db.findUserById(req.params.id);
       if (!user) return res.status(404).json({ error: 'No such user' });
       const deleted = await db.deleteScoresForUser(user.id);
-      await audit(req, 'reset-scores', user, reason, `reset ${deleted} score${deleted === 1 ? '' : 's'}`);
+      await audit(req, 'reset-scores', user, reason, `reset ${deleted} score${deleted === 1 ? '' : 's'}`, `reset ${user.username}'s scores (${deleted})`);
       res.json({ deleted });
     } catch (err) {
       next(err);
@@ -75,7 +76,7 @@ function createAdminRouter({ db, eventLog = null }) {
       if (!user) return res.status(404).json({ error: 'No such user' });
       if (user.role !== role) {
         await db.setRole(user.id, role);
-        await audit(req, 'set-role', user, reason, `made ${role}`);
+        await audit(req, 'set-role', user, reason, `made ${role}`, `made ${user.username} ${role === 'admin' ? 'an admin' : 'a player'}`);
       }
       res.json({ user: { id: user.id, username: user.username, role } });
     } catch (err) {
@@ -98,7 +99,8 @@ function createAdminRouter({ db, eventLog = null }) {
       await db.suspendUser(user.id, reason, req.user.username);
       const ended = await endSessionsFor(req.sessionStore, user.id);
       disconnectSocketsFor(req.app.locals.io, user.id);
-      await audit(req, 'suspend', user, reason, `suspended (${ended} session${ended === 1 ? '' : 's'} ended)`);
+      const sessions = `${ended} session${ended === 1 ? '' : 's'} ended`;
+      await audit(req, 'suspend', user, reason, `suspended (${sessions})`, `suspended ${user.username} (${sessions})`);
       res.json({ ok: true, ended });
     } catch (err) {
       next(err);
@@ -113,7 +115,7 @@ function createAdminRouter({ db, eventLog = null }) {
       if (!user) return res.status(404).json({ error: 'No such user' });
       if (!user.suspended) return res.status(409).json({ error: 'Not suspended' });
       await db.restoreUser(user.id);
-      await audit(req, 'restore', user, reason, 'restored');
+      await audit(req, 'restore', user, reason, 'restored', `restored ${user.username}`);
       res.json({ ok: true });
     } catch (err) {
       next(err);

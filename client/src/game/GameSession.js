@@ -38,14 +38,21 @@ export function outcome({ ranking, player, reason, mode, wave, teamKills, missio
     const why = reason === 'time' ? 'Time ran out.' : reason === 'out' ? 'Out of lives.' : reason === 'quit' ? 'You left the mission.' : `${mission.target} kills reached.`;
     return { won, title: won ? 'Mission complete!' : 'Mission failed', line: `${mission.name}: ${player.kills} / ${mission.target} kills. ${why}` };
   }
-  if (mode === 'survival') return { won: false, title: `Wave ${wave}`, line: `You held out until wave ${wave} with ${player.kills} kills.` };
+  if (mode === 'survival') {
+    const end = reason === 'quit' ? 'You ended the run' : 'You held out';
+    return { won: false, title: `Wave ${wave}`, line: `${end} at wave ${wave} with ${player.kills} kill${player.kills === 1 ? '' : 's'}.` };
+  }
   if (mode === 'training') return { won: false, title: 'Training over', line: `${player.kills} dummies down. Training is not ranked.` };
   const why = reason === 'time' ? 'Time is up.' : reason === 'quit' ? 'You ended the battle.' : 'Kill limit reached.';
   if (mode === 'team') {
-    const won = teamKills.blue > teamKills.red;
+    // Leaving early is never a win, even when Blue was ahead.
+    const won = reason !== 'quit' && teamKills.blue > teamKills.red;
+    if (reason === 'quit') return { won, title: 'Battle ended', line: `Blue ${teamKills.blue} – ${teamKills.red} Red · ${why}` };
     return { won, title: won ? 'Blue team wins!' : teamKills.blue === teamKills.red ? 'Draw' : 'Red team wins', line: `Blue ${teamKills.blue} – ${teamKills.red} Red · ${why}` };
   }
-  const won = ranking[0] === player;
+  // A win needs the most kills on its own (a tie is not a win), and leaving early is never a win.
+  const won = reason !== 'quit' && ranking[0] === player && player.kills > (ranking[1]?.kills ?? -1);
+  if (reason === 'quit') return { won, title: 'Battle ended', line: `${why} You had ${player.kills} kill${player.kills === 1 ? '' : 's'}.` };
   return { won, title: won ? 'Victory!' : `${ranking[0].name} wins`, line: why };
 }
 
@@ -84,6 +91,7 @@ export function createGameSession() {
   async function bananaRespawn() {
     if (!world || world.player.alive || world.over) return;
     if (world.mode === 'campaign' && world.player.lives <= 0) return;   // the continue puzzle handles this
+    if (world.player.bananaUsed) return;   // one Banana respawn try per death (the timer still brings you back)
     const survival = world.mode === 'survival';
     const result = await inGamePuzzle('respawn', {
       title: survival ? 'Banana revive' : 'Banana respawn',
@@ -91,6 +99,7 @@ export function createGameSession() {
       cancelText: survival ? 'Give up' : 'Wait instead',
     });
     if (!world || result === null) return;
+    if (result !== 'solved' && !survival) world.player.bananaUsed = true;   // cleared when the player is back
     if (result === 'solved') revive(world, world.player);
     else if (survival) endMatchNow(world, 'down');
   }
@@ -132,7 +141,7 @@ export function createGameSession() {
   });
 
   on('input:pause', () => {
-    if (isPuzzleOpen()) return;
+    if (isPuzzleOpen() || world?.over) return;   // nothing to pause once the battle has ended
     if (state === 'playing') session.pause();
     else if (state === 'paused') session.resume();
   });
@@ -174,7 +183,8 @@ export function createGameSession() {
     },
     pause() { if (state !== 'playing') return; input.setEnabled(false); setState('paused'); },
     resume() { if (state !== 'paused') return; input.setEnabled(true); setState('playing'); },
-    endNow() { if (!world) return; session.resume(); endMatchNow(world, 'quit'); },
+    // Ends at once: no more shooting or pausing while the results screen is on its way.
+    endNow() { if (!world) return; input.setEnabled(false); setState('ending'); endMatchNow(world, 'quit'); },
     quit() {
       closePower();
       world = null;

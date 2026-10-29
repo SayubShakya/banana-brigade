@@ -68,6 +68,12 @@ const PUBLIC = ['privacy', 'terms'];
 export default function App() {
   const [screen, setScreen] = useState('loading');
   const [account, setAccount] = useState(null);
+  const accountRef = useRef(null);
+  const [loginKey, setLoginKey] = useState(0);
+  // Where Back goes from a sub-screen (e.g. Avatar opened from Profile goes back to Profile).
+  const [parent, setParent] = useState(null);
+  const openFrom = (from, next) => { setParent(from); setScreen(next); };   // a new key remounts Login (e.g. for a reset link)
+  accountRef.current = account;
   const [isNew, setIsNew] = useState(false);
   const [parts, setPartsState] = useState(() => readJson('avatar', DEFAULT_AVATAR));
   const [settings, setSettings] = useState(loadSettings);
@@ -108,6 +114,7 @@ export default function App() {
         return;
       }
       setAccount(user);
+      accountRef.current = user;   // so a preview battle already uses the player's name
       setScreen('menu');
       openPreview(hash);
     }).catch((err) => setScreen(err.offline ? 'offline' : 'home'));
@@ -115,7 +122,12 @@ export default function App() {
   useEffect(start, [start]);
   // Links such as #privacy also work on a page that is already open.
   useEffect(() => {
-    const onHash = () => { const h = location.hash.slice(1); if (PUBLIC.includes(h)) setScreen(h); };
+    const onHash = () => {
+      const h = location.hash.slice(1);
+      if (PUBLIC.includes(h)) setScreen(h);
+      // A reset link opened in a tab where the game is already open: show its form.
+      else if (h.startsWith('reset=')) { setLoginKey((k) => k + 1); setScreen('login'); }
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -124,12 +136,19 @@ export default function App() {
   useBus('game:state', ({ state, online: isOnline = false }) => {
     setOnline(isOnline);
     if (state === 'paused') setScreen('pause');
-    else if (state === 'playing') setScreen('battle');
+    else if (state === 'playing' || state === 'ending') setScreen('battle');   // ending: the last moment before results
   });
   useBus('game:over', (payload) => { setOver(payload); setScreen('results'); });
+  // The server ended this session (see api.js and net/socket.js): back to the home
+  // page with the reason, rather than screens that fail one by one.
+  useBus('session:ended', ({ text }) => {
+    if (!accountRef.current) return;
+    signedOut();
+    emit('toast:error', { text });
+  });
 
   const startBattle = useCallback((mode) => {
-    game().start({ playerName: account?.username ?? 'You', parts });
+    game().start({ playerName: accountRef.current?.username ?? 'You', parts });
     lastMode.current = mode;
     setScreen('battle');
   }, [account, parts]);
@@ -184,7 +203,9 @@ export default function App() {
     } catch (err) { if (!err.offline && !(err.status >= 500)) emit('toast:error', { text: err.message }); }   // api.js already shows the others
   };
   // Privacy and Terms go back to wherever the player came from: the menu or the home page.
-  const leavePublic = () => setScreen(account ? 'menu' : 'home');
+  // The hash is cleared too, so a reload or the same link later behaves as expected.
+  const clearHash = () => { if (location.hash) history.replaceState(null, '', location.pathname); };
+  const leavePublic = () => { clearHash(); setScreen(account ? parent ?? 'menu' : 'home'); setParent(null); };
   const logout = async () => {
     try { await api.logout(); } finally { signedOut(); }
   };
@@ -212,7 +233,7 @@ export default function App() {
     else if (['privacy', 'terms', 'profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
   }
 
-  const back = () => setScreen('menu');
+  const back = () => { setScreen(parent ?? 'menu'); setParent(null); };
   return (
     <>
       {screen === 'home' && <Home onPlay={() => setScreen('login')} onGuest={playAsGuest} onOpen={setScreen} />}
@@ -221,17 +242,17 @@ export default function App() {
       {screen === 'terms' && <Terms onBack={leavePublic} />}
       {screen === 'notfound' && <NotFound onHome={() => { location.replace('/'); }} />}
       {screen === 'offline' && <Offline onBack={start} />}
-      {screen === 'login' && <Login onGuest={playAsGuest} onHome={() => setScreen('home')} onLogin={(user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); }} />}
-      {screen === 'menu' && <Menu account={account} isNew={isNew} parts={parts} onDeploy={deploy} onOpen={setScreen} />}
+      {screen === 'login' && <Login key={loginKey} onGuest={playAsGuest} onHome={() => { clearHash(); setScreen('home'); }} onLogin={(user, created) => { clearHash(); setAccount(user); setIsNew(created); setScreen('menu'); }} />}
+      {screen === 'menu' && <Menu account={account} isNew={isNew} parts={parts} onDeploy={(m) => { setParent(null); deploy(m); }} onOpen={(next) => { setParent(null); setScreen(next); }} />}
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
-      {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
+      {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => openFrom('profile', 'avatar')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
-      {screen === 'settings' && <Settings settings={settings} account={account} onToggle={toggle} onSet={setSetting} onControls={() => setScreen('controls')} onLogout={logout}
-        onSignedOut={signedOut} onAdmin={() => setScreen('admin')} onSave={() => setScreen('save')} onBack={back} />}
+      {screen === 'settings' && <Settings settings={settings} account={account} onToggle={toggle} onSet={setSetting} onControls={() => openFrom('settings', 'controls')} onLogout={logout}
+        onSignedOut={signedOut} onAdmin={() => openFrom('settings', 'admin')} onSave={() => openFrom('settings', 'save')} onPrivacy={() => openFrom('settings', 'privacy')} onBack={back} />}
       {/* Only offered to admins; the server still checks the role on every admin request. */}
       {screen === 'admin' && account?.role === 'admin' && <Admin account={account} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
-      {screen === 'modes' && <Modes onDeploy={deploy} onBack={back} />}
+      {screen === 'modes' && <Modes onDeploy={(m) => { setParent('modes'); deploy(m); }} onBack={back} />}
       {screen === 'campaign' && <Campaign onPlay={playMission} onBack={back} />}
       {screen === 'difficulty' && <Difficulty mode={pendingMode} current={settings.difficulty} onPick={(d) => deployWith(pendingMode, d)} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}

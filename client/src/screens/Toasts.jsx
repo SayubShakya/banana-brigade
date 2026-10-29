@@ -18,9 +18,15 @@ export default function Toasts() {
   };
   useBus('achievement:unlocked', (a) => show(a, 4500));
   useBus('toast:error', ({ text }) => show({ error: true, text }, 6000));
+  useBus('toast:info', ({ text }) => show({ info: true, text }, 4500));
   return (
     <div className="toasts" aria-live="polite">
-      {items.map((a) => (a.error ? (
+      {items.map((a) => (a.info ? (
+        <div key={a.key} className="toast info" role="status">
+          <Icon id="shield" className="ico big" />
+          <div><small>Done</small><span>{a.text}</span></div>
+        </div>
+      ) : a.error ? (
         <div key={a.key} className="toast error" role="alert">
           <Icon id="cross" className="ico big" />
           <div><small>Something went wrong</small><span>{a.text}</span></div>

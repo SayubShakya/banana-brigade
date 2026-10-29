@@ -97,7 +97,8 @@ export default function Daily({ me, onBack }) {
         <div className="daily-home">
           <section className="lobby-box">
             {run?.finished ? (
-              <div className="daily-result"><Icon id="banana" className="ico big" /><b>{run.score} points</b><span>{run.solved} / {run.total} solved · day streak {run.streak}</span></div>
+              <div className="daily-result"><Icon id="banana" className="ico big" /><b>{run.score} points</b><span>{run.solved} / {run.total} solved · day streak {run.streak}</span>
+                {msg.text && <span className="daily-last" data-kind={msg.kind}>Last puzzle: {msg.text}</span>}</div>
             ) : info?.played && !info.running ? (
               <div className="daily-result"><Icon id="banana" className="ico big" /><b>{info.result.score} points</b><span>Done for today · day streak {info.streak}. Come back tomorrow!</span></div>
             ) : (
@@ -109,7 +110,7 @@ export default function Daily({ me, onBack }) {
           </section>
           <section className="lobby-box">
             <h3 className="sub-head">Today&apos;s leaders</h3>
-            <table className="results compact">
+            <table className="results compact leaderboard">
               <thead><tr><th>#</th><th>Soldier</th><th>Points</th><th>Solved</th></tr></thead>
               <tbody>
                 {!board.length && <tr className="empty-row"><td colSpan={4}>Nobody has played today yet.</td></tr>}

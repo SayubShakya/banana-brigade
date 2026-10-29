@@ -19,6 +19,14 @@ import { puzzleStats } from '../storage.js';
 const RING = 2 * Math.PI * 26;   // circumference of the timer ring (r = 26)
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
+// What a right answer does, by puzzle purpose.
+const CORRECT = {
+  deploy: 'Correct! Deploying…',
+  respawn: 'Correct! Back in the fight.',
+  crate: 'Correct! Choose your Banana Power.',
+  daily: 'Correct!',
+};
+
 export default function PuzzleModal() {
   const [req, setReq] = useState(null);          // { purpose, options, resolve }
   const [puzzle, setPuzzle] = useState(null);    // { puzzleId, image, source }
@@ -102,7 +110,7 @@ export default function PuzzleModal() {
       setFlash('');
       requestAnimationFrame(() => setFlash(result.correct ? 'good' : 'bad'));
       if (result.correct) {
-        setStatus({ text: 'Correct! Banana power unlocked.', kind: 'good' });
+        setStatus({ text: CORRECT[r.purpose] ?? 'Correct!', kind: 'good' });
         setTimeout(() => finish('solved'), 900);
         return;
       }

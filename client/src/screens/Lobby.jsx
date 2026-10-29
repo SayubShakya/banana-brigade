@@ -26,7 +26,7 @@ export default function Lobby({ account, parts, onBack }) {
     const refresh = () => request('rooms:list').then((r) => setRooms(r.rooms)).catch(() => {});
     const onUpdate = (r) => setRoom(r.players.some((p) => p.userId === account.id) ? r : null);
     const onConnect = () => { setOnline(true); refresh(); };
-    const onDrop = () => setOnline(false);
+    const onDrop = (reason) => { setOnline(false); if (reason === 'io server disconnect') setRoom(null); };
     const onError = (err) => { setOnline(false); setError(err.message); };
     socket.on('connect', onConnect);
     socket.on('disconnect', onDrop);
@@ -59,8 +59,7 @@ export default function Lobby({ account, parts, onBack }) {
     <Panel wide title="Online" subtitle="Real players over WebSockets. The server runs the match, so nobody can fake a score."
       chip={<span className="mode-chip" data-state={online ? 'online' : 'offline'}>{online ? 'Connected' : 'Connecting…'}</span>}
       footer={<>
-        {room && <button className="mbtn ghost" onClick={leave}>Leave room</button>}
-        <button className="mbtn primary" onClick={onBack}>Back</button>
+        <button className="mbtn primary" onClick={onBack}>{room ? 'Leave room and go back' : 'Back'}</button>
       </>}>
       {error && <p className="auth-error" role="alert">{error}</p>}
       {!room ? (
@@ -115,9 +114,15 @@ export default function Lobby({ account, parts, onBack }) {
               ))}
             </tbody>
           </table>
-          {room.state === 'lobby' && (isHost
-            ? <button className="mbtn primary" onClick={start} disabled={!allReady}>{allReady ? 'Start match' : 'Waiting for everyone to be ready…'}</button>
-            : <button className="mbtn primary" onClick={() => getSocket().emit('room:ready', { ready: !mine?.ready })}>{mine?.ready ? 'Not ready' : 'Ready'}</button>)}
+          {room.state === 'lobby' && (
+            <div className="room-actions">
+              <button className="mbtn ghost" onClick={leave}>Leave room</button>
+              {isHost
+                ? <button className="mbtn primary" onClick={start} disabled={!allReady}>Start match</button>
+                : <button className="mbtn primary" onClick={() => getSocket().emit('room:ready', { ready: !mine?.ready })}>{mine?.ready ? 'Not ready' : 'Ready'}</button>}
+            </div>
+          )}
+          {room.state === 'lobby' && isHost && !allReady && <p className="status-line">Waiting for every player to press Ready. Share the code <b>{room.code}</b> to invite friends.</p>}
         </div>
       )}
     </Panel>

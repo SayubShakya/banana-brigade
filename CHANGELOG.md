@@ -4,6 +4,39 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
+## [1.3.1] - 2026-10-29
+
+UI audit: every screen and button checked at desktop and phone size; fixes merged from `fix/ui-audit`.
+
+### Fixed
+- Ending a battle early, or a tie on kills, no longer counts as a win (and no longer gives win XP).
+- Esc after "End battle" no longer reopens Pause on a finished match; shooting stops at once.
+- The respawn puzzle really is one try per death; the death message drops the offer after a miss.
+- Training dummies now appear near the player instead of off screen.
+- A correct answer says what happens next (deploying, back in the fight, choose your power).
+- A player who is signed out by the server (suspended, password reset, signed out from another device) is
+  returned to the home page with the reason, instead of screens that fail one by one.
+- Reset links opened in a tab where the game is already open now show the new-password form; old hashes
+  (#privacy, #login, #settings) no longer come back after a reload.
+- Back returns to the screen you came from (Avatar → Profile, Controls → Settings, Difficulty → More Modes).
+- Avatar preview no longer crashes on phones; the Privacy link in Settings works every time.
+- Admin: the result message is next to the action, the row being changed is highlighted, disabled buttons say
+  why; Live events keeps its list, Clear and Pause between tabs and holds events while paused ("Resume (3 new)");
+  the live dot is green; leaderboard styling no longer leaks into admin and lobby tables.
+- Lobby: one Back button ("Leave room and go back") plus Leave room in the room; rooms in a match are not
+  listed; the host sees a clear "waiting for Ready" line instead of a disabled yellow button.
+
+### Changed
+- Disabled buttons look disabled everywhere. Account actions are outlined buttons; "Log out everywhere" asks first.
+- Settings is wider; form results show inside the form; deleting the account confirms with a message.
+- Long panels keep their Back/main buttons visible at the bottom.
+- Save account (for guests) works like Create account (name check, strength meter, clear errors).
+- Phones held sideways: small text has a minimum size and buttons a finger-sized height.
+- Large text and High contrast now also reach the menu, cards, lists and locked campaign missions.
+- Results: training has no ranking table, failed missions have Menu and a main Retry button, a survival run you
+  end says so; the team HUD shows your team; the power picker explains tapping and the timeout.
+- Wording: "Esc pause", "Back to Banana Brigade" on the 404 page, no developer text on the server-down screen.
+
 ## [1.3.0] - 2026-10-29
 
 Identity, interoperability and quality round. Merged from `feature/auto-fire`, `feature/password-reset-ip-limit`,

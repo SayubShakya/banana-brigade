@@ -61,7 +61,7 @@ export function Terms({ onBack }) {
 export function NotFound({ onHome }) {
   return (
     <Panel narrow title="404" subtitle="That page does not exist."
-      footer={<button className="mbtn primary" onClick={onHome}>Go to the home page</button>}>
+      footer={<button className="mbtn primary" onClick={onHome}>Back to Banana Brigade</button>}>
       <p className="legal">The address <code>{location.pathname}</code> is not part of Banana Brigade. The bananas are back at base.</p>
     </Panel>
   );
