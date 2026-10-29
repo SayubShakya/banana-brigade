@@ -5,11 +5,11 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { api } from '../lib/api.js';
 import { CHAPTERS, MISSIONS, isUnlocked, totalStars } from '../game/campaign.js';
 import { DIFFICULTY } from '../game/config.js';
 import { mapName } from '../game/maps.js';
-import { Panel, Icon, Skeleton } from './common.jsx';
+import { Panel, Icon, Skeleton } from '../components/common.jsx';
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const Stars = ({ n, big = false }) => (

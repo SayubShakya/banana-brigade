@@ -7,9 +7,9 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const { createApp } = require('../server/app');
-const { attachRealtime } = require('../server/realtime/socket');
-const { openDatabase } = require('../server/db');
+const { createApp } = require('../../server/app');
+const { attachRealtime } = require('../../server/realtime/socket');
+const { openDatabase } = require('../../server/models/db');
 
 // A 1×1 PNG, so the test needs no network for puzzle pictures.
 const IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';

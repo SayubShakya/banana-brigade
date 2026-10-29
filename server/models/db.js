@@ -10,7 +10,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 const mongoose = require('mongoose');
-const { registerModels } = require('./models');
+const { registerModels } = require('./index');
 
 const CASE_INSENSITIVE = { locale: 'en', strength: 2 };
 

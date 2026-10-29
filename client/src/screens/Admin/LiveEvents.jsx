@@ -7,7 +7,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useRef, useState } from 'react';
-import { getSocket, request } from '../net/socket.js';
+import { getSocket, request } from '../../net/socket.js';
 
 const KINDS = ['all', 'auth', 'security', 'puzzle', 'score', 'kill', 'achievement', 'campaign', 'daily', 'power', 'admin'];
 const MAX = 200;

@@ -2,7 +2,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { Panel } from './common.jsx';
+import { Panel } from '../components/common.jsx';
 
 const KEYS = [
   [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim (auto-fires on enemies)'], [['Click'], 'Shoot'],

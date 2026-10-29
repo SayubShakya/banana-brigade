@@ -6,7 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const { createPwnedCheck } = require('../server/services/pwned');
+const { createPwnedCheck } = require('../../server/services/pwned');
 const { startServer, client } = require('./helpers');
 
 const sha1 = (s) => crypto.createHash('sha1').update(s).digest('hex').toUpperCase();

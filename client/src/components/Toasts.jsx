@@ -5,7 +5,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useState } from 'react';
-import { useBus } from '../hooks.js';
+import { useBus } from '../hooks/useBus.js';
 import { Icon } from './common.jsx';
 
 export default function Toasts() {

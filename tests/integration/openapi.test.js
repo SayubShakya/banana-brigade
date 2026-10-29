@@ -8,13 +8,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spec } = require('../server/openapi');
+const { spec } = require('../../server/routes/openapi');
 const { startServer, client } = require('./helpers');
 
 // Every route in the server code, as "get /auth/me", read from the source files and
 // the prefix each router is mounted on in app.js.
 function routesInCode() {
-  const dir = path.join(__dirname, '..', 'server');
+  const dir = path.join(__dirname, '..', '..', 'server');
   const app = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
   const routes = new Set();
   for (const [, method, p] of app.matchAll(/app\.(get|post|patch|delete|put)\('\/api(\/[^']*)'/g)) {

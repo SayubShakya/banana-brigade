@@ -5,7 +5,7 @@
 //
 // Coordinates are in tiles: [col, row] for points, [col, row, width, height] for boxes.
 // A spawn or pickup point is the empty tile a soldier's feet stand in, so the tile
-// below it is solid. tests/maps.test.js checks every map is fair and fully reachable.
+// below it is solid. tests/unit/maps.test.js checks every map is fair and fully reachable.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 

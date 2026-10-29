@@ -8,9 +8,9 @@ const crypto = require('node:crypto');
 const { after } = require('node:test');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const http = require('node:http');
-const { createApp } = require('../server/app');
-const { attachRealtime } = require('../server/realtime/socket');
-const { openDatabase } = require('../server/db');
+const { createApp } = require('../../server/app');
+const { attachRealtime } = require('../../server/realtime/socket');
+const { openDatabase } = require('../../server/models/db');
 
 // Use the locally installed mongod if there is one (no download); CI downloads one.
 if (!process.env.MONGOMS_SYSTEM_BINARY && fs.existsSync('/opt/homebrew/bin/mongod')) {

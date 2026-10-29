@@ -6,7 +6,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useRef, useState } from 'react';
-import { on } from './eventBus.js';
+import { on } from '../lib/eventBus.js';
 
 export function useBus(eventName, handler) {
   const ref = useRef(handler);

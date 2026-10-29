@@ -8,7 +8,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { emit as busEmit } from '../eventBus.js';
+import { emit as busEmit } from '../lib/eventBus.js';
 import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, POWERS } from './config.js';
 import { createMap, moveBox, raycast, isSolid, MAPS, randomMapId } from './map.js';
 import { RAMP } from './campaign.js';

@@ -1,5 +1,5 @@
 // End-to-end tests in a real browser (Playwright). The web server is the app with an
-// in-memory MongoDB and a fake Banana API (scripts/e2e-server.js); the React app
+// in-memory MongoDB and a fake Banana API (tests/e2e/server.js); the React app
 // must be built first (npm run build). Locally it uses the installed Google Chrome;
 // in CI it uses Playwright's own Chromium.
 //
@@ -10,7 +10,7 @@ const { defineConfig } = require('@playwright/test');
 const PORT = 3199;
 
 module.exports = defineConfig({
-  testDir: 'e2e',
+  testDir: 'tests/e2e',
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
@@ -21,7 +21,7 @@ module.exports = defineConfig({
     ...(process.env.CI ? {} : { channel: 'chrome' }),
   },
   webServer: {
-    command: 'node scripts/e2e-server.js',
+    command: 'node tests/e2e/server.js',
     url: `http://localhost:${PORT}/api/status`,
     reuseExistingServer: false,
     timeout: 60_000,

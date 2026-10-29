@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { POWERS, BANANA_CRATE } from '../game/config.js';
-import { registerPowerOpener } from '../powerBridge.js';
+import { registerPowerOpener } from '../lib/powerBridge.js';
 
 const RING = 2 * Math.PI * 26;
 

@@ -4,11 +4,11 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { api } from '../lib/api.js';
 import { closeSocket } from '../net/socket.js';
-import { emit } from '../eventBus.js';
-import { Panel, Skeleton } from './common.jsx';
-import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
+import { emit } from '../lib/eventBus.js';
+import { Panel, Skeleton } from '../components/common.jsx';
+import { toggleFullscreen, useFullscreen } from '../lib/fullscreen.js';
 
 const OPTIONS = [['autoFire', 'Auto-fire when aimed at an enemy'], ['laser', 'Sight laser'], ['banners', 'Kill-streak banners'], ['fps', 'Show FPS (smoothness check)']];
 const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];

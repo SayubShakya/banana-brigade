@@ -4,9 +4,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createPuzzleStore } = require('../server/puzzles');
-const { parsePuzzle, BananaApiError } = require('../server/services/bananaApi');
-const { createPuzzlePool } = require('../server/pool');
+const { createPuzzleStore } = require('../../server/services/puzzles');
+const { parsePuzzle, BananaApiError } = require('../../server/services/bananaApi');
+const { createPuzzlePool } = require('../../server/services/pool');
 
 const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 

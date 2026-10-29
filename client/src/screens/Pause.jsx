@@ -2,8 +2,8 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { Panel } from './common.jsx';
-import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
+import { Panel } from '../components/common.jsx';
+import { toggleFullscreen, useFullscreen } from '../lib/fullscreen.js';
 
 export default function Pause({ sound, online, onResume, onToggleSound, onEnd, onQuit }) {
   const [isFullscreen, canFullscreen] = useFullscreen();

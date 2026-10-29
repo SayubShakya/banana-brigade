@@ -9,8 +9,8 @@ const { MongoStore } = require('connect-mongo');
 const { createApp } = require('./app');
 const { createPwnedCheck } = require('./services/pwned');
 const { attachRealtime } = require('./realtime/socket');
-const { createPuzzlePool } = require('./pool');
-const { openDatabase } = require('./db');
+const { createPuzzlePool } = require('./services/pool');
+const { openDatabase } = require('./models/db');
 const { createBananaApi, DEFAULT_BASE_URL } = require('./services/bananaApi');
 
 const PORT = Number(process.env.PORT) || 3100;

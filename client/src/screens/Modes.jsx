@@ -2,7 +2,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { Panel, Icon } from './common.jsx';
+import { Panel, Icon } from '../components/common.jsx';
 
 const MODES = [
   { mode: 'survival', icon: 'shield', name: 'Survival', text: 'Endless waves of bots. When you go down, only a Banana puzzle brings you back. How many waves can you last?' },

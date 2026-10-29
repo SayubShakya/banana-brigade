@@ -7,9 +7,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createWorld, updateWorld, damage, activeGun } = require('../client/src/game/world.js');
-const { updateBots } = require('../client/src/game/bots.js');
-const { WEAPONS, PICKUPS, PHYSICS, SOLDIER } = require('../client/src/game/config.js');
+const { createWorld, updateWorld, damage, activeGun } = require('../../client/src/game/world.js');
+const { updateBots } = require('../../client/src/game/bots.js');
+const { WEAPONS, PICKUPS, PHYSICS, SOLDIER } = require('../../client/src/game/config.js');
 
 const STEP = 1 / 60;
 

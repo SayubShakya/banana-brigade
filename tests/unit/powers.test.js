@@ -5,10 +5,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createWorld, updateWorld, damage, activeGun, rewardBananaCrate, closeBananaCrate, powerChoices } = require('../client/src/game/world.js');
-const { POWERS, BANANA_CRATE, PHYSICS, SOLDIER } = require('../client/src/game/config.js');
-const { MAPS } = require('../client/src/game/maps.js');
-const { createMap } = require('../client/src/game/map.js');
+const { createWorld, updateWorld, damage, activeGun, rewardBananaCrate, closeBananaCrate, powerChoices } = require('../../client/src/game/world.js');
+const { POWERS, BANANA_CRATE, PHYSICS, SOLDIER } = require('../../client/src/game/config.js');
+const { MAPS } = require('../../client/src/game/maps.js');
+const { createMap } = require('../../client/src/game/map.js');
 
 function world() {
   const events = [];

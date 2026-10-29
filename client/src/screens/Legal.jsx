@@ -3,7 +3,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { Panel } from './common.jsx';
+import { Panel } from '../components/common.jsx';
 
 export function Privacy({ onBack }) {
   return (

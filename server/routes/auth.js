@@ -11,7 +11,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { requireLogin } = require('../middleware/auth');
-const { endSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle } = require('../sessions');
+const { endSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle } = require('../services/sessions');
 const { noPwnedCheck } = require('../services/pwned');
 
 const USERNAME = /^[A-Za-z0-9_]{3,16}$/;

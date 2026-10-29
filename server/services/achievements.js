@@ -31,7 +31,7 @@ const ACHIEVEMENTS = [
   { id: 'daily_warrior', name: 'Daily Warrior', text: 'Finish the Daily Banana Challenge 3 days in a row.' },
   { id: 'perfect_day', name: 'Perfect Day', text: 'Solve all 5 daily puzzles.' },
 ];
-const { POWERS } = require('../client/src/game/config.js');
+const { POWERS } = require('../../client/src/game/config.js');
 const POWER_IDS = Object.keys(POWERS);
 const POWER_COUNT = POWER_IDS.length;
 const cleanPowers = (list) => (Array.isArray(list) ? [...new Set(list.filter((p) => POWER_IDS.includes(p)))] : []);

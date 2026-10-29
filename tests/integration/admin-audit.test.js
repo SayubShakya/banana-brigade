@@ -8,7 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { io } = require('socket.io-client');
 const { startServer, client } = require('./helpers');
-const { createPuzzlePool } = require('../server/pool');
+const { createPuzzlePool } = require('../../server/services/pool');
 
 const PW = 'bananas123';
 async function setup(s) {

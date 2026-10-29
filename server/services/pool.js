@@ -22,7 +22,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-const { BananaApiError } = require('./services/bananaApi');
+const { BananaApiError } = require('./bananaApi');
 
 const WINDOW = 20;   // the status numbers describe the last 20 real calls
 

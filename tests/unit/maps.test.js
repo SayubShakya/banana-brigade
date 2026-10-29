@@ -6,10 +6,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createMap, MAP_IDS, MAPS, randomMapId } = require('../client/src/game/map.js');
-const { createWorld, updateWorld } = require('../client/src/game/world.js');
-const { MISSIONS } = require('../client/src/game/campaign.js');
-const { TILE } = require('../client/src/game/config.js');
+const { createMap, MAP_IDS, MAPS, randomMapId } = require('../../client/src/game/map.js');
+const { createWorld, updateWorld } = require('../../client/src/game/world.js');
+const { MISSIONS } = require('../../client/src/game/campaign.js');
+const { TILE } = require('../../client/src/game/config.js');
 
 const toTile = (p) => [Math.floor(p.x / TILE), Math.floor(p.y / TILE)];
 

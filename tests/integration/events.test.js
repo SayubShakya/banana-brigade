@@ -1,4 +1,4 @@
-// Tests for the live event feed (server/eventLog.js): events are recorded as they
+// Tests for the live event feed (server/services/eventLog.js): events are recorded as they
 // happen and pushed over Socket.io to admins who are watching; players cannot watch.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
@@ -6,7 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { io } = require('socket.io-client');
-const { createEventLog } = require('../server/eventLog');
+const { createEventLog } = require('../../server/services/eventLog');
 const { startServer, client } = require('./helpers');
 
 const once = (socket, event, ms = 4000) => new Promise((resolve, reject) => {

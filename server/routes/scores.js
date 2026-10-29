@@ -7,7 +7,7 @@
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
-const { cleanPowers } = require('../achievements');
+const { cleanPowers } = require('../services/achievements');
 
 const MODES = ['quick', 'survival', 'training', 'team'];   // modes a browser may report
 const BOARDS = [...MODES, 'online'];                          // online scores are written by the server

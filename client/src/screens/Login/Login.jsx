@@ -10,8 +10,8 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
-import { Sky } from './common.jsx';
+import { api } from '../../lib/api.js';
+import { Sky } from '../../components/common.jsx';
 import { useNameHint, strength, LEVELS } from './authFields.js';
 
 // The reset token from a link like http://localhost:3100/#reset=abc..., or null.

@@ -5,8 +5,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isAimedAtEnemy } = require('../client/src/game/autoFire.js');
-const { TILE, WEAPONS } = require('../client/src/game/config.js');
+const { isAimedAtEnemy } = require('../../client/src/game/autoFire.js');
+const { TILE, WEAPONS } = require('../../client/src/game/config.js');
 
 // An open 60 x 20 tile arena; `wallCol` adds a solid column of tiles.
 function arena(wallCol = null) {

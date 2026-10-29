@@ -10,11 +10,11 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { emit } from '../eventBus.js';
-import { api } from '../api.js';
+import { emit } from '../lib/eventBus.js';
+import { api } from '../lib/api.js';
 import { PUZZLE_RULES } from '../game/config.js';
-import { registerPuzzleOpener } from '../puzzleBridge.js';
-import { puzzleStats } from '../storage.js';
+import { registerPuzzleOpener } from '../lib/puzzleBridge.js';
+import { puzzleStats } from '../lib/storage.js';
 
 const RING = 2 * Math.PI * 26;   // circumference of the timer ring (r = 26)
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];

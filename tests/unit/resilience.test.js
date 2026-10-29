@@ -6,8 +6,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createBananaApi, BananaApiError } = require('../server/services/bananaApi');
-const { createPuzzlePool } = require('../server/pool');
+const { createBananaApi, BananaApiError } = require('../../server/services/bananaApi');
+const { createPuzzlePool } = require('../../server/services/pool');
 
 const PNG = 'iVBORw0KGgo' + 'A'.repeat(120);
 const good = (solution = 5) => ({ ok: true, status: 200, text: async () => JSON.stringify({ question: PNG, solution }) });

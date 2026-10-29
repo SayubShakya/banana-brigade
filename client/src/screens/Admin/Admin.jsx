@@ -7,8 +7,8 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
-import { Panel, Skeleton, SkeletonRows } from './common.jsx';
+import { api } from '../../lib/api.js';
+import { Panel, Skeleton, SkeletonRows } from '../../components/common.jsx';
 import LiveEvents from './LiveEvents.jsx';
 
 const TABS = [['players', 'Players'], ['audit', 'Audit log'], ['health', 'API health'], ['events', 'Live events']];

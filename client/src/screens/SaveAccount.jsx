@@ -6,9 +6,9 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useState } from 'react';
-import { api } from '../api.js';
-import { Panel } from './common.jsx';
-import { useNameHint, strength, LEVELS } from './authFields.js';
+import { api } from '../lib/api.js';
+import { Panel } from '../components/common.jsx';
+import { useNameHint, strength, LEVELS } from './Login/authFields.js';
 
 export default function SaveAccount({ account, onSaved, onBack }) {
   const [username, setUsername] = useState('');
