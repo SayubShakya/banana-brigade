@@ -372,6 +372,25 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.restore();
 }
 
+// Rough length of each gun as drawn by drawGun (from the hand to the muzzle), so a
+// gun on its own can be centred on a point.
+const GUN_SPAN = { magnum: [4, 22], smg: [1, 29], rifle: [-3, 38], shotgun: [-3, 35], sniper: [-4, 46], rocket: [-6, 40], flamer: [0, 36] };
+
+// A weapon lying in the world as a pickup: the same gun a soldier holds, centred on
+// (x, y), scaled up a little and tilted by `angle`.
+export function drawWeaponPickup(ctx, weaponKey, x, y, { scale = 1.25, angle = 0 } = {}) {
+  const [from, to] = GUN_SPAN[weaponKey] ?? GUN_SPAN.magnum;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(scale, scale);
+  ctx.translate(-(from + to) / 2, 0);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  drawGun(ctx, weaponKey);
+  ctx.restore();
+}
+
 // Small standalone preview used on the character select screen.
 export function drawAvatarPreview(canvas, avatar, time = 0) {
   const ctx = canvas.getContext('2d');

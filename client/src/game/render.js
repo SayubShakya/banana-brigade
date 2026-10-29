@@ -8,7 +8,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS, POWERS } from './config.js';
-import { drawSoldier } from './characters.js';
+import { drawSoldier, drawWeaponPickup } from './characters.js';
 import { activeGun } from './world.js';
 import { raycast, KIND } from './map.js';
 import { createEffects } from './effects.js';
@@ -421,15 +421,21 @@ export function createRenderer(canvas) {
         for (let i = -1; i <= 1; i++) ctx.fillRect(x + i * 8 - 2, y - 15, 4, 7);
         label('AMMO', x, y - 22, 11, '#e9c46a');
       } else if (p.dropped) {
-        ctx.fillStyle = '#333';
-        ctx.fillRect(x - 14, y + 2, 28, 7);
-        label(WEAPONS[p.weapon].name, x, y - 8, 11);
+        // A gun a soldier dropped lies flat on the ground (no bob, no glow).
+        const gy = p.y - cam.y + 5;
+        drawWeaponPickup(ctx, p.weapon, x, gy, { scale: 1.1 });
+        label(WEAPONS[p.weapon].name, x, gy - 12, 11);
       } else {
-        ctx.fillStyle = '#b07d3a';
-        ctx.strokeStyle = '#5e3c14';
-        ctx.lineWidth = 2;
-        ctx.fillRect(x - 16, y - 16, 32, 26); ctx.strokeRect(x - 16, y - 16, 32, 26);
-        ctx.beginPath(); ctx.moveTo(x - 16, y - 16); ctx.lineTo(x + 16, y + 10); ctx.moveTo(x + 16, y - 16); ctx.lineTo(x - 16, y + 10); ctx.stroke();
+        // A weapon pickup is the gun itself, floating over a soft glow and tilting
+        // gently, so players see at a glance which weapon it is.
+        const glow = ctx.createRadialGradient(x, y + 2, 2, x, y + 2, 30);
+        glow.addColorStop(0, 'rgba(255,240,170,0.55)');
+        glow.addColorStop(1, 'rgba(255,240,170,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.ellipse(x, y, 36, 20, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';   // its shadow on the platform below
+        ctx.beginPath(); ctx.ellipse(x, p.y - cam.y + 14, 18 - bob, 3, 0, 0, Math.PI * 2); ctx.fill();
+        drawWeaponPickup(ctx, p.weapon, x, y - 4, { scale: 1.6, angle: -0.12 + Math.sin(time * 2 + p.x) * 0.08 });
         label(WEAPONS[p.weapon].name, x, y - 24, 11);
       }
     }
