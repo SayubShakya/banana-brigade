@@ -98,6 +98,20 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
 | CORS only on `/api/public` | Private routes stay same-origin, so another site cannot call them with the player's cookie | — |
 
 
+**Online banana crates: fairness** (`fix/online-crate-fairness`)
+
+Online the server runs the match for everyone, so it cannot pause the world while one player solves a puzzle (as
+single player does). Chosen: the solver is frozen and cannot be hurt, pushed or targeted by bots, and is shown to
+everyone in a banana bubble; protection lasts until the puzzle window has closed, then a 2 s exit shield; the
+server ends a puzzle left open (crate time + 6 s), adds a 5 s cooldown and lets one player at a time use a crate.
+
+| Option | For | Against |
+|---|---|---|
+| **Frozen and protected, visible bubble (chosen)** | Fair to the solver; others can see why shots do nothing | A solver cannot react; a crate can be used to escape a fight for a few seconds (limited by cooldown and time limit) |
+| No protection | Simple, "risky" crates | The player solving is blind and dies, which is what players complained about |
+| Pause the whole match | Same as single player | One player would stop everyone else's game |
+| Solve while moving (puzzle in a corner of the screen) | No freeze | Hard to read on phones; still unfair while typing the answer |
+
 ## 4. Virtual identity
 
 **Chosen:** username and password; bcrypt hashes (cost 10); a server-side session in MongoDB identified by an
