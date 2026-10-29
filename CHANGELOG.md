@@ -6,6 +6,16 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`feature/character-art`)
+- **Soldiers redrawn** after the doodle-army reference: big bald head with a headband whose tails flutter (or
+  other headgear), chunky goggles with a bridge and strap, an ear and a determined mouth, a jacket with collar,
+  vest pouches and a jetpack strap, camo trousers with knees that bend when walking, brown boots with soles, a
+  capped and banded jetpack, and **both hands on the gun**. Every weapon has its own detailed shape (wooden
+  rifle with curved magazine, pump shotgun, scoped sniper, rocket tube with warhead, flamethrower tank, revolver).
+- New avatar options: **Headband** and **Bald** headgear, a **Woodland** uniform, and a **Face** choice (clean,
+  stubble, beard, moustache) instead of the beard switch (old saves keep their beard). New default look:
+  headband, woodland, dark goggles. Eight bots with distinct looks.
+
 ### Changed (`chore/folder-structure`)
 - **Tidy folders**, moved with `git mv` so each file keeps its history:
   client `lib/` (api, eventBus, storage, rank, fullscreen, bridges), `hooks/` (useBus), `components/` (common,
