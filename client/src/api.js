@@ -6,12 +6,15 @@
 
 import { emit } from './eventBus.js';
 
+// Every call goes to version 1 of our API (/api/v1/...); see /api/docs.
+const API = '/api/v1';
+
 // fetch only throws when the server cannot be reached at all; that error is marked
 // `offline` so the app can show the "Server down" screen instead of a message.
 async function call(method, path, body) {
   let res;
   try {
-    res = await fetch(path, {
+    res = await fetch(path.replace(/^\/api\//, `${API}/`), {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined,
