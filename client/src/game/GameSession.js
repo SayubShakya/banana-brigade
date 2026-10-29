@@ -184,8 +184,9 @@ export function createGameSession() {
       setState('idle');
     },
     // Volumes are 0-100 from the Settings sliders; mute silences music and effects.
-    applySettings({ musicVolume = 60, sfxVolume = 80, muted = false, laser, banners, fps }) {
+    applySettings({ musicVolume = 60, sfxVolume = 80, muted = false, laser, banners, fps, autoFire = true }) {
       meter.setVisible(!!fps);
+      input.setAutoFire(autoFire);
       setMuted(muted);
       setEffectsVolume(sfxVolume / 100);
       setMusicMuted(muted);
@@ -216,7 +217,7 @@ export function createGameSession() {
         acc += dt;
         let steps = 0;
         while (acc >= STEP && steps < MAX_STEPS) {
-          if (state === 'playing' && world.player.alive) input.apply(world.player);
+          if (state === 'playing' && world.player.alive) input.apply(world.player, world);
           updateBots(world, STEP);
           updateWorld(world, STEP);
           acc -= STEP;

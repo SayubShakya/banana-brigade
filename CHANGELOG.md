@@ -4,6 +4,16 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
+## [Unreleased]
+
+On `feature/auto-fire`.
+
+### Added
+- **Auto-fire.** Players only aim (mouse or right stick) and the gun fires by itself while the aim is on an
+  enemy that is alive, on the other team, within the weapon's range and not behind a wall. No need to hold
+  the mouse button or touchpad. On by default; can be switched off in Settings. Clicking still works.
+- Tests for auto-fire (`tests/autofire.test.js`).
+
 ## [1.2.0] - 2026-10-28
 
 Merged from `feature/banana-powers`.

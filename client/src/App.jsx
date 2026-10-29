@@ -48,12 +48,13 @@ const net = () => (netGame ??= createNetGame());
 
 // Saved settings. Older saves had one on/off "sound" switch: it becomes the mute.
 const DEFAULT_SETTINGS = {
-  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, difficulty: 'medium',
+  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, autoFire: true, difficulty: 'medium',
   contrast: false, largeText: false, calm: false,
 };
 function loadSettings() {
   const { sound, ...saved } = readJson('settings', DEFAULT_SETTINGS);
-  return sound === false ? { ...saved, muted: true } : saved;
+  const withDefaults = { ...DEFAULT_SETTINGS, ...saved };   // new options (e.g. autoFire) get their default
+  return sound === false ? { ...withDefaults, muted: true } : withDefaults;
 }
 
 export default function App() {

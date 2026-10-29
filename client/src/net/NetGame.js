@@ -227,7 +227,7 @@ export function createNetGame() {
   // frame later instead of waiting for a timer), and repeats them every 50 ms.
   function sendControls(now) {
     const c = me.controls;
-    if (me.alive && !paused && !isPuzzleOpen()) input.apply(me);
+    if (me.alive && !paused && !isPuzzleOpen()) input.apply(me, view);
     else Object.assign(c, { left: false, right: false, jet: false, fire: false });
     const msg = { left: c.left, right: c.right, jet: c.jet, fire: c.fire, aimX: Math.round(c.aimX / 4) * 4, aimY: Math.round(c.aimY / 4) * 4, ...Object.fromEntries(ACTIONS.map((k) => [k, c[k]])) };
     const key = JSON.stringify(msg);
