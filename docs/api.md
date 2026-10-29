@@ -40,6 +40,7 @@ The table lists paths without `/v1`; both forms work.
 | POST | `/api/auth/guest` | none | `201 { user: { id, username: 'guest_…', role, guest: true } }` + 7-day cookie | 429 more than 10 guests per IP an hour |
 | POST | `/api/auth/upgrade` (guest) | `{ username, password }` | `{ user }` (same id, `guest: false`) + new cookie | 400 not a guest / bad name / breached password, 409 name taken |
 | POST | `/api/auth/forgot` | `{ username }` | `{ ok: true, message }` (same for unknown names); the link goes to the server log | 400 bad name, 429 more than 5 requests per IP in 15 min |
+| POST | `/api/auth/reset/check` | `{ token }` | `{ ok: true, username }` (does not use the link) | 400 link unknown, used or expired |
 | POST | `/api/auth/reset` | `{ token, password }` | `{ ok: true, username, ended }` | 400 password too short/long, 400 link unknown, used or expired |
 | GET | `/api/auth/available?u=name` | none | `{ available, valid }` | 429 more than 20 checks a minute |
 | GET | `/api/auth/sessions` (login) | none | `{ count, list: [{ handle, device, createdAt, lastSeen, expires, current }], current, memberSince, lastLogin }` | |

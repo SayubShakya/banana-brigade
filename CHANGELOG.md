@@ -4,6 +4,18 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
+## [1.3.2] - 2026-10-29
+
+The last findings of the UI audit, merged from `fix/ui-audit-remaining`.
+
+### Changed
+- Phones held sideways: no more black bars. The screen is filled and the battle view fills the width (cropped a
+  little at the top and bottom); aiming still maps correctly.
+- Touch screens are detected at start, so the joysticks show and keyboard hints are hidden straight away,
+  including the key badges on the Banana Power cards.
+- The new-password form says which account the reset link is for, and says at once if the link has expired
+  (`POST /api/auth/reset/check`, which does not use the link up).
+
 ## [1.3.1] - 2026-10-29
 
 UI audit: every screen and button checked at desktop and phone size; fixes merged from `fix/ui-audit`.
