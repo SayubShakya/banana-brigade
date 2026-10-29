@@ -15,6 +15,13 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/loading-states`)
+- **Loading skeletons** (shimmering placeholders) on Profile, Scores, Daily, Campaign, Settings → Account and
+  every Admin tab, so screens do not jump when data arrives. They stop shimmering with Reduced motion.
+- **Error toasts** on every screen when the server cannot be reached or has a fault (5xx), from one place
+  (`api.js` → `toast:error` on the event bus → `Toasts.jsx`). Form errors (4xx) stay in their forms.
+- Scores says "Could not load" instead of "No scores yet" when loading fails.
+
 ### Added (`feature/e2e-tests`)
 - **End-to-end tests** with Playwright (`npm run e2e`): register, log out and in, start Quick Play, solve the
   deploy puzzle (fake Banana API) and reach the battle; and the 404 page. A second GitHub Actions job runs them
