@@ -1,0 +1,1583 @@
+# Banana Brigade API (OpenAPI 3). Generated from server/routes/openapi.js by `npm run openapi`; do not edit by hand.
+openapi: "3.0.3"
+info:
+  title: "Banana Brigade API"
+  version: "1.3.2"
+  description: "The REST API between the Banana Brigade browser app and its server. Every path also works without the /v1 prefix (the old paths). Login uses the HttpOnly session cookie brigade.sid; online matches use Socket.io (see docs/api.md). Puzzle pictures come from the Banana API by Marc Conrad."
+servers:
+  - url: "/api/v1"
+    description: "Version 1"
+tags:
+  - name: "auth"
+  - name: "puzzles"
+  - name: "scores"
+  - name: "campaign"
+  - name: "daily"
+  - name: "admin"
+  - name: "status"
+  - name: "public"
+components:
+  securitySchemes:
+    session:
+      type: "apiKey"
+      in: "cookie"
+      name: "brigade.sid"
+      description: "Set by /auth/login, /auth/register or /auth/guest"
+  schemas:
+    Error:
+      type: "object"
+      properties:
+        error:
+          type: "string"
+      required:
+        - "error"
+    User:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        username:
+          type: "string"
+        role:
+          type: "string"
+          enum:
+            - "player"
+            - "admin"
+        guest:
+          type: "boolean"
+    Puzzle:
+      type: "object"
+      properties:
+        puzzleId:
+          type: "string"
+        image:
+          type: "string"
+          description: "data: URL of a PNG (base64)"
+        purpose:
+          type: "string"
+        source:
+          type: "string"
+          enum:
+            - "live"
+            - "reserve"
+    Score:
+      type: "object"
+      properties:
+        mode:
+          type: "string"
+          enum:
+            - "quick"
+            - "survival"
+            - "training"
+            - "team"
+            - "online"
+            - "campaign"
+        difficulty:
+          type: "string"
+          enum:
+            - "easy"
+            - "medium"
+            - "hard"
+        kills:
+          type: "integer"
+        deaths:
+          type: "integer"
+        wave:
+          type: "integer"
+        won:
+          type: "boolean"
+        durationS:
+          type: "integer"
+        powers:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "mode"
+        - "kills"
+        - "deaths"
+        - "durationS"
+    Status:
+      type: "object"
+      properties:
+        online:
+          type: "boolean"
+        ready:
+          type: "integer"
+        reserve:
+          type: "integer"
+        calls:
+          type: "integer"
+        lastLatencyMs:
+          type: "integer"
+        p50LatencyMs:
+          type: "integer"
+        avgLatencyMs:
+          type: "integer"
+        successRate:
+          type: "integer"
+        retriesUsed:
+          type: "integer"
+        circuit:
+          type: "object"
+          properties:
+            state:
+              type: "string"
+              enum:
+                - "closed"
+                - "open"
+                - "half-open"
+            failuresInRow:
+              type: "integer"
+            retryInMs:
+              type: "integer"
+    Unlocked:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          id:
+            type: "string"
+          name:
+            type: "string"
+          text:
+            type: "string"
+paths:
+  "/auth/register":
+    post:
+      tags:
+        - "auth"
+      summary: "Create an account and log in"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                username:
+                  type: "string"
+                  pattern: "^[A-Za-z0-9_]{3,16}$"
+                password:
+                  type: "string"
+                  minLength: 8
+                  maxLength: 72
+              required:
+                - "username"
+                - "password"
+      responses:
+        "201":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        "400":
+          description: "Bad name, short or breached password"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Name taken"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/login":
+    post:
+      tags:
+        - "auth"
+      summary: "Log in (5 tries per name per IP, 20 per IP, in 10 min)"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                username:
+                  type: "string"
+                  pattern: "^[A-Za-z0-9_]{3,16}$"
+                password:
+                  type: "string"
+                  minLength: 8
+                  maxLength: 72
+                remember:
+                  type: "boolean"
+              required:
+                - "username"
+                - "password"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        "401":
+          description: "Wrong name or password"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "429":
+          description: "Too many tries"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/logout":
+    post:
+      tags:
+        - "auth"
+      summary: "Log out this device"
+      security: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+  "/auth/logout-all":
+    post:
+      tags:
+        - "auth"
+      summary: "Log out every device"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+                  ended:
+                    type: "integer"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/password":
+    post:
+      tags:
+        - "auth"
+      summary: "Change password (ends the other sessions)"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                current:
+                  type: "string"
+                next:
+                  type: "string"
+              required:
+                - "current"
+                - "next"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+                  ended:
+                    type: "integer"
+        "400":
+          description: "Too short or breached"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Current password wrong"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/account":
+    delete:
+      tags:
+        - "auth"
+      summary: "Delete the account and all its data"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                password:
+                  type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Password wrong"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/guest":
+    post:
+      tags:
+        - "auth"
+      summary: "Start playing as a guest (7 days)"
+      security: []
+      responses:
+        "201":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        "429":
+          description: "Too many guests from this IP"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/upgrade":
+    post:
+      tags:
+        - "auth"
+      summary: "Save a guest as a full account (keeps progress)"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                username:
+                  type: "string"
+                  pattern: "^[A-Za-z0-9_]{3,16}$"
+                password:
+                  type: "string"
+                  minLength: 8
+                  maxLength: 72
+              required:
+                - "username"
+                - "password"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        "400":
+          description: "Not a guest, bad name or password"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Name taken"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/forgot":
+    post:
+      tags:
+        - "auth"
+      summary: "Ask for a password reset link (same reply for unknown names)"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                username:
+                  type: "string"
+              required:
+                - "username"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+                  message:
+                    type: "string"
+        "429":
+          description: "Too many requests"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/reset":
+    post:
+      tags:
+        - "auth"
+      summary: "Set a new password with a reset link token (single use, 30 min)"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                token:
+                  type: "string"
+                password:
+                  type: "string"
+              required:
+                - "token"
+                - "password"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+                  username:
+                    type: "string"
+                  ended:
+                    type: "integer"
+        "400":
+          description: "Link not valid, or bad password"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/reset/check":
+    post:
+      tags:
+        - "auth"
+      summary: "Is a reset link still valid, and for which account? (does not use it up)"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                token:
+                  type: "string"
+              required:
+                - "token"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+                  username:
+                    type: "string"
+        "400":
+          description: "Link not valid"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/available":
+    get:
+      tags:
+        - "auth"
+      summary: "Is this username free? (20 checks a minute)"
+      security: []
+      parameters:
+        - name: "u"
+          in: "query"
+          schema:
+            type: "string"
+          description: "Username"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  available:
+                    type: "boolean"
+                  valid:
+                    type: "boolean"
+        "429":
+          description: "Too many checks"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/sessions":
+    get:
+      tags:
+        - "auth"
+      summary: "Signed-in devices, this session and account dates"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  count:
+                    type: "integer"
+                  list:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        handle:
+                          type: "string"
+                        device:
+                          type: "string"
+                        createdAt:
+                          type: "string"
+                        lastSeen:
+                          type: "string"
+                        expires:
+                          type: "string"
+                        current:
+                          type: "boolean"
+                  current:
+                    type: "object"
+                    properties:
+                      createdAt:
+                        type: "string"
+                      expires:
+                        type: "string"
+                  memberSince:
+                    type: "string"
+                  lastLogin:
+                    type: "string"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/sessions/{handle}":
+    delete:
+      tags:
+        - "auth"
+      summary: "Sign out one other device (handle from /auth/sessions)"
+      security:
+        - session: []
+      parameters:
+        - name: "handle"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: "Session handle (a hash, never the session id)"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+        "400":
+          description: "That is this session"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "Already ended"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/export":
+    get:
+      tags:
+        - "auth"
+      summary: "Download my data: profile, scores, daily results, sessions (JSON file, no password hash)"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/auth/me":
+    get:
+      tags:
+        - "auth"
+      summary: "Who is logged in (user is null if nobody)"
+      security: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+                    nullable: true
+                  puzzles:
+                    type: "object"
+                    properties:
+                      solved:
+                        type: "integer"
+                      attempted:
+                        type: "integer"
+  "/puzzle":
+    get:
+      tags:
+        - "puzzles"
+      summary: "Get a Banana puzzle (the answer stays on the server)"
+      security:
+        - session: []
+      parameters:
+        - name: "purpose"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "deploy"
+              - "respawn"
+              - "crate"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Puzzle"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Banana API down and no reserve"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/puzzle/answer":
+    post:
+      tags:
+        - "puzzles"
+      summary: "Answer a puzzle once"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                puzzleId:
+                  type: "string"
+                answer:
+                  type: "integer"
+                  minimum: 0
+                  maximum: 9
+              required:
+                - "puzzleId"
+                - "answer"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  correct:
+                    type: "boolean"
+                  solution:
+                    type: "integer"
+                  purpose:
+                    type: "string"
+                  unlocked:
+                    "$ref": "#/components/schemas/Unlocked"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "Expired or already answered"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/achievements":
+    get:
+      tags:
+        - "scores"
+      summary: "All achievements and the ones this player has"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  all:
+                    "$ref": "#/components/schemas/Unlocked"
+                  mine:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        id:
+                          type: "string"
+                        at:
+                          type: "string"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/scores":
+    post:
+      tags:
+        - "scores"
+      summary: "Save a finished game (puzzle counts come from the session)"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Score"
+      responses:
+        "201":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  puzzlesSolved:
+                    type: "integer"
+                  puzzlesAttempted:
+                    type: "integer"
+                  unlocked:
+                    "$ref": "#/components/schemas/Unlocked"
+        "400":
+          description: "Invalid score"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/scores/leaderboard":
+    get:
+      tags:
+        - "scores"
+      summary: "Leaderboard for one mode"
+      security: []
+      parameters:
+        - name: "mode"
+          in: "query"
+          schema:
+            type: "string"
+        - name: "period"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "all"
+              - "today"
+        - name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  mode:
+                    type: "string"
+                  period:
+                    type: "string"
+                  rows:
+                    type: "array"
+                    items:
+                      type: "object"
+  "/scores/me":
+    get:
+      tags:
+        - "scores"
+      summary: "My totals and recent games"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  totals:
+                    type: "object"
+                  recent:
+                    type: "array"
+                    items:
+                      type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/campaign":
+    get:
+      tags:
+        - "campaign"
+      summary: "Chapters, missions and my stars"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/campaign/result":
+    post:
+      tags:
+        - "campaign"
+      summary: "Report a mission result (stars worked out on the server)"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                mission:
+                  type: "integer"
+                kills:
+                  type: "integer"
+                deaths:
+                  type: "integer"
+                continues:
+                  type: "integer"
+                timeS:
+                  type: "integer"
+                won:
+                  type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+        "400":
+          description: "Bad result"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Mission locked"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/daily":
+    get:
+      tags:
+        - "daily"
+      summary: "Today's challenge and my result"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/daily/start":
+    post:
+      tags:
+        - "daily"
+      summary: "Start today's one attempt"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  index:
+                    type: "integer"
+                  total:
+                    type: "integer"
+                  image:
+                    type: "string"
+                  seconds:
+                    type: "integer"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Already played today"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/daily/answer":
+    post:
+      tags:
+        - "daily"
+      summary: "Answer the current daily puzzle"
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                answer:
+                  type: "integer"
+              required:
+                - "answer"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/daily/current":
+    get:
+      tags:
+        - "daily"
+      summary: "The running daily puzzle (after a reload)"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/daily/leaderboard":
+    get:
+      tags:
+        - "daily"
+      summary: "Today's daily leaderboard"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  date:
+                    type: "string"
+                  rows:
+                    type: "array"
+                    items:
+                      type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/users":
+    get:
+      tags:
+        - "admin"
+      summary: "Every account with games, kills and puzzles (admins)"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  users:
+                    type: "array"
+                    items:
+                      type: "object"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/users/{id}/scores":
+    delete:
+      tags:
+        - "admin"
+      summary: "Reset a player's scores (admins, reason logged)"
+      security:
+        - session: []
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: "User id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                reason:
+                  type: "string"
+                  minLength: 3
+                  maxLength: 200
+              required:
+                - "reason"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  deleted:
+                    type: "integer"
+        "400":
+          description: "No reason"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/users/{id}/suspend":
+    post:
+      tags:
+        - "admin"
+      summary: "Suspend a player: signed out at once, cannot log in (admins, reason logged)"
+      security:
+        - session: []
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: "User id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                reason:
+                  type: "string"
+                  minLength: 3
+                  maxLength: 200
+              required:
+                - "reason"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+                  ended:
+                    type: "integer"
+        "400":
+          description: "No reason, yourself or an admin"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Already suspended"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/users/{id}/restore":
+    post:
+      tags:
+        - "admin"
+      summary: "Restore a suspended player (admins, reason logged)"
+      security:
+        - session: []
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: "User id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                reason:
+                  type: "string"
+                  minLength: 3
+                  maxLength: 200
+              required:
+                - "reason"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+        "400":
+          description: "No reason"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Not suspended"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/audit":
+    get:
+      tags:
+        - "admin"
+      summary: "The audit log: who did what to whom, when and why (admins)"
+      security:
+        - session: []
+      parameters:
+        - name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  rows:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        id:
+                          type: "string"
+                        at:
+                          type: "string"
+                        actor:
+                          type: "string"
+                        action:
+                          type: "string"
+                        target:
+                          type: "string"
+                        reason:
+                          type: "string"
+                        detail:
+                          type: "string"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/health":
+    get:
+      tags:
+        - "admin"
+      summary: "Banana API health now and every 30 s for the last hour (admins)"
+      security:
+        - session: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  now:
+                    "$ref": "#/components/schemas/Status"
+                  history:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        at:
+                          type: "string"
+                        online:
+                          type: "boolean"
+                        ready:
+                          type: "integer"
+                        reserve:
+                          type: "integer"
+                        p50LatencyMs:
+                          type: "integer"
+                        successRate:
+                          type: "integer"
+                        circuit:
+                          type: "string"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/admin/users/{id}/role":
+    patch:
+      tags:
+        - "admin"
+      summary: "Promote or demote (admins)"
+      security:
+        - session: []
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: "User id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                role:
+                  type: "string"
+                  enum:
+                    - "player"
+                    - "admin"
+                reason:
+                  type: "string"
+              required:
+                - "role"
+                - "reason"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        "400":
+          description: "Bad role or self-demotion"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/status":
+    get:
+      tags:
+        - "status"
+      summary: "Banana API health: puzzles ready, latency, success rate, circuit breaker"
+      security: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Status"
+  "/public/leaderboard":
+    get:
+      tags:
+        - "public"
+      summary: "Public read-only leaderboard for other sites (CORS: any origin, no cookie)"
+      security: []
+      parameters:
+        - name: "mode"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "quick"
+              - "survival"
+              - "team"
+              - "online"
+              - "campaign"
+        - name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 50
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  game:
+                    type: "string"
+                  mode:
+                    type: "string"
+                  updated:
+                    type: "string"
+                  rows:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        rank:
+                          type: "integer"
+                        username:
+                          type: "string"
+                        kills:
+                          type: "integer"
+                        deaths:
+                          type: "integer"
+                        wave:
+                          type: "integer"
+                        puzzlesSolved:
+                          type: "integer"
+                        at:
+                          type: "string"

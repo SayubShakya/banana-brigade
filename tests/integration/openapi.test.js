@@ -35,8 +35,8 @@ test('the OpenAPI file lists every route in the code, and nothing that is not th
   const inSpec = new Set(Object.entries(spec.paths).flatMap(([p, ops]) => Object.keys(ops).map((m) => `${m} ${p}`)));
   const inCode = routesInCode();
   assert.ok(inCode.size > 25, `found only ${inCode.size} routes`);
-  assert.deepEqual([...inCode].filter((r) => !inSpec.has(r)), [], 'routes missing from server/openapi.js');
-  assert.deepEqual([...inSpec].filter((r) => !inCode.has(r)), [], 'routes in server/openapi.js that do not exist');
+  assert.deepEqual([...inCode].filter((r) => !inSpec.has(r)), [], 'routes missing from server/routes/openapi.js');
+  assert.deepEqual([...inSpec].filter((r) => !inCode.has(r)), [], 'routes in server/routes/openapi.js that do not exist');
   assert.equal(spec.openapi, '3.0.3');
 });
 
@@ -78,4 +78,9 @@ test('the public leaderboard needs no login, allows any origin and sets no cooki
     // Private routes do not get CORS headers.
     assert.equal((await fetch(`${s.base}/api/v1/auth/me`, { headers: { Origin: 'https://example.org' } })).headers.get('access-control-allow-origin'), null);
   } finally { await s.close(); }
+});
+
+test('docs/openapi.yaml is up to date with server/routes/openapi.js (run npm run openapi if not)', () => {
+  const { yaml, OUT } = require('../../scripts/openapi-yaml');
+  assert.equal(fs.readFileSync(OUT, 'utf8'), yaml);
 });

@@ -12,7 +12,8 @@
     "dev:client": "vite",
     "demo": "node --env-file-if-exists=.env scripts/demo.js",
     "package": "git archive --format=zip --prefix=banana-brigade/ -o ../banana-brigade-source.zip HEAD && echo \"Created ../banana-brigade-source.zip (tracked files only: no .env, node_modules or data)\"",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "openapi": "node scripts/openapi-yaml.js"
   },
   "engines": {
     "node": ">=22"
