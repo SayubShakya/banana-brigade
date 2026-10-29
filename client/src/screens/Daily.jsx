@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { emit } from '../eventBus.js';
-import { Panel, Rank, Icon } from './common.jsx';
+import { Panel, Rank, Icon, Skeleton } from './common.jsx';
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
@@ -81,6 +81,7 @@ export default function Daily({ me, onBack }) {
       subtitle="The same 5 Banana puzzles for everyone today. 20 seconds each, one attempt. Points double for every correct answer in a row."
       footer={<button className="mbtn primary" onClick={onBack} disabled={playing}>{playing ? 'Finish the challenge first' : 'Back'}</button>}>
       {error && <p className="auth-error" role="alert">{error}</p>}
+      {!info && !error && <Skeleton rows={3} height="8cqh" />}
       {playing ? (
         <div className="daily-play">
           <div className="puzzle-img-wrap" data-state="ready"><img id="puzzle-img" src={run.image} alt="Banana API puzzle" /></div>

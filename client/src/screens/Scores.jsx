@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { Panel, Rank } from './common.jsx';
+import { Panel, Rank, SkeletonRows } from './common.jsx';
 
 const TABS = [['quick', 'Quick Play'], ['survival', 'Survival'], ['team', 'Team Battle'], ['online', 'Online']];
 
@@ -16,7 +16,8 @@ function Board({ title, rows, mode, me }) {
       <table className="results compact">
         <thead><tr><th>#</th><th>Soldier</th><th>{main}</th><th>Puzzles</th></tr></thead>
         <tbody>
-          {rows === null && <tr className="empty-row"><td colSpan={4}>Loading…</td></tr>}
+          {rows === null && <SkeletonRows cols={4} />}
+          {rows === false && <tr className="empty-row"><td colSpan={4}>Could not load the leaderboard. Try again in a moment.</td></tr>}
           {rows?.length === 0 && <tr className="empty-row"><td colSpan={4}>No scores yet.</td></tr>}
           {rows?.map((r, i) => (
             <tr key={r.id} className={r.username === me ? 'me' : ''}>
@@ -39,7 +40,7 @@ export default function Scores({ me, onBack }) {
     setAll(null);
     Promise.all([api.leaderboard(mode, 'today'), api.leaderboard(mode, 'all')])
       .then(([t, a]) => { if (alive) { setToday(t.rows); setAll(a.rows); } })
-      .catch(() => { if (alive) { setToday([]); setAll([]); } });
+      .catch(() => { if (alive) { setToday(false); setAll(false); } });   // false = failed (the toast says why)
     return () => { alive = false; };
   }, [mode]);
 

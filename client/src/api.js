@@ -20,10 +20,17 @@ async function call(method, path, body) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw Object.assign(new Error('Cannot reach the game server'), { offline: true });
+    const error = Object.assign(new Error('Cannot reach the game server'), { offline: true });
+    emit('toast:error', { text: 'Cannot reach the game server. Check your connection.' });
+    throw error;
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
+  if (!res.ok) {
+    // Server faults (5xx) are shown as a toast on any screen; 4xx answers (wrong
+    // password, name taken...) are for the form that asked, so they are not.
+    if (res.status >= 500) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });
+    throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
+  }
   for (const a of data.unlocked ?? []) emit('achievement:unlocked', a);
   return data;
 }
