@@ -235,7 +235,21 @@ function drawGun(ctx, weaponKey) {
   }
 }
 
+// How far the gun arm has turned during a melee swing (t from 0 to 1): a wind-up
+// back, a fast swing down through the aim line, then back to the aim.
+function swingAngle(t) {
+  if (t < 0.3) return -1.3 * (t / 0.3);
+  if (t < 0.55) return -1.3 + 2.2 * ((t - 0.3) / 0.25);
+  return 0.9 * (1 - (t - 0.55) / 0.45);
+}
+
 // s: { x, y, w, h, facing, aim, walkPhase, onGround, jetting, weapon, hurtFlash, shielded, recoil? }
+// Optional pose fields (from effects.js; all default to 0, the normal pose):
+//   lean     body tilt in radians around the feet (moving, jetting, flinching)
+//   squash   0..0.3, squashes the body flat on a hard landing
+//   gunTilt  radians the gun droops (reloading, swapping weapons)
+//   swing    0..1 progress of a melee swing
+//   throwArm 0..1 progress of a grenade throw (a free arm swings over the head)
 export function drawSoldier(ctx, s, avatar, time) {
   const cx = s.x + s.w / 2;
   const top = s.y;
@@ -250,6 +264,14 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  const lean = s.lean || 0;
+  const squash = s.squash || 0;
+  if (lean || squash) {
+    ctx.translate(cx, feet);
+    if (lean) ctx.rotate(lean);
+    if (squash) ctx.scale(1 + squash * 0.6, 1 - squash);
+    ctx.translate(-cx, -feet);
+  }
   if (s.shielded) ctx.globalAlpha = 0.55 + 0.25 * Math.sin(time * 20);
 
   // Jetpack flames.
@@ -359,6 +381,19 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.translate(cx, top + 25);
   ctx.rotate(s.aim);
   if (Math.cos(s.aim) < 0) ctx.scale(1, -1);
+  // In this frame +x is the aim and +y is always "down", so a positive turn lowers the gun.
+  const swing = s.swing || 0;
+  if (swing > 0 && swing < 1) {
+    const now = swingAngle(swing);
+    if (swing > 0.28 && swing < 0.7) {   // a white swoosh behind the swinging gun
+      ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - Math.abs(swing - 0.45) / 0.25)})`;
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(0, 0, 36, -1.3, Math.max(-1.3, now)); ctx.stroke();
+    }
+    ctx.rotate(now);
+    ctx.translate(Math.sin(swing * Math.PI) * 6, 0);   // lunge forward with the butt
+  }
+  if (s.gunTilt) ctx.rotate(s.gunTilt);
   if (s.recoil) ctx.translate(-s.recoil, 0);   // the gun kicks back after a shot
   limb(ctx, jacket, 5, [[0, 0], [9, 1]]);
   const fore = drawGun(ctx, s.weapon);
@@ -368,6 +403,20 @@ export function drawSoldier(ctx, s, avatar, time) {
   }
   ctx.beginPath(); ctx.arc(9.5, 1.5, 3.2, 0, Math.PI * 2); inked(ctx, avatar.skin, 1.5);
   ctx.restore();
+
+  // Grenade throw: a free arm swings from behind the head over the top and forward,
+  // with the grenade still in the hand for the first half.
+  const thr = s.throwArm || 0;
+  if (thr > 0 && thr < 1) {
+    const ang = thr < 0.35 ? -1.7 - 0.9 * (thr / 0.35) : -2.6 + 3.0 * ((thr - 0.35) / 0.65);
+    const sx = cx - f * 2;
+    const sy = top + 23;
+    const hxEnd = sx + Math.cos(ang) * 18 * f;
+    const hyEnd = sy + Math.sin(ang) * 18;
+    limb(ctx, jacket, 4.5, [[sx, sy], [hxEnd, hyEnd]]);
+    if (thr < 0.5) { ctx.beginPath(); ctx.arc(hxEnd + Math.cos(ang) * 3 * f, hyEnd + Math.sin(ang) * 3, 4, 0, Math.PI * 2); inked(ctx, '#2d4a22', 1.5); }
+    ctx.beginPath(); ctx.arc(hxEnd, hyEnd, 3.2, 0, Math.PI * 2); inked(ctx, avatar.skin, 1.5);
+  }
 
   ctx.restore();
 }
