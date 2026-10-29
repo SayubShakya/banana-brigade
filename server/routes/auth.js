@@ -250,7 +250,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       const user = await db.findUserById(req.session.userId);
       // A guest has no password to type; being logged in as the guest is enough.
       if (!user || (!user.guest && (typeof password !== 'string' || !(await bcrypt.compare(password, user.password_hash))))) {
-        return res.status(403).json({ error: 'Type your password to confirm' });
+        return res.status(403).json({ error: 'That password is not right' });
       }
       await db.deleteUser(user.id);
       await db.clearFailedLogins(user.username);
@@ -298,9 +298,10 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
     try {
       if (!req.user.guest) return res.status(400).json({ error: 'This account is already saved' });
       const { username, password } = req.body ?? {};
-      if (typeof username !== 'string' || !USERNAME.test(username) || /^guest_/i.test(username)) {
-        return res.status(400).json({ error: 'Username must be 3–16 letters, numbers or _ (and not start with guest_)' });
+      if (typeof username !== 'string' || !USERNAME.test(username)) {
+        return res.status(400).json({ error: 'Username must be 3–16 letters, numbers or _' });
       }
+      if (/^guest_/i.test(username)) return res.status(400).json({ error: 'Names starting with guest_ are kept for guests' });
       if (typeof password !== 'string' || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
         return res.status(400).json({ error: `Password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
       }

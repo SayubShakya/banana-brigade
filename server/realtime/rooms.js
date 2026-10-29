@@ -62,7 +62,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
   const update = (room) => io.to(`room:${room.code}`).emit('room:update', view(room));
   const listChanged = () => io.emit('rooms:changed');
   const publicList = () => [...rooms.values()]
-    .filter((r) => r.isPublic && r.players.size < MAX_PLAYERS)
+    .filter((r) => r.isPublic && r.state === 'lobby' && r.players.size < MAX_PLAYERS)   // rooms in a match cannot be joined
     .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, difficulty: r.difficulty, state: r.state }));
 
   function nextTeam(room) {
