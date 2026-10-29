@@ -193,6 +193,24 @@ async function openDatabase(uri) {
       delete t._id;
       return { ...zero, ...t };
     },
+    // Everything stored about one player, for "download my data" (GDPR right of
+    // access). The password hash is left out: it is not useful to the player and
+    // should never leave the server.
+    async exportUser(userId) {
+      if (!isId(userId)) return null;
+      const u = await m.User.findById(userId).lean();
+      if (!u) return null;
+      const [scores, daily] = await Promise.all([
+        m.Score.find({ user: oid(userId) }).sort({ createdAt: -1 }).lean(),
+        m.DailyResult.find({ user: oid(userId) }).sort({ date: -1 }).lean(),
+      ]);
+      const clean = ({ _id, __v, user, passwordHash, ...rest }) => rest;
+      return {
+        profile: { id: String(u._id), ...clean(u) },
+        scores: scores.map(clean),
+        dailyResults: daily.map(clean),
+      };
+    },
     async deleteScoresForUser(userId) {
       return isId(userId) ? (await m.Score.deleteMany({ user: oid(userId) })).deletedCount : 0;
     },
