@@ -15,6 +15,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/pwned-passwords`)
+- New passwords (sign-up, change, reset) are checked against **Have I Been Pwned** with the k-anonymity range
+  API: only the first 5 characters of the SHA-1 hash are sent. If the service is down the password is allowed
+  and a warning is logged. `PWNED_CHECK=off` turns it off.
+
 ### From `feature/password-reset-ip-limit`
 
 ### Added
