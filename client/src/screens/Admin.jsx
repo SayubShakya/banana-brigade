@@ -18,13 +18,13 @@ const stamp = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric',
 function Players({ account }) {
   const [users, setUsers] = useState(null);
   const [msg, setMsg] = useState('');
-  const [asking, setAsking] = useState(null);   // { label, run(reason), done }
+  const [asking, setAsking] = useState(null);   // { id, label, run(reason), done }
   const [reason, setReason] = useState('');
 
   const load = () => api.adminUsers().then(({ users: list }) => setUsers(list)).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, []);
 
-  const ask = (label, run, done) => { setAsking({ label, run, done }); setReason(''); setMsg(''); };
+  const ask = (id, label, run, done) => { setAsking({ id, label, run, done }); setReason(''); setMsg(''); };
   async function confirm(e) {
     e.preventDefault();
     try { await asking.run(reason.trim()); setMsg(asking.done); setAsking(null); load(); } catch (err) { setMsg(err.message); }
@@ -32,6 +32,7 @@ function Players({ account }) {
 
   return (
     <>
+      <p className="setting-note admin-msg" role="status">{msg || (asking ? '' : 'Every action asks for a reason, which is saved in the audit log.')}</p>
       {asking && (
         <form className="reason-form" onSubmit={confirm}>
           <label className="field">{asking.label}: why? (saved in the audit log)
@@ -49,26 +50,25 @@ function Players({ account }) {
             const me = u.id === account.id;
             const next = u.role === 'admin' ? 'player' : 'admin';
             return (
-              <tr key={u.id} data-suspended={!!u.suspended}>
+              <tr key={u.id} data-suspended={!!u.suspended} data-asking={asking?.id === u.id}>
                 <td>{u.username}{me && ' (you)'}{u.suspended && <small className="suspended-note">Suspended: {u.suspended.reason}</small>}</td>
                 <td><span className="role-badge" data-role={u.guest ? 'guest' : u.role}>{u.guest ? 'guest' : u.role}</span></td>
                 <td>{when(u.created_at)}</td><td>{u.games}</td><td>{u.kills}</td><td>{u.puzzles_solved}</td>
                 <td className="admin-actions">
-                  <button className="toggle" disabled={!u.games} onClick={() => ask(`Reset ${u.username}'s scores`, (r) => api.resetScores(u.id, r), `Scores reset for ${u.username}.`)}>Reset scores</button>
+                  <button className="toggle" disabled={!u.games} title={u.games ? '' : 'No games to reset'} onClick={() => ask(u.id, `Reset ${u.username}'s scores`, (r) => api.resetScores(u.id, r), `Scores reset for ${u.username}.`)}>Reset scores</button>
                   {/* The server refuses self-demotion too; disabling it here just avoids the error. */}
-                  <button className="toggle" disabled={me || u.guest} onClick={() => ask(`${next === 'admin' ? 'Promote' : 'Demote'} ${u.username}`, (r) => api.setRole(u.id, next, r), `${u.username} is now ${next}.`)}>
+                  <button className="toggle" disabled={me || u.guest} title={me ? 'You cannot demote yourself' : u.guest ? 'Guests must save their account first' : ''} onClick={() => ask(u.id, `${next === 'admin' ? 'Promote' : 'Demote'} ${u.username}`, (r) => api.setRole(u.id, next, r), `${u.username} is now ${next}.`)}>
                     {next === 'admin' ? 'Promote' : 'Demote'}
                   </button>
                   {u.suspended
-                    ? <button className="toggle" onClick={() => ask(`Restore ${u.username}`, (r) => api.restore(u.id, r), `${u.username} can log in again.`)}>Restore</button>
-                    : <button className="toggle danger" disabled={me || u.role === 'admin'} onClick={() => ask(`Suspend ${u.username}`, (r) => api.suspend(u.id, r), `${u.username} is suspended and was signed out.`)}>Suspend</button>}
+                    ? <button className="toggle" onClick={() => ask(u.id, `Restore ${u.username}`, (r) => api.restore(u.id, r), `${u.username} can log in again.`)}>Restore</button>
+                    : <button className="toggle danger" disabled={me || u.role === 'admin'} title={me ? 'You cannot suspend yourself' : u.role === 'admin' ? 'Demote an admin before suspending them' : ''} onClick={() => ask(u.id, `Suspend ${u.username}`, (r) => api.suspend(u.id, r), `${u.username} is suspended and was signed out.`)}>Suspend</button>}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <p className="setting-note" role="status">{msg}</p>
     </>
   );
 }
@@ -149,7 +149,8 @@ export default function Admin({ account, onBack }) {
       {tab === 'players' && <Players account={account} />}
       {tab === 'audit' && <Audit />}
       {tab === 'health' && <Health />}
-      {tab === 'events' && <LiveEvents />}
+      {/* Kept mounted (only hidden) so the feed keeps its list, Clear and Pause between tabs. */}
+      <div hidden={tab !== 'events'}><LiveEvents /></div>
     </Panel>
   );
 }
