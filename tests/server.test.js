@@ -137,3 +137,14 @@ test('GET /api/status reports the API state', async () => {
     assert.equal(status.circuit.state, 'closed');
   });
 });
+
+test('unknown pages are a 404: the React page for browsers, JSON under /api', async () => {
+  const s = await startServer();
+  try {
+    const page = await fetch(`${s.base}/no-such-page`, { headers: { Accept: 'text/html' } });
+    assert.equal(page.status, 404);
+    const api = await fetch(`${s.base}/api/no-such-thing`);
+    assert.equal(api.status, 404);
+    assert.deepEqual(await api.json(), { error: 'Not found' });
+  } finally { await s.close(); }
+});
