@@ -39,9 +39,10 @@ export default function PuzzleModal() {
   const deadline = useRef(0);
   const live = useRef(null);                     // the request currently on screen
 
+  const closeRef = useRef(null);   // finish('closed'), for closePuzzle() in puzzleBridge
   useEffect(() => registerPuzzleOpener((purpose, options) => new Promise((resolve) => {
     setReq({ purpose, options, resolve, key: Math.random() });
-  })), []);
+  }), () => closeRef.current?.()), []);
 
   // options.seconds (from the chosen difficulty) overrides the default time.
   const rules = req ? {
@@ -60,6 +61,7 @@ export default function PuzzleModal() {
     setPicked(null);
     r.resolve(result);
   }, []);
+  closeRef.current = () => finish('closed');
 
   const load = useCallback(async (r) => {
     setPuzzle(null);

@@ -18,7 +18,7 @@ import { createMap, isSolid } from '../game/map.js';
 import { emptyControls, activeGun } from '../game/world.js';
 import { getStage } from '../game/stage.js';
 import { setListener, updateSound } from '../game/sound.js';
-import { askPuzzle, isPuzzleOpen } from '../lib/puzzleBridge.js';
+import { askPuzzle, closePuzzle, isPuzzleOpen } from '../lib/puzzleBridge.js';
 import { askPower, isPowerOpen, closePower } from '../lib/powerBridge.js';
 import { getSocket, request } from './socket.js';
 
@@ -123,11 +123,11 @@ export function createNetGame() {
     if (result === 'cancelled') socket.emit('puzzle:cancel', { purpose: 'crate' });
   });
 
-  // The server stopped waiting for this crate puzzle (no answer in time). Close the
-  // window the same way the Esc key does, so the player is not stuck behind it.
+  // The server stopped waiting for this crate puzzle (no answer in time): close the
+  // window so the player is not stuck behind it (no cancel is sent; the server knows).
   socket.on('puzzle:closed', ({ purpose }) => {
-    if (purpose !== 'crate' || !crateOpen || !isPuzzleOpen()) return;
-    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }));
+    if (purpose !== 'crate' || !crateOpen) return;
+    closePuzzle();
   });
 
   // A solved crate online: the server offers powers; the choice goes back to the server.
