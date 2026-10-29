@@ -12,7 +12,20 @@ sends a user id. "Login" below means the route returns `401 {"error":"Please log
 or when the session's account no longer exists (the user is loaded from the database on every request).
 Errors always have the shape `{ "error": "message" }`.
 
+## Versioning, OpenAPI and the public endpoint
+
+- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/api.js`). The old paths without `/v1`
+  are the same handlers and keep working (`server/app.js` rewrites `/api/v1/x` to `/api/x`).
+- **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/openapi.js`), shown with Swagger UI at
+  **`/api/docs`**. `tests/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
+- **Public leaderboard** for other sites: `GET /api/v1/public/leaderboard?mode=quick&limit=10`. No login and no
+  cookie; `Access-Control-Allow-Origin: *` (CORS) and `OPTIONS` preflight; `Cache-Control: public, max-age=30`.
+  It returns only `rank, username, kills, deaths, wave, puzzlesSolved, at`. Try it from any page's console:
+  `fetch('http://localhost:3100/api/v1/public/leaderboard').then(r => r.json()).then(console.log)`.
+
 ## REST endpoints
+
+The table lists paths without `/v1`; both forms work.
 
 ### Accounts (`server/routes/auth.js`)
 

@@ -83,7 +83,20 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
   leaderboard needs the same puzzles, and showing the answer helps players learn.
 - **A daily run that crosses midnight UTC cannot be finished.** The routes use today's date, so a run started at
   23:59 belongs to a day that has ended.
-- Our REST API has no version prefix and no OpenAPI file; `docs/api.md` documents it by hand.
+- ~~Our REST API has no version prefix and no OpenAPI file~~: now `/api/v1` with the old paths kept, an OpenAPI 3
+  file checked against the code by a test, and Swagger UI at `/api/docs` (`feature/openapi-v1`).
+
+**Versioning and the public API: choices** (`feature/openapi-v1`)
+
+| Choice | For | Against / alternative |
+|---|---|---|
+| Version in the path (`/api/v1`) | Visible, easy to route and cache, easy to show | Header versioning (`Accept: application/vnd.brigade.v1+json`) keeps URLs clean but is harder to test in a browser |
+| Old paths kept as an alias | Nothing breaks for an open tab or old client | Two names for one thing until the old one is retired |
+| OpenAPI written by hand in `server/openapi.js`, checked by a test against the routes | No extra library; the test stops it drifting | Generating it from code (e.g. JSDoc or a schema library) keeps it closer to the code but adds a dependency |
+| Swagger UI from a pinned CDN version | No build step | Needs internet; a self-hosted copy would work offline |
+| Public leaderboard with CORS `*`, no cookie, only public fields, 30 s cache | Other sites can show our scores safely; it can never act as a player | Anyone can read it (it is public on purpose); heavy use would need a rate limit |
+| CORS only on `/api/public` | Private routes stay same-origin, so another site cannot call them with the player's cookie | — |
+
 
 ## 4. Virtual identity
 

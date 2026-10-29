@@ -15,6 +15,12 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/openapi-v1`)
+- **API version 1** at `/api/v1/...` (the browser uses it); the old `/api/...` paths still work.
+- **OpenAPI 3** description at `/api/v1/openapi.json` and **Swagger UI** at `/api/docs`. A test checks that the
+  spec and the routes in the code match.
+- **Public leaderboard** `GET /api/v1/public/leaderboard`: read-only, no login, CORS for any origin, cached 30 s.
+
 ### Added (`feature/live-events`)
 - **Live events** tab in Admin: logins, wrong passwords, guests, puzzles, scores, achievements, online kills and
   admin actions appear as they happen, pushed over Socket.io from a server `EventEmitter` (`server/eventLog.js`).
