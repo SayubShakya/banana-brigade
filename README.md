@@ -52,6 +52,8 @@ only shows pictures and sends controls and answers.
 - **Open API:** `/api/v1` with an OpenAPI 3 file and Swagger UI at `/api/docs`, plus a public read-only
   leaderboard (`/api/v1/public/leaderboard`, CORS) that other websites can use.
 - **Live event feed** (Admin → Live events): server events pushed over Socket.io as they happen.
+- **Admin tools:** audit log of every admin action with its reason; suspend and restore players (signed out at
+  once); Banana API health charts.
 - **Admin screen:** every account with its games, kills and puzzles; reset a player's scores; promote or demote.
 - **Phones:** touch sticks, a fullscreen button and a "turn your phone sideways" hint.
 
@@ -285,6 +287,7 @@ verification.
 | Virtual identity | Session regeneration, remember me | `server/routes/auth.js:33-48` |
 | Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:125-216`, `server/sessions.js:10-41` |
 | Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:13-46` |
+| Virtual identity | Suspend/restore (sessions and sockets ended, login refused) and the audit log | `server/routes/admin.js`, `server/middleware/auth.js` (suspended check), `server/models.js` (`AuditLog`) |
 | Virtual identity | Admin roles | `server/routes/admin.js:30-45`, `client/src/screens/Admin.jsx` |
 | Virtual identity | Sessions in MongoDB | `server/index.js:45-47` |
 | Virtual identity | Login on the WebSocket | `server/realtime/socket.js:20-32` |

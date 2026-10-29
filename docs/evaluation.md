@@ -128,6 +128,16 @@ counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once ge
 | CAPTCHA after a few failures | Stops bots, not people | Needs a third-party service; worse for players |
 | `express-rate-limit` package | Ready-made | Counts in memory by default, so it resets on restart and is not shared between servers; ours is in MongoDB |
 
+**Admin accountability: audit log and suspension** (`feature/admin-audit`)
+
+| Choice | For | Against / alternative |
+|---|---|---|
+| Every admin action needs a reason and writes an audit row (who, what, whom, when, why) | Admins can be held to account; disputes can be checked | Admins type a little more; the log is in the same database, so someone with database access could still edit it (an append-only external log would stop that) |
+| Audit rows keep names as text and survive account deletion | The record of what admins did stays complete | Keeps a player's name after they asked to be deleted (justified as a legitimate interest; could be anonymised instead) |
+| Suspension checked on every request (HTTP and WebSocket) and all sessions ended | Takes effect at once, not when the cookie runs out | One database read per request (already paid for roles) |
+| Admins cannot suspend admins without demoting them first | No accidental lock-out of the admin team | Two steps for a rogue admin |
+| Health history in memory (120 samples) | No extra storage, simple | Lost on restart; a time-series database or Prometheus would keep it |
+
 **Signed-in devices and data export** (`feature/sessions-export`)
 
 Each session stores a short device name made from the User-Agent ("Chrome on macOS") and a `lastSeen` time

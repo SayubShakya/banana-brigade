@@ -43,6 +43,10 @@ The table lists paths without `/v1`; both forms work.
 | POST | `/api/auth/reset` | `{ token, password }` | `{ ok: true, username, ended }` | 400 password too short/long, 400 link unknown, used or expired |
 | GET | `/api/auth/available?u=name` | none | `{ available, valid }` | 429 more than 20 checks a minute |
 | GET | `/api/auth/sessions` (login) | none | `{ count, list: [{ handle, device, createdAt, lastSeen, expires, current }], current, memberSince, lastLogin }` | |
+| GET | `/api/admin/audit?limit=` (admin) | none | `{ rows: [{ id, at, actor, action, target, reason, detail }] }` newest first | 403 |
+| POST | `/api/admin/users/:id/suspend` (admin) | `{ reason }` | `{ ok, ended }` | 400 no reason / yourself / an admin, 409 already |
+| POST | `/api/admin/users/:id/restore` (admin) | `{ reason }` | `{ ok }` | 400 no reason, 409 not suspended |
+| GET | `/api/admin/health` (admin) | none | `{ now: <status>, history: [{ at, online, ready, reserve, p50LatencyMs, successRate, circuit }] }` | 403 |
 | DELETE | `/api/auth/sessions/:handle` (login) | none | `{ ok: true }` | 400 this session (use logout), 404 not yours or ended |
 | GET | `/api/auth/export` (login) | none | JSON file: `{ exportedAt, profile, scores, dailyResults, sessions }` (no password hash) | |
 | GET | `/api/auth/me` | none | `{ user, puzzles: { solved, attempted } }` or `{ user: null }` | |
