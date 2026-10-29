@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const http = require('node:http');
 const { MongoStore } = require('connect-mongo');
 const { createApp } = require('./app');
+const { createPwnedCheck } = require('./services/pwned');
 const { attachRealtime } = require('./realtime/socket');
 const { createPuzzlePool } = require('./pool');
 const { openDatabase } = require('./db');
@@ -48,7 +49,8 @@ async function main() {
   const bananaApi = createBananaApi({ baseUrl, timeoutMs: Number(process.env.BANANA_API_TIMEOUT_MS) || 5000 });
   const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats });
   if (production && !process.env.APP_URL) console.warn('APP_URL is not set: password reset links will use the Host header of the request.');
-  const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production, appUrl: process.env.APP_URL || null });
+  const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production, appUrl: process.env.APP_URL || null,
+    pwnedCheck: process.env.PWNED_CHECK === 'off' ? undefined : createPwnedCheck() });
 
   // One HTTP server for the web pages, the JSON API and the WebSocket (Socket.io).
   const server = http.createServer(app);

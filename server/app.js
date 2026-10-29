@@ -43,6 +43,7 @@ function createApp({
   trustProxy = production ? 1 : false,   // read the client IP from X-Forwarded-For (only behind a proxy)
   sendResetLink,                         // how reset links reach the player (default: the server log)
   appUrl = null,                         // the site address used in reset links (APP_URL)
+  pwnedCheck,                            // Have I Been Pwned check for new passwords (off unless given)
 }) {
   const app = express();
   app.set('sessionCookieName', SESSION_COOKIE);
@@ -66,7 +67,7 @@ function createApp({
   // The WebSocket server (realtime/) reuses the same sessions and puzzle store.
   Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements });
 
-  app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl }));
+  app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl, pwnedCheck }));
   app.use('/api/scores', createScoresRouter({ db, achievements }));
   app.use('/api/admin', createAdminRouter({ db }));
   app.use('/api/daily', createDailyRouter({ db, pool, achievements }));
