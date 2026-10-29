@@ -1,22 +1,36 @@
 // Shooting feel for the renderer: muzzle flashes, recoil, sniper beams, wall sparks,
 // shell casings, hit markers, floating damage numbers, the damage-direction arrow,
-// the KILL pop and screen shake. Nothing here changes the game: it only listens to
-// the events the world publishes on the event bus (weapon:fired, soldier:damaged,
-// soldier:killed, explosion), so it works the same in local and online games.
+// the KILL pop and screen shake; plus the battle animations: ragdoll corpses, headshot
+// pops, the respawn ring, jetpack smoke, explosions (fireball, shockwave, smoke,
+// debris, scorch marks), soldier poses (melee, throw, reload, swap, landing, flinch,
+// lean), the low-health vignette and the DOUBLE KILL / TRIPLE KILL / RAMPAGE! banners.
+// Nothing here changes the game: it only listens to the events the world publishes on
+// the event bus (weapon:fired, soldier:damaged, soldier:killed, explosion, ...) and
+// reads soldier state, so it works the same in local and online games.
+// Reduced motion (the OS setting or the in-game calm option) turns off the shake,
+// pulsing and big flashes, and makes the rest gentler.
 // Every effect lives in a small fixed-size pool (a ring buffer), so a busy fight
 // never allocates new objects each frame and the counts stay capped.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../lib/eventBus.js';
-import { VIEW, WEAPONS } from './config.js';
-import { raycast } from './map.js';
+import { VIEW, WEAPONS, TILE } from './config.js';
+import { raycast, isSolid } from './map.js';
+import { drawSoldier } from './characters.js';
 
 // Visual recoil of the gun (px) and how much it kicks the camera, per weapon.
 const KICK = { magnum: 5, smg: 2.5, rifle: 3.5, shotgun: 9, sniper: 12, rocket: 10, flamer: 0 };
 const CAM_KICK = { magnum: 2, smg: 1, rifle: 1.5, shotgun: 5, sniper: 7, rocket: 6, flamer: 0 };
 const FLASH_LIFE = { magnum: 0.06, smg: 0.04, rifle: 0.05, shotgun: 0.08, sniper: 0.1, rocket: 0.09 };
 const GRAVITY = 1400;
+const BANANA = '#ffe135';
+const GOLD = '#ffc300';
+
+// How long each pose lasts (seconds).
+const POSE = { melee: 0.32, throw: 0.4, swap: 0.35, land: 0.28, flinch: 0.18 };
+const CORPSE_LIFE = 2.2;
+const NO_MAG = new Set(['rocket', 'flamer']);   // no magazine falls out of these
 
 // A ring buffer of reusable objects: spawn() hands out the next slot, overwriting the oldest.
 function makePool(size, make) {
@@ -55,27 +69,58 @@ export function createEffects(view) {
   const beams = makePool(8, () => ({ x1: 0, y1: 0, x2: 0, y2: 0, age: 0, life: 0.35 }));
   const impacts = makePool(32, () => ({ x: 0, y: 0, delay: 0, age: 0 }));
   const sparks = makePool(96, () => ({ x: 0, y: 0, vx: 0, vy: 0, age: 0, life: 0.3, size: 2, color: '#fff' }));
-  const shells = makePool(24, () => ({ x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, age: 0, life: 0.7, color: '#d4a017' }));
-  const numbers = makePool(24, () => ({ victim: null, x: 0, y: 0, value: 0, age: 0, life: 0.9, mine: false }));
+  const shells = makePool(24, () => ({ x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, age: 0, life: 0.7, color: '#d4a017', w: 6, h: 3 }));
+  const numbers = makePool(24, () => ({ victim: null, x: 0, y: 0, value: 0, age: 0, life: 0.9, mine: false, headshot: false }));
   const arrows = makePool(4, () => ({ ax: 0, ay: 0, age: 0, life: 1.1 }));
+  const corpses = makePool(10, () => ({ x: 0, y: 0, w: 28, h: 50, vx: 0, vy: 0, rot: 0, vr: 0, bounces: 0, resting: false, floor: 0, age: 0, avatar: null, facing: 1, aim: 0, weapon: 'magnum' }));
+  const spawnRings = makePool(6, () => ({ soldier: null, age: 0, life: 0.8 }));
+  const smoke = makePool(80, () => ({ x: 0, y: 0, vx: 0, vy: 0, r: 3, grow: 10, age: 0, life: 0.5, alpha: 0.4, color: '#999' }));
+  const fireballs = makePool(6, () => ({ x: 0, y: 0, radius: 60, age: 0, life: 0.4 }));
+  const shockwaves = makePool(6, () => ({ x: 0, y: 0, radius: 60, age: 0, life: 0.35 }));
+  const debris = makePool(40, () => ({ x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, size: 4, color: '#555', age: 0, life: 1.4 }));
+  const scorches = makePool(8, () => ({ x: 0, y: 0, r: 40, age: 0, life: 8 }));
   const recoil = new Map();   // soldier -> current gun offset in px
-  const marker = { age: 9, life: 0.25, kill: false };
+  const anims = new Map();    // soldier -> pose timers, lean and jet smoke timer (see animOf)
+  const marker = { age: 9, life: 0.25, kill: false, headshot: false };
   const killPop = { age: 9, life: 0.9, streak: 0 };
+  const headPop = { age: 9, life: 0.8, kill: false };
+  const banner = { age: 9, life: 1.6, text: '' };
   const kick = { x: 0, y: 0 };
   let shake = 0;
   let streak = 0;
+  let quickKills = 0;          // the player's kills less than 4 s apart
+  let lastKillAt = -99;
+  let clock = 0;
   let banners = true;
+  let vignette = null;         // the red low-health gradient, made once
   const offset = { x: 0, y: 0 };
 
   const reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   const calm = () => reduced?.matches || document.body.classList.contains('a11y-calm');
 
   function reset() {
-    for (const p of [flashes, beams, impacts, sparks, shells, numbers, arrows]) p.clear();
+    for (const p of [flashes, beams, impacts, sparks, shells, numbers, arrows, corpses, spawnRings, smoke, fireballs, shockwaves, debris, scorches]) p.clear();
     recoil.clear();
-    marker.age = killPop.age = 9;
+    anims.clear();
+    marker.age = killPop.age = headPop.age = banner.age = 9;
     kick.x = kick.y = shake = 0;
-    streak = 0;
+    streak = quickKills = 0;
+    lastKillAt = -99;
+  }
+
+  // Per-soldier animation state; ages start "long ago" so no pose is playing.
+  function animOf(s) {
+    let a = anims.get(s);
+    if (!a) {
+      a = { melee: 9, throwT: 9, swap: 9, land: 9, landAmp: 0, flinch: 9, flinchDir: 0, lean: 0, prevX: null, current: s.current, jet: 0 };
+      anims.set(s, a);
+    }
+    return a;
+  }
+
+  function puff(x, y, vx, vy, r, grow, life, alpha, color) {
+    const p = smoke.spawn();
+    p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.r = r; p.grow = grow; p.life = life; p.alpha = alpha; p.color = color;
   }
 
   const isMe = (s) => !!s && !!world && s === world.player;
@@ -97,6 +142,35 @@ export function createEffects(view) {
   }
 
   on('match:started', reset);
+
+  on('melee:swing', ({ soldier }) => { if (soldier) animOf(soldier).melee = 0; });
+  on('grenade:thrown', ({ soldier }) => { if (soldier) animOf(soldier).throwT = 0; });
+
+  // A spent magazine drops out of the gun when a reload starts.
+  on('weapon:reloading', ({ soldier, weapon }) => {
+    if (!world || !soldier || NO_MAG.has(weapon)) return;
+    const m = shells.spawn();
+    m.x = soldier.x + soldier.w / 2 + Math.cos(soldier.aim) * 12; m.y = soldier.y + 30;
+    m.vx = rand(-30, 30); m.vy = rand(-90, -40);
+    m.rot = 0; m.vr = rand(-6, 6); m.life = 0.8;
+    m.w = 4; m.h = 8; m.color = '#2b2b2b';
+  });
+
+  // Respawn: a banana-yellow ring of light and sparkles where the soldier pops in.
+  on('soldier:respawned', ({ soldier }) => {
+    if (!world || !soldier) return;
+    const r = spawnRings.spawn();
+    r.soldier = soldier; r.life = 0.8;
+    animOf(soldier).current = soldier.current;
+    if (calm()) return;
+    for (let i = 0; i < 12; i++) {
+      const s = sparks.spawn();
+      const a = (i / 12) * Math.PI * 2;
+      s.x = soldier.x + soldier.w / 2 + Math.cos(a) * 18; s.y = soldier.y + soldier.h / 2 + Math.sin(a) * 24;
+      s.vx = Math.cos(a) * rand(60, 140); s.vy = Math.sin(a) * rand(60, 140) - 220;
+      s.life = rand(0.35, 0.6); s.size = i % 3 ? 3 : 5; s.color = i % 2 ? BANANA : '#fff6a8';
+    }
+  });
 
   on('weapon:fired', ({ soldier, weapon, x, y }) => {
     if (!world || !soldier) return;
@@ -133,12 +207,17 @@ export function createEffects(view) {
     sh.x = soldier.x + soldier.w / 2; sh.y = soldier.y + 24;
     sh.vx = back * rand(80, 180); sh.vy = rand(-320, -200);
     sh.rot = 0; sh.vr = rand(-20, 20); sh.life = 0.7;
+    sh.w = 6; sh.h = 3;
     sh.color = weapon === 'shotgun' ? '#c0392b' : '#d4a017';
   });
 
-  on('soldier:damaged', ({ victim, attacker, amount }) => {
+  on('soldier:damaged', ({ victim, attacker, amount, headshot }) => {
     if (!world || !victim) return;
     if (amount > 0) {
+      // A small flinch away from whoever hit them.
+      const a = animOf(victim);
+      a.flinch = 0;
+      a.flinchDir = attacker && attacker !== victim ? Math.sign(attacker.x - victim.x) || 1 : 0;
       // Pellets landing together add up into one number.
       let n = null;
       for (const it of numbers.items) if (it.active && it.victim === victim && it.age < 0.15) { n = it; break; }
@@ -149,8 +228,12 @@ export function createEffects(view) {
         n.x = victim.x + victim.w / 2 + rand(-10, 10); n.y = victim.y - 30;
       }
       n.mine = isMe(attacker) || isMe(victim);
+      n.headshot = !!headshot || (n.headshot && n.age < 0.15);
     }
-    if (isMe(attacker) && victim !== attacker) { marker.age = 0; marker.life = 0.25; marker.kill = false; }
+    if (isMe(attacker) && victim !== attacker) {
+      marker.age = 0; marker.life = headshot ? 0.35 : 0.25; marker.kill = false; marker.headshot = !!headshot;
+      if (headshot) { headPop.age = 0; headPop.kill = false; }
+    }
     if (isMe(victim)) {
       if (amount >= 20) addShake(Math.min(10, amount * 0.2));
       if (attacker && attacker !== victim && !view.onScreen(attacker.x + attacker.w / 2, attacker.y + attacker.h / 2)) {
@@ -160,19 +243,87 @@ export function createEffects(view) {
     }
   });
 
-  on('soldier:killed', ({ victim, killer }) => {
+  on('soldier:killed', ({ victim, killer, headshot }) => {
     if (!world) return;
-    if (isMe(victim)) streak = 0;
+    if (victim) spawnCorpse(victim, killer, headshot);
+    if (isMe(victim)) { streak = 0; quickKills = 0; }
     if (isMe(killer) && victim !== killer) {
       streak += 1;
-      marker.age = 0; marker.life = 0.45; marker.kill = true;
+      marker.age = 0; marker.life = 0.45; marker.kill = true; marker.headshot = !!headshot;
       killPop.age = 0; killPop.streak = streak;
+      if (headshot) { headPop.age = 0; headPop.kill = true; }
+      // Multi-kill banners: kills less than 4 s apart, or every fifth kill of a streak.
+      quickKills = clock - lastKillAt < 4 ? quickKills + 1 : 1;
+      lastKillAt = clock;
+      const text = quickKills >= 4 || streak % 5 === 0 ? 'RAMPAGE!' : quickKills === 3 ? 'TRIPLE KILL' : quickKills === 2 ? 'DOUBLE KILL' : '';
+      if (text && banners) { banner.text = text; banner.age = 0; }
     }
   });
 
-  // Dust puffs when a soldier lands hard; bigger falls kick up more.
-  on('soldier:landed', ({ speed, x, y }) => {
-    if (!(speed > 380) || x === undefined) return;
+  // Ragdoll: a copy of the dead soldier is flung away from the killer, spins, bounces
+  // once or twice on the ground and fades out. The real soldier is hidden as before.
+  function spawnCorpse(victim, killer, headshot) {
+    const c = corpses.spawn();
+    c.x = victim.x + victim.w / 2; c.y = victim.y + victim.h / 2;   // centre of the body
+    c.w = victim.w; c.h = victim.h;
+    c.avatar = victim.avatar; c.facing = victim.facing || 1; c.aim = victim.aim ?? 0;
+    c.weapon = (victim.current === 'primary' ? victim.primary?.key : victim.sidearm?.key) ?? 'magnum';
+    const power = headshot ? 480 : 320;
+    let dx = 0, dy = -1;
+    if (killer && killer !== victim) {
+      dx = c.x - (killer.x + killer.w / 2); dy = c.y - (killer.y + killer.h / 2);
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+    }
+    c.vx = dx * power + (dx === 0 ? -c.facing * 60 : 0);
+    c.vy = Math.min(dy * power, 0) - 340;
+    const spin = Math.sign(c.vx || -c.facing) * rand(5, 8) * (headshot ? 1.4 : 1);
+    c.vr = calm() ? spin * 0.4 : spin;
+    c.rot = 0; c.bounces = 0; c.resting = false;
+  }
+
+  // Half the height of the spinning body, so it rests on the ground instead of sinking in.
+  const halfHeight = (c) => Math.abs(Math.cos(c.rot)) * c.h / 2 + Math.abs(Math.sin(c.rot)) * c.w / 2;
+
+  function updateCorpse(c, dt) {
+    if ((c.age += dt) > CORPSE_LIFE) { c.active = false; return; }
+    if (c.resting) {   // settle flat on the ground, on whichever side it landed
+      const flat = (Math.sign(c.rot) || 1) * Math.PI / 2;
+      c.rot += (flat - c.rot) * Math.min(1, dt * 10);
+      c.y = c.floor - halfHeight(c);
+      return;
+    }
+    const map = world.map;
+    c.vy += GRAVITY * dt;
+    c.rot += c.vr * dt;
+    const half = halfHeight(c);
+    const nx = c.x + c.vx * dt;
+    if (isSolid(map, nx + Math.sign(c.vx) * 13, c.y)) c.vx = -c.vx * 0.3;   // hit a wall
+    else c.x = nx;
+    const ny = c.y + c.vy * dt;
+    if (c.vy > 0 && isSolid(map, c.x, ny + half)) {
+      c.floor = Math.floor((ny + half) / TILE) * TILE;
+      c.y = c.floor - half;
+      c.bounces += 1;
+      if (c.bounces >= 3 || c.vy < 160) {
+        c.resting = true; c.vx = c.vy = c.vr = 0;
+        c.rot = Math.atan2(Math.sin(c.rot), Math.cos(c.rot));   // back into -pi..pi
+        return;
+      }
+      c.vy = -c.vy * 0.38; c.vx *= 0.55; c.vr *= 0.5;
+    } else if (c.vy < 0 && isSolid(map, c.x, ny - half)) {
+      c.vy = -c.vy * 0.3;
+    } else c.y = ny;
+  }
+
+  // Dust puffs when a soldier lands hard; bigger falls kick up more. The soldier squashes too.
+  on('soldier:landed', ({ soldier, speed, x, y }) => {
+    if (soldier && speed > 200) {
+      const a = animOf(soldier);
+      a.land = 0;
+      a.landAmp = Math.min(0.24, (speed - 200) / 1600 + 0.06) * (calm() ? 0.5 : 1);
+    }
+    if (!(speed >= 260) || x === undefined) return;
     const n = Math.min(8, Math.round(speed / 120));
     for (let i = 0; i < n; i++) {
       const s = sparks.spawn();
@@ -181,8 +332,36 @@ export function createEffects(view) {
     }
   });
 
+  // Explosions: a fireball, a shockwave ring, smoke clouds, bouncing debris and a
+  // scorch mark left on the ground below.
   on('explosion', ({ x, y, radius }) => {
-    if (!world?.player) return;
+    if (!world) return;
+    const quiet = calm();
+    const fb = fireballs.spawn();
+    fb.x = x; fb.y = y; fb.radius = radius * 0.55; fb.life = quiet ? 0.3 : 0.4;
+    if (!quiet) { const sw = shockwaves.spawn(); sw.x = x; sw.y = y; sw.radius = radius * 1.3; sw.life = 0.35; }
+    for (let i = 0; i < 5; i++) {
+      const a = rand(0, Math.PI * 2);
+      puff(x + Math.cos(a) * radius * 0.2, y + Math.sin(a) * radius * 0.2, Math.cos(a) * 30, rand(-60, -20),
+        radius * 0.18, radius * 0.3, rand(0.9, 1.4), 0.55, i % 2 ? '#4a4a4a' : '#6b6b6b');
+    }
+    const ground = world.map.theme?.ground?.body ?? '#6b4f2a';
+    for (let i = 0; i < 9; i++) {
+      const d = debris.spawn();
+      const a = rand(-Math.PI * 0.95, -Math.PI * 0.05);
+      const sp = rand(220, 480);
+      d.x = x; d.y = y - 4; d.vx = Math.cos(a) * sp; d.vy = Math.sin(a) * sp;
+      d.rot = rand(0, 6); d.vr = rand(-12, 12); d.size = rand(3, 7); d.life = rand(1.0, 1.6);
+      d.color = i % 3 ? ground : '#2b2118';
+    }
+    // The scorch goes on the first solid tile below the blast, if it is close enough.
+    for (let py = y; py < y + radius; py += 4) {
+      if (!isSolid(world.map, x, py)) continue;
+      const sc = scorches.spawn();
+      sc.x = x; sc.y = Math.floor(py / TILE) * TILE; sc.r = radius * 0.5; sc.life = 8;
+      break;
+    }
+    if (!world.player) return;
     const p = world.player;
     const d = Math.hypot(p.x + p.w / 2 - x, p.y + p.h / 2 - y);
     const reach = radius * 3;
@@ -192,6 +371,30 @@ export function createEffects(view) {
   // Called once per frame by the renderer.
   function update(w, dt) {
     if (w !== world) { world = w; reset(); }
+    clock += dt;
+    updateSoldiers(dt);
+    for (const c of corpses.items) if (c.active) updateCorpse(c, dt);
+    for (const r of spawnRings.items) if (r.active && (r.age += dt) > r.life) r.active = false;
+    for (const f of fireballs.items) if (f.active && (f.age += dt) > f.life) f.active = false;
+    for (const sw of shockwaves.items) if (sw.active && (sw.age += dt) > sw.life) sw.active = false;
+    for (const sc of scorches.items) if (sc.active && (sc.age += dt) > sc.life) sc.active = false;
+    for (const p of smoke.items) {
+      if (!p.active) continue;
+      if ((p.age += dt) > p.life) { p.active = false; continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.grow * dt;
+      p.vx *= 1 - Math.min(1, dt * 2); p.vy -= 30 * dt;   // smoke slows down and drifts up
+    }
+    for (const d of debris.items) {
+      if (!d.active) continue;
+      if ((d.age += dt) > d.life) { d.active = false; continue; }
+      d.vy += GRAVITY * dt; d.rot += d.vr * dt;
+      const nx = d.x + d.vx * dt, ny = d.y + d.vy * dt;
+      if (!isSolid(world.map, nx, ny)) { d.x = nx; d.y = ny; continue; }
+      if (isSolid(world.map, nx, d.y)) d.vx = -d.vx * 0.4;          // bounced off a wall
+      else { d.vy = -d.vy * 0.4; d.vx *= 0.7; d.vr *= 0.6; }        // bounced off the floor
+    }
+    headPop.age += dt;
+    banner.age += dt;
     for (const f of flashes.items) if (f.active && (f.age += dt) > f.life) f.active = false;
     for (const b of beams.items) if (b.active && (b.age += dt) > b.life) b.active = false;
     for (const im of impacts.items) {
@@ -227,6 +430,47 @@ export function createEffects(view) {
     shake = Math.max(0, shake - shake * Math.min(1, dt * 7) - dt * 2);
     offset.x = kick.x + (shake ? rand(-shake, shake) : 0);
     offset.y = kick.y + (shake ? rand(-shake, shake) : 0);
+  }
+
+  // Pose timers, weapon swaps (spotted by `current` changing, which also works online),
+  // body lean from how fast the soldier moves, and jetpack smoke puffs.
+  function updateSoldiers(dt) {
+    for (const s of world.soldiers) {
+      const a = animOf(s);
+      a.melee += dt; a.throwT += dt; a.swap += dt; a.land += dt; a.flinch += dt;
+      if (s.current !== a.current) { if (s.alive && a.current !== undefined) a.swap = 0; a.current = s.current; }
+      let target = 0;
+      if (s.alive && a.prevX !== null && dt > 0) {
+        const vx = Math.max(-1, Math.min(1, (s.x - a.prevX) / dt / 320));
+        target = vx * (s.jetting ? 0.16 : s.onGround ? 0.08 : 0.11);
+      }
+      a.prevX = s.x;
+      a.lean += (target - a.lean) * Math.min(1, dt * 10);
+      if (s.alive && s.jetting && (a.jet -= dt) <= 0) {
+        a.jet = 0.05;
+        const f = s.facing || 1;
+        puff(s.x + s.w / 2 - f * 12 + rand(-2, 2), s.y + 46, rand(-20, 20), rand(40, 90), 3.5, 16, rand(0.45, 0.65), 0.5, '#9b9b9b');
+      }
+    }
+  }
+
+  // Fills the optional pose fields of the view object passed to drawSoldier.
+  function applyPose(s, v) {
+    const a = anims.get(s);
+    v.lean = 0; v.squash = 0; v.gunTilt = 0; v.swing = 0; v.throwArm = 0;
+    if (!a) return v;
+    v.lean = a.lean;
+    if (a.flinch < POSE.flinch && a.flinchDir && !calm()) v.lean -= a.flinchDir * 0.14 * (1 - a.flinch / POSE.flinch);
+    if (a.land < POSE.land) v.squash = a.landAmp * (1 - a.land / POSE.land) ** 2;
+    if (a.melee < POSE.melee) v.swing = a.melee / POSE.melee;
+    if (a.throwT < POSE.throw) v.throwArm = a.throwT / POSE.throw;
+    const len = WEAPONS[v.weapon]?.reload;
+    if (s.reloadTimer > 0 && len) {
+      const p = Math.max(0, Math.min(1, 1 - s.reloadTimer / len));
+      v.gunTilt = 0.7 * Math.min(1, Math.sin(p * Math.PI) * 2.5);   // down quickly, hold, back up
+    }
+    if (a.swap < POSE.swap) v.gunTilt = Math.max(v.gunTilt, 1.1 * Math.sin((a.swap / POSE.swap) * Math.PI));
+    return v;
   }
 
   // Muzzle flash shapes, drawn in world space at the end of the barrel (pointing along +x).
@@ -289,10 +533,90 @@ export function createEffects(view) {
       ctx.translate(s.x - cam.x, s.y - cam.y);
       ctx.rotate(s.rot);
       ctx.fillStyle = s.color;
-      ctx.fillRect(-3, -1.5, 6, 3);
+      ctx.fillRect(-s.w / 2, -s.h / 2, s.w, s.h);
       ctx.restore();
     }
+    for (const d of debris.items) {
+      if (!d.active) continue;
+      ctx.globalAlpha = Math.min(1, (d.life - d.age) * 3);
+      ctx.save();
+      ctx.translate(d.x - cam.x, d.y - cam.y);
+      ctx.rotate(d.rot);
+      ctx.fillStyle = d.color;
+      ctx.fillRect(-d.size / 2, -d.size / 2, d.size, d.size * 0.8);
+      ctx.restore();
+    }
+    for (const p of smoke.items) {
+      if (!p.active) continue;
+      ctx.globalAlpha = p.alpha * (1 - p.age / p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x - cam.x, p.y - cam.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    // Fireball: orange, yellow and white discs that swell and fade; a white shockwave ring.
+    for (const f of fireballs.items) {
+      if (!f.active) continue;
+      const t = f.age / f.life;
+      const r = f.radius * (0.55 + 0.45 * Math.sqrt(t));
+      const x = f.x - cam.x, y = f.y - cam.y;
+      ctx.globalAlpha = 0.85 * (1 - t);
+      ctx.fillStyle = '#ff6b1a';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffbe0b';
+      ctx.beginPath(); ctx.arc(x, y - r * 0.08, r * 0.68, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = calm() ? 0.5 * (1 - t) : 1 - t;
+      ctx.fillStyle = '#fff6d0';
+      ctx.beginPath(); ctx.arc(x, y - r * 0.12, r * 0.36 * (1 - t), 0, Math.PI * 2); ctx.fill();
+    }
+    for (const sw of shockwaves.items) {
+      if (!sw.active) continue;
+      const t = sw.age / sw.life;
+      ctx.globalAlpha = 0.8 * (1 - t);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 6 * (1 - t) + 1;
+      ctx.beginPath(); ctx.arc(sw.x - cam.x, sw.y - cam.y, sw.radius * (0.2 + 0.8 * t), 0, Math.PI * 2); ctx.stroke();
+    }
+    // Respawn: a banana-yellow ring that opens around the soldier and a column of light.
+    for (const r of spawnRings.items) {
+      if (!r.active || !r.soldier) continue;
+      const t = r.age / r.life;
+      const s = r.soldier;
+      const x = s.x + s.w / 2 - cam.x, y = s.y + s.h / 2 - cam.y;
+      const quiet = calm();
+      ctx.globalAlpha = 0.35 * (1 - t);
+      ctx.fillStyle = '#fff6a8';
+      ctx.fillRect(x - 16 * (1 - t * 0.5), y - 70, 32 * (1 - t * 0.5), 100);
+      ctx.globalAlpha = 1 - t;
+      ctx.strokeStyle = BANANA;
+      ctx.lineWidth = 5 * (1 - t) + 1;
+      ctx.beginPath(); ctx.ellipse(x, y, quiet ? 30 : 12 + 34 * Math.sqrt(t), quiet ? 36 : 14 + 40 * Math.sqrt(t), 0, 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.globalAlpha = 1;
+  }
+
+  // One reused view object for drawing corpses (no allocation per frame).
+  const corpseView = { x: 0, y: 0, w: 28, h: 50, facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false, weapon: 'magnum', hurtFlash: 0, shielded: false, recoil: 0 };
+
+  // Under the soldiers (after the terrain): scorch marks on the ground and ragdoll corpses.
+  function drawUnder(ctx, cam, time) {
+    for (const sc of scorches.items) {
+      if (!sc.active) continue;
+      ctx.globalAlpha = 0.5 * Math.min(1, (sc.life - sc.age) / 2);
+      ctx.fillStyle = '#1a140e';
+      ctx.beginPath(); ctx.ellipse(sc.x - cam.x, sc.y - cam.y + 2, sc.r, sc.r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (const c of corpses.items) {
+      if (!c.active || !c.avatar) continue;
+      ctx.save();
+      ctx.globalAlpha = c.age > CORPSE_LIFE - 0.5 ? (CORPSE_LIFE - c.age) / 0.5 : 1;
+      ctx.translate(c.x - cam.x, c.y - cam.y);
+      ctx.rotate(c.rot);
+      corpseView.w = c.w; corpseView.h = c.h; corpseView.x = -c.w / 2; corpseView.y = -c.h / 2;
+      corpseView.facing = c.facing; corpseView.aim = c.aim; corpseView.weapon = c.weapon;
+      corpseView.hurtFlash = c.age < 0.15 ? 1 : 0;
+      drawSoldier(ctx, corpseView, c.avatar, time);
+      ctx.restore();
+    }
   }
 
   // Screen-space layer under the scope: floating damage numbers.
@@ -304,10 +628,10 @@ export function createEffects(view) {
       const t = n.age / n.life;
       const v = view.toViewFromWorld(n.x, n.y - t * 40);
       ctx.globalAlpha = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
-      ctx.font = `bold ${n.mine ? 18 : 14}px "Trebuchet MS", sans-serif`;
+      ctx.font = `bold ${n.mine ? (n.headshot ? 22 : 18) : 14}px "Trebuchet MS", sans-serif`;
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillStyle = n.mine ? (isMe(n.victim) ? '#ff6b6b' : '#ffe135') : '#ffffff';
+      ctx.fillStyle = n.headshot && !isMe(n.victim) ? GOLD : n.mine ? (isMe(n.victim) ? '#ff6b6b' : '#ffe135') : '#ffffff';
       const text = String(Math.round(n.value));
       ctx.strokeText(text, v.x, v.y);
       ctx.fillText(text, v.x, v.y);
@@ -319,6 +643,19 @@ export function createEffects(view) {
   function drawHud(ctx, mouse) {
     ctx.textAlign = 'center';
     const p = world?.player;
+    // Low health: a red glow round the screen edge that pulses (steady when calm).
+    if (p && p.alive && p.health < 30) {
+      if (!vignette) {
+        vignette = ctx.createRadialGradient(VIEW.width / 2, VIEW.height / 2, VIEW.height * 0.42, VIEW.width / 2, VIEW.height / 2, VIEW.width * 0.56);
+        vignette.addColorStop(0, 'rgba(200,0,20,0)');
+        vignette.addColorStop(1, 'rgba(200,0,20,0.9)');
+      }
+      const strength = 0.45 + 0.55 * (1 - Math.max(0, p.health) / 30);
+      ctx.globalAlpha = strength * (calm() ? 0.8 : 0.65 + 0.35 * Math.sin(clock * 6));
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+      ctx.globalAlpha = 1;
+    }
     if (p) {
       for (const a of arrows.items) {
         if (!a.active) continue;
@@ -339,10 +676,10 @@ export function createEffects(view) {
     if (marker.age < marker.life) {
       const t = marker.age / marker.life;
       const inner = marker.kill ? 8 : 6;
-      const outer = (marker.kill ? 18 : 13) + t * 3;
+      const outer = (marker.kill ? 18 : 13) + (marker.headshot ? 4 : 0) + t * 3;
       ctx.globalAlpha = 1 - t;
-      ctx.strokeStyle = marker.kill ? '#ff3b3b' : '#ffffff';
-      ctx.lineWidth = marker.kill ? 3 : 2;
+      ctx.strokeStyle = marker.headshot ? GOLD : marker.kill ? '#ff3b3b' : '#ffffff';
+      ctx.lineWidth = marker.kill || marker.headshot ? 3 : 2;
       ctx.beginPath();
       for (let i = 0; i < 4; i++) {
         const dx = i % 2 ? 1 : -1;
@@ -368,6 +705,41 @@ export function createEffects(view) {
       ctx.fillText(text, mouse.x, y);
       ctx.globalAlpha = 1;
     }
+
+    // HEADSHOT! in gold over the crosshair; bigger when the headshot was the kill.
+    if (headPop.age < headPop.life) {
+      const t = headPop.age / headPop.life;
+      const base = headPop.kill ? 26 : 17;
+      const size = calm() ? base : base * (1 + Math.max(0, 0.15 - t) * 3);
+      ctx.globalAlpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+      ctx.font = `bold ${size}px "Trebuchet MS", sans-serif`;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillStyle = GOLD;
+      const y = mouse.y - (headPop.kill ? 62 : 52) - t * 10;
+      ctx.strokeText('HEADSHOT!', mouse.x, y);
+      ctx.fillText('HEADSHOT!', mouse.x, y);
+      ctx.globalAlpha = 1;
+    }
+
+    // Multi-kill banner across the top of the screen, scaling in (no scale when calm).
+    if (banner.age < banner.life && banners) {
+      const t = banner.age / banner.life;
+      const grow = calm() || t > 0.1 ? 1 : 1.7 - 0.7 * (t / 0.1);
+      const rampage = banner.text === 'RAMPAGE!';
+      ctx.save();
+      ctx.translate(VIEW.width / 2, 150);
+      ctx.scale(grow, grow);
+      ctx.globalAlpha = t < 0.8 ? 1 : 1 - (t - 0.8) / 0.2;
+      ctx.font = `italic 900 ${rampage ? 50 : 42}px "Trebuchet MS", sans-serif`;
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = 'rgba(40,10,0,0.85)';
+      ctx.fillStyle = rampage ? '#ff4d2e' : BANANA;
+      ctx.strokeText(banner.text, 0, 0);
+      ctx.fillText(banner.text, 0, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
   }
 
   return {
@@ -375,6 +747,9 @@ export function createEffects(view) {
     drawWorld,
     drawScreen,
     drawHud,
+    drawUnder,
+    applyPose,
+    calm,
     recoilOf: (s) => recoil.get(s) ?? 0,
     get offset() { return offset; },
     setBanners(onOff) { banners = onOff; },
