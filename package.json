@@ -11,7 +11,8 @@
     "build": "vite build",
     "dev:client": "vite",
     "demo": "node --env-file-if-exists=.env scripts/demo.js",
-    "package": "git archive --format=zip --prefix=banana-brigade/ -o ../banana-brigade-source.zip HEAD && echo \"Created ../banana-brigade-source.zip (tracked files only: no .env, node_modules or data)\""
+    "package": "git archive --format=zip --prefix=banana-brigade/ -o ../banana-brigade-source.zip HEAD && echo \"Created ../banana-brigade-source.zip (tracked files only: no .env, node_modules or data)\"",
+    "e2e": "playwright test"
   },
   "engines": {
     "node": ">=22"
@@ -31,6 +32,7 @@
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.2",
     "@vitejs/plugin-react": "^6.1.2",
     "mongodb-memory-server": "^11.3.0",
     "vite": "^8.3.5"

@@ -104,7 +104,7 @@ async function openDatabase(uri) {
     },
     // Adds Banana Powers to the player's set and returns the whole set.
     async addPowersUsed(userId, powers) {
-      const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, { $addToSet: { powersUsed: { $each: powers } } }, { new: true, projection: { powersUsed: 1 } }).lean();
+      const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, { $addToSet: { powersUsed: { $each: powers } } }, { returnDocument: 'after', projection: { powersUsed: 1 } }).lean();
       return u?.powersUsed ?? [];
     },
     setDailyStreak: (userId, daily) => m.User.updateOne({ _id: oid(userId) }, { daily }),
@@ -113,7 +113,7 @@ async function openDatabase(uri) {
       const update = correct
         ? { $inc: { 'counters.streak': 1, 'counters.crates': crate ? 1 : 0 } }
         : { $set: { 'counters.streak': 0 } };
-      const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, update, { new: true, projection: { counters: 1 } }).lean();
+      const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, update, { returnDocument: 'after', projection: { counters: 1 } }).lean();
       return { streak: u?.counters?.streak ?? 0, crates: u?.counters?.crates ?? 0 };
     },
 
@@ -142,7 +142,7 @@ async function openDatabase(uri) {
     advanceDaily: (userId, date, fromIndex, set) => m.DailyResult.findOneAndUpdate(
       { user: oid(userId), date, index: fromIndex, finished: false },
       { $set: set, $inc: { index: 1 } },
-      { new: true },
+      { returnDocument: 'after' },
     ).lean(),
     dailyResult: (userId, date) => m.DailyResult.findOne({ user: oid(userId), date }).lean(),
     async dailyLeaderboard(date, limit = 10) {

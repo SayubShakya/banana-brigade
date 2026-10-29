@@ -15,6 +15,14 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/e2e-tests`)
+- **End-to-end tests** with Playwright (`npm run e2e`): register, log out and in, start Quick Play, solve the
+  deploy puzzle (fake Banana API) and reach the battle; and the 404 page. A second GitHub Actions job runs them
+  in Chromium and keeps the report if they fail.
+
+### Fixed
+- Replaced the deprecated Mongoose `new: true` option with `returnDocument: 'after'` (no more warnings in the log).
+
 ### Added (`feature/admin-audit`)
 - **Audit log:** every admin action (reset scores, promote/demote, suspend, restore) needs a reason and is saved
   with who, what, to whom and when (MongoDB `auditlogs`); Admin → Audit log shows it. Actions also appear in

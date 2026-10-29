@@ -298,10 +298,16 @@ Fuller notes: [docs/events.md](docs/events.md), [docs/api.md](docs/api.md),
 ## Testing
 
 ```bash
-npm test
+npm test          # unit and API tests (Node's test runner)
+npm run build && npm run e2e   # end-to-end tests in a real browser (Playwright)
 ```
 
-51 tests run on Node's built-in test runner. Each test file starts a throw-away MongoDB
+**End-to-end** (`e2e/play.spec.js`, Playwright): a browser opens the home page, creates an account, logs out and
+back in, picks Quick Play and Medium, solves the deploy puzzle and checks the battle is running; and checks the
+404 page. It runs against `scripts/e2e-server.js` (in-memory MongoDB, a fake Banana API whose answer is 7).
+Locally it uses the installed Chrome; GitHub Actions runs it in a second CI job with Chromium.
+
+119 unit and API tests run on Node's built-in test runner. Each test file starts a throw-away MongoDB
 (mongodb-memory-server) and a fake Banana API, and talks to the real Express and Socket.io server over HTTP.
 They cover:
 
