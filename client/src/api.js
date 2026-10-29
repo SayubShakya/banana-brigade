@@ -11,7 +11,8 @@ const API = '/api/v1';
 
 // fetch only throws when the server cannot be reached at all; that error is marked
 // `offline` so the app can show the "Server down" screen instead of a message.
-async function call(method, path, body) {
+// quiet: no error toast (for calls whose failure has its own screen, e.g. "server down").
+async function call(method, path, body, { quiet = false } = {}) {
   let res;
   try {
     res = await fetch(path.replace(/^\/api\//, `${API}/`), {
@@ -21,14 +22,14 @@ async function call(method, path, body) {
     });
   } catch {
     const error = Object.assign(new Error('Cannot reach the game server'), { offline: true });
-    emit('toast:error', { text: 'Cannot reach the game server. Check your connection.' });
+    if (!quiet) emit('toast:error', { text: 'Cannot reach the game server. Check your connection.' });
     throw error;
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Server faults (5xx) are shown as a toast on any screen; 4xx answers (wrong
     // password, name taken...) are for the form that asked, so they are not.
-    if (res.status >= 500) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });
+    if (res.status >= 500 && !quiet) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });
     throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
   }
   for (const a of data.unlocked ?? []) emit('achievement:unlocked', a);
@@ -36,7 +37,7 @@ async function call(method, path, body) {
 }
 
 export const api = {
-  me: () => call('GET', '/api/auth/me'),
+  me: () => call('GET', '/api/auth/me', undefined, { quiet: true }),
   login: (username, password, remember = false) => call('POST', '/api/auth/login', { username, password, remember }),
   register: (username, password) => call('POST', '/api/auth/register', { username, password }),
   forgot: (username) => call('POST', '/api/auth/forgot', { username }),
@@ -57,7 +58,7 @@ export const api = {
   restore: (id, reason) => call('POST', `/api/admin/users/${id}/restore`, { reason }),
   audit: () => call('GET', '/api/admin/audit'),
   health: () => call('GET', '/api/admin/health'),
-  status: () => call('GET', '/api/status'),
+  status: () => call('GET', '/api/status', undefined, { quiet: true }),
   puzzle: (purpose) => call('GET', `/api/puzzle?purpose=${encodeURIComponent(purpose)}`),
   answer: (puzzleId, answer) => call('POST', '/api/puzzle/answer', { puzzleId, answer }),
   saveScore: (score) => call('POST', '/api/scores', score),
