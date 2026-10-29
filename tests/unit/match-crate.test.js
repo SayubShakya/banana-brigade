@@ -140,3 +140,21 @@ test('the online respawn puzzle is one try per death', (t) => {
   me.alive = false;
   assert.equal(match.canAsk('1', 'respawn'), true, 'a new death gives a new try');
 });
+
+test('two players cannot open the same crate at once', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'setImmediate', 'Date'] });
+  const sent = [];
+  const match = createMatch({
+    players: [{ userId: '1', username: 'sayub', parts: {}, team: 'blue' }, { userId: '2', username: 'friend', parts: {}, team: 'red' }],
+    teamMode: false, difficulty: 'medium', onEnd: () => {},
+    send: (event, payload, userId) => sent.push({ event, payload, userId }),
+  });
+  t.after(() => { match.stop(); t.mock.timers.reset(); });
+  const [a, b] = ['u1', 'u2'].map((id) => match.world.soldiers.find((s) => s.id === id));
+  const crate = match.world.pickups.find((p) => p.kind === 'banana');
+  match.world.emit('banana:crate', { soldier: a, pickup: crate });
+  match.world.emit('banana:crate', { soldier: b, pickup: crate });
+  const offers = sent.filter((m) => m.event === 'puzzle:offer');
+  assert.deepEqual(offers.map((m) => m.userId), ['1']);
+  assert.ok(!b.busy);
+});
