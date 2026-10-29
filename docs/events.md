@@ -5,17 +5,17 @@ that reacts to it.
 
 | Layer | Mechanism | Defined in |
 |---|---|---|
-| Browser game and UI | Publish/subscribe event bus (observer pattern): `on`, `off`, `emit` | `client/src/eventBus.js:9-28` |
-| React components | `useBus(name, handler)` subscribes on mount and unsubscribes on unmount | `client/src/hooks.js:11-15` |
-| Server | Node `EventEmitter` plus a list of achievement rules | `server/achievements.js:36-94` |
-| Network | Socket.io messages (and their acknowledgement callbacks) | `server/realtime/rooms.js:140-257`, `client/src/net/socket.js` |
+| Browser game and UI | Publish/subscribe event bus (observer pattern): `on`, `off`, `emit` | `client/src/lib/eventBus.js:9-13` |
+| React components | `useBus(name, handler)` subscribes on mount and unsubscribes on unmount | `client/src/hooks/useBus.js:11-15` |
+| Server | Node `EventEmitter` plus a list of achievement rules | `server/services/achievements.js:41-104` |
+| Network | Socket.io messages (and their acknowledgement callbacks) | `server/realtime/rooms.js:143-180`, `client/src/net/socket.js` |
 
 Below these sit the platform's own events: DOM events (`keydown`, `mousedown`, `pointerdown`, `click`),
 `requestAnimationFrame` (the browser game loop), and `setInterval` / `setTimeout` (the server's 30 Hz match tick,
 puzzle countdowns, delays before results). The bus catches errors per listener, so one broken listener does not
 stop the others (`eventBus.js:20-26`).
 
-In the tables, `world.js:195` means file and line. "(bus)" means the browser event bus.
+In the tables, `world.js:215` means file and line. "(bus)" means the browser event bus.
 
 ## Input events (bus)
 
@@ -24,53 +24,53 @@ a key, the mouse or a touch button was used.
 
 | Event | Emitted by | Handled by | Payload |
 |---|---|---|---|
-| `input:pause` | `input.js:63` (Esc), `input.js:94` (button) | `GameSession.js:123`, `NetGame.js:140` | none |
-| `input:banana` | `input.js:67` (B key) | `GameSession.js:95`, `NetGame.js:136` | none |
-| `input:scoreboard` | `input.js:65`, `input.js:72` (Tab down/up) | `hud.js:78` | `{ show }` |
-| `input:zoom` | `input.js:60` (Z, wheel, button) | `hud.js:77` | `{ level }` |
+| `input:pause` | `input.js:68` (Esc), `input.js:99` (button) | `GameSession.js:143`, `NetGame.js:152` | none |
+| `input:banana` | `input.js:72` (B key) | `GameSession.js:106`, `NetGame.js:148` | none |
+| `input:scoreboard` | `input.js:70`, `input.js:77` (Tab down/up) | `hud.js:88` | `{ show }` |
+| `input:zoom` | `input.js:65` (Z, wheel, button) | `hud.js:87` | `{ level }` |
 
 Held keys (move, jet, fire) are not events: the game loop reads them each step with `input.apply()`.
 
 ## Engine events (bus in the browser; per-room `emit` on the server)
 
 `client/src/game/world.js` never touches the screen. It calls `world.emit(...)`. In the browser that is the bus
-(`world.js:68`, default `emit = busEmit`). On the server, `match.js:53-66` passes its own `emit`, which turns
+(`world.js:72`, default `emit = busEmit`). On the server, `match.js:57-83` passes its own `emit`, which turns
 some events into snapshot events or puzzle offers.
 
 | Event | Emitted by | Handled by | Payload |
 |---|---|---|---|
-| `match:started` | `world.js:119` | (none yet) | `{ soldiers, mode }` |
-| `soldier:damaged` | `world.js:168` | `hud.js:56` (hurt flash), `sound.js:119`; server `match.js:56` | `{ victim, attacker, amount }` |
-| `soldier:killed` | `world.js:195` | `hud.js:50` (kill feed), `sound.js:123`; server `match.js:55` | `{ victim, killer, weapon }` |
-| `soldier:respawned` | `world.js:156` | `hud.js:76`; server `match.js:57` | `{ soldier }` |
-| `player:down` | `world.js:197` (Survival) | `GameSession.js:97` (opens the revive puzzle) | `{ wave }` |
-| `player:out` | `world.js:178` (Campaign, no lives) | `GameSession.js:100` (opens the continue puzzle) | `{ continues }` |
-| `weapon:fired` | `world.js:285` | `sound.js:101`; server `match.js:59` | `{ soldier, weapon, x, y }` |
-| `weapon:reloading` / `weapon:reloaded` / `weapon:empty` | `world.js:294`, `:304`, `:423` | `sound.js:111-113`; server `match.js:60` | `{ soldier, weapon }` |
-| `weapon:switched` | `world.js:410`, `:422` | (none yet) | `{ soldier, weapon }` |
-| `grenade:thrown` | `world.js:317` | `sound.js:126` | `{ soldier }` |
-| `grenade:bounce` | `world.js:526` | (none yet) | `{}` |
-| `melee:swing` | `world.js:323` | `sound.js:127` | `{ soldier }` |
-| `explosion` | `world.js:249` | `sound.js:106`; server `match.js:62` | `{ x, y, radius }` |
-| `pickup:available` | `world.js:435`, `:440`; `NetGame.js:237` | `hud.js:62` (prompt); server `match.js:63` | `{ weapon }` or `{ banana: true }` |
-| `pickup:taken` | `world.js:229`, `:346` | `hud.js:67`, `sound.js:114`; server `match.js:58` | `{ soldier, kind, weapon }` |
-| `banana:crate` | `world.js:434` (E at a crate) | `GameSession.js:111` (crate puzzle); server `match.js:64` (sends `puzzle:offer`) | `{ pickup, soldier }` |
-| `survival:wave` | `world.js:136` | `hud.js:73` | `{ wave, count }` |
-| `survival:cleared` | `world.js:576` | `hud.js:74` | `{ wave }` |
-| `campaign:ramp` | `world.js:569` | `hud.js:75` | `{ level }` |
-| `match:ended` | `world.js:245` | `GameSession.js:129` (emits `game:over` after 1.5 s); server `match.js:65` (`finish`) | `{ reason, ranking, player, mode, wave, teamKills, mission, continues }` |
+| `match:started` | `world.js:124` | (none yet) | `{ soldiers, mode }` |
+| `soldier:damaged` | `world.js:187` | `hud.js:58` (hurt flash), `sound.js:367`; server `match.js:64` | `{ victim, attacker, amount }` |
+| `soldier:killed` | `world.js:215` | `hud.js:52` (kill feed), `sound.js:380`; server `match.js:59` | `{ victim, killer, weapon }` |
+| `soldier:respawned` | `world.js:164` | `hud.js:86`; server `match.js:65` | `{ soldier }` |
+| `player:down` | `world.js:217` (Survival) | `GameSession.js:108` (opens the revive puzzle) | `{ wave }` |
+| `player:out` | `world.js:198` (Campaign, no lives) | `GameSession.js:111` (opens the continue puzzle) | `{ continues }` |
+| `weapon:fired` | `world.js:332` | `sound.js:300`; server `match.js:70` | `{ soldier, weapon, x, y }` |
+| `weapon:reloading` / `weapon:reloaded` / `weapon:empty` | `world.js:341`, `:304`, `:423` | `sound.js:331-343`; server `match.js:71` | `{ soldier, weapon }` |
+| `weapon:switched` | `world.js:507`, `:422` | (none yet) | `{ soldier, weapon }` |
+| `grenade:thrown` | `world.js:364` | `sound.js:323` | `{ soldier }` |
+| `grenade:bounce` | `world.js:644` | (none yet) | `{}` |
+| `melee:swing` | `world.js:370` | `sound.js:317` | `{ soldier }` |
+| `explosion` | `world.js:291` | `sound.js:308`; server `match.js:73` | `{ x, y, radius }` |
+| `pickup:available` | `world.js:535`, `:440`; `NetGame.js:250` | `hud.js:64` (prompt); server `match.js:80` | `{ weapon }` or `{ banana: true }` |
+| `pickup:taken` | `world.js:260`, `:346` | `hud.js:69`, `sound.js:346`; server `match.js:69` | `{ soldier, kind, weapon }` |
+| `banana:crate` | `world.js:534` (E at a crate) | `GameSession.js:122` (crate puzzle); server `match.js:81` (sends `puzzle:offer`) | `{ pickup, soldier }` |
+| `survival:wave` | `world.js:141` | `hud.js:78` | `{ wave, count }` |
+| `survival:cleared` | `world.js:698` | `hud.js:84` | `{ wave }` |
+| `campaign:ramp` | `world.js:691` | `hud.js:85` | `{ level }` |
+| `match:ended` | `world.js:286` | `GameSession.js:149` (emits `game:over` after 1.5 s); server `match.js:82` (`finish`) | `{ reason, ranking, player, mode, wave, teamKills, mission, continues }` |
 
 ## Session and UI events (bus)
 
 | Event | Emitted by | Handled by | Payload |
 |---|---|---|---|
-| `game:state` | `GameSession.js:61`; `NetGame.js:75`, `:103`, `:143`, `:253` | `App.jsx:95` (switches screen), `music.js:133` (crossfades to battle or menu music) | `{ state: 'playing'\|'puzzle'\|'paused'\|'over'\|'idle', online? }` |
-| `game:over` | `GameSession.js:135`; `NetGame.js:104` | `App.jsx:100` (results screen) | `{ result, outcome, session, difficulty, mission, durationS, online? }` |
-| `banana:requested` | `PuzzleModal.jsx:63` | (none yet) | `{ purpose }` |
-| `banana:loaded` | `PuzzleModal.jsx:77` | (none yet) | `{ purpose }` |
-| `banana:error` | `PuzzleModal.jsx:83` | (none yet) | `{ purpose, message }` |
-| `banana:answered` | `PuzzleModal.jsx:101`; `Daily.jsx:53` | `GameSession.js:64` (battle stats), `NetGame.js:117`, `storage.js:16` (lifetime record), `sound.js:100` (chime or buzzer) | `{ purpose, correct, timedOut? }` |
-| `achievement:unlocked` | `api.js:17` (from any HTTP reply); `net/socket.js:14` (from the socket) | `Toasts.jsx:12` (pop-up) | `{ id, name, text }` |
+| `game:state` | `GameSession.js:70`; `NetGame.js:77`, `:103`, `:143`, `:253` | `App.jsx:136` (switches screen), `music.js:133` (crossfades to battle or menu music) | `{ state: 'playing'\|'puzzle'\|'paused'\|'over'\|'idle', online? }` |
+| `game:over` | `GameSession.js:155`; `NetGame.js:107` | `App.jsx:141` (results screen) | `{ result, outcome, session, difficulty, mission, durationS, online? }` |
+| `banana:requested` | `PuzzleModal.jsx:71` | (none yet) | `{ purpose }` |
+| `banana:loaded` | `PuzzleModal.jsx:85` | (none yet) | `{ purpose }` |
+| `banana:error` | `PuzzleModal.jsx:91` | (none yet) | `{ purpose, message }` |
+| `banana:answered` | `PuzzleModal.jsx:109`; `Daily.jsx:53` | `GameSession.js:73` (battle stats), `NetGame.js:129`, `storage.js:16` (lifetime record), `sound.js:299` (chime or buzzer) | `{ purpose, correct, timedOut? }` |
+| `achievement:unlocked` | `lib/api.js:41` (from any HTTP reply); `net/socket.js:14` (from the socket) | `components/Toasts.jsx:19` (pop-up) | `{ id, name, text }` |
 
 `game:state` and `game:over` are the contract between the engine and React. Local games (`GameSession`) and
 online games (`NetGame`) emit the same two events, so `App.jsx` treats both the same way.
@@ -86,20 +86,20 @@ to classes on `<body>` (`a11y-contrast`, `a11y-large`, `a11y-calm`, set in `App.
 Events marked "(none yet)" are announced but nobody listens. They cost almost nothing and are ready for
 features such as weapon-switch sounds or puzzle analytics.
 
-## Server events (`server/achievements.js`)
+## Server events (`server/services/achievements.js`)
 
-Routes call `achievements.emit(name, userId, data)`. It emits on a Node `EventEmitter` (`achievements.js:82`),
+Routes call `achievements.emit(name, userId, data)`. It emits on a Node `EventEmitter` (`achievements.js:92`),
 runs every rule registered for that name, writes new badges once (`db.unlockAchievement`) and then emits
-`achievement:unlocked` (`achievements.js:90`). It returns the new badges so the HTTP reply or the socket can
+`achievement:unlocked` (`achievements.js:100`). It returns the new badges so the HTTP reply or the socket can
 tell the player.
 
 | Event | Emitted by | Rules (handlers) | Payload |
 |---|---|---|---|
-| `puzzle:answered` | `app.js:105`, `routes/daily.js:92`, `realtime/rooms.js:245` | `achievements.js:55` (Banana Brain, Speed Demon, Clutch, Crate Collector) | `{ correct, solution, purpose, ms }` |
-| `score:saved` | `routes/scores.js:40`, `realtime/rooms.js:103` | `achievements.js:41` (First Blood, Sharpshooter, Survivor, Online Victor, Hard as Nails, Veteran …) | the saved score |
-| `mission:finished` | `routes/campaign.js:52` | `achievements.js:66` (Three Stars, Campaign Hero) | `{ mission, stars }` |
-| `daily:finished` | `routes/daily.js:101` | `achievements.js:73` (Daily Warrior, Perfect Day) | `{ streak, solved, total }` |
-| `achievement:unlocked` | `achievements.js:90` | the reply's `unlocked` list; `rooms.js:47` pushes it over the socket | `userId, { id, name, text }` |
+| `puzzle:answered` | `app.js:132`, `routes/daily.js:92`, `realtime/rooms.js:248` | `achievements.js:60` (Banana Brain, Speed Demon, Clutch, Crate Collector) | `{ correct, solution, purpose, ms }` |
+| `score:saved` | `routes/scores.js:41`, `realtime/rooms.js:104` | `achievements.js:46` (First Blood, Sharpshooter, Survivor, Online Victor, Hard as Nails, Veteran …) | the saved score |
+| `mission:finished` | `routes/campaign.js:53` | `achievements.js:71` (Three Stars, Campaign Hero) | `{ mission, stars }` |
+| `daily:finished` | `routes/daily.js:101` | `achievements.js:83` (Daily Warrior, Perfect Day) | `{ streak, solved, total }` |
+| `achievement:unlocked` | `achievements.js:100` | the reply's `unlocked` list; `rooms.js:48` pushes it over the socket | `userId, { id, name, text }` |
 
 ## Socket.io messages
 
@@ -107,36 +107,36 @@ Full payloads are in [api.md](api.md#socketio-protocol-serverrealtimeroomsjs).
 
 | Message | Direction | Sent at | Handled at |
 |---|---|---|---|
-| `rooms:list`, `room:create`, `room:join`, `room:start` (ack) | browser → server | `Lobby.jsx:26`, `:50-52` | `rooms.js:157`, `:159`, `:179`, `:204` |
-| `room:leave`, `room:ready` | browser → server | `Lobby.jsx:53`, `:120`; `App.jsx:142` | `rooms.js:195`, `:197` |
-| `input` | browser → server | `NetGame.js:222` | `rooms.js:214` → `match.js:91` |
-| `puzzle:get`, `puzzle:answer` (ack) | browser → server | `NetGame.js` via `request()` | `rooms.js:220`, `:236` |
-| `puzzle:cancel` | browser → server | `NetGame.js:114` | `rooms.js:249` |
-| `disconnect` | built in | socket closes | `rooms.js:254` (a bot takes over) |
-| `room:update`, `rooms:changed` | server → browser | `rooms.js:61`, `:62` | `Lobby.jsx:35`, `:34` |
-| `match:start` | server → browser | `rooms.js:132`, `:152` | `NetGame.js:54` |
-| `match:snapshot` | server → browser | `match.js:117` (every tick) | `NetGame.js:78` |
-| `match:end` | server → browser | `match.js:157` | `NetGame.js:87` |
-| `puzzle:offer` | server → browser | `match.js:88` | `NetGame.js:111` |
-| `achievement:unlocked` | server → browser | `rooms.js:47` | `net/socket.js:14` (re-emitted on the bus) |
-| forced disconnect | server → browser | `sessions.js:37-41` (log out everywhere, password change, account deleted) | `Lobby.jsx:32` (`disconnect`) |
+| `rooms:list`, `room:create`, `room:join`, `room:start` (ack) | browser → server | `Lobby.jsx:26`, `:50-52` | `rooms.js:160`, `:159`, `:179`, `:204` |
+| `room:leave`, `room:ready` | browser → server | `Lobby.jsx:53`, `:120`; `App.jsx:190` | `rooms.js:198`, `:197` |
+| `input` | browser → server | `NetGame.js:235` | `rooms.js:217` → `match.js:111` |
+| `puzzle:get`, `puzzle:answer` (ack) | browser → server | `NetGame.js` via `request()` | `rooms.js:223`, `:236` |
+| `puzzle:cancel` | browser → server | `NetGame.js:117` | `rooms.js:258` |
+| `disconnect` | built in | socket closes | `rooms.js:263` (a bot takes over) |
+| `room:update`, `rooms:changed` | server → browser | `rooms.js:62`, `:62` | `Lobby.jsx:35`, `:34` |
+| `match:start` | server → browser | `rooms.js:135`, `:152` | `NetGame.js:55` |
+| `match:snapshot` | server → browser | `match.js:137` (every tick) | `NetGame.js:80` |
+| `match:end` | server → browser | `match.js:177` | `NetGame.js:89` |
+| `puzzle:offer` | server → browser | `match.js:108` | `NetGame.js:114` |
+| `achievement:unlocked` | server → browser | `rooms.js:48` | `net/socket.js:14` (re-emitted on the bus) |
+| forced disconnect | server → browser | `sessions.js:69-73` (log out everywhere, password change, account deleted) | `Lobby.jsx:32` (`disconnect`) |
 
 ## Time-based events
 
 | Timer | Where | What it does |
 |---|---|---|
-| `requestAnimationFrame` | `GameSession.js:193-220`, `NetGame.js:229-245` | Browser game loop; fixed 1/60 s steps with catch-up (at most 5 per frame) |
-| `setInterval(1000/30)` | `match.js:130-132` | Server match tick; one snapshot per tick |
-| `setImmediate` | `match.js:155` | Finishes the match on the next turn of the event loop, outside the world update |
-| `setTimeout` | `GameSession.js:97`, `:100`, `:129` | Short delays before the revive puzzle, the continue puzzle and the results |
-| Puzzle countdown | `PuzzleModal.jsx:125-134` (`setInterval` every 200 ms) | Running out of time counts as a wrong answer; the ring turns orange, then red |
+| `requestAnimationFrame` | `GameSession.js:218-246`, `NetGame.js:242-257` | Browser game loop; fixed 1/60 s steps with catch-up (at most 5 per frame) |
+| `setInterval(1000/30)` | `match.js:150-152` | Server match tick; one snapshot per tick |
+| `setImmediate` | `match.js:175` | Finishes the match on the next turn of the event loop, outside the world update |
+| `setTimeout` | `GameSession.js:108`, `:100`, `:129` | Short delays before the revive puzzle, the continue puzzle and the results |
+| Puzzle countdown | `PuzzleModal.jsx:133-142` (`setInterval` every 200 ms) | Running out of time counts as a wrong answer; the ring turns orange, then red |
 | `AbortController` + `setTimeout` | `bananaApi.js:115-117` | Cancels a Banana API request after 5 s, body included |
 | Backoff `sleep` | `bananaApi.js:145-150` | Waits 300 ms, then 900 ms (plus jitter) before a retry |
 | `take()` deadline | `pool.js:147-148` | After 2.5 s a waiting player gets a reserve puzzle |
 | Circuit cool-down | `pool.js:65`, `:68-73` | 30 s with no live calls after 3 failures in a row, then one probe |
 | Music scheduler | `music.js:117` (`setInterval` every 25 ms) | Schedules notes 0.12 s ahead on the audio clock |
-| `timeout(8000)` | `net/socket.js:28-29` | A socket request without a reply in 8 s fails |
-| MongoDB TTL | `models.js:55` | The database deletes failed logins after 10 minutes |
+| `timeout(8000)` | `net/socket.js:31-32` | A socket request without a reply in 8 s fails |
+| MongoDB TTL | `models/index.js:69` | The database deletes login counters when their window ends, and reset links after 30 minutes |
 
 _Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
 
@@ -154,7 +154,7 @@ Online, `power:start/warning/end` travel inside snapshots as `fx` events and are
 
 ## Live event feed for admins (added on `feature/live-events`)
 
-`server/eventLog.js` is a Node `EventEmitter` hub with a ring buffer of the last 100 events
+`server/services/eventLog.js` is a Node `EventEmitter` hub with a ring buffer of the last 100 events
 (`{ id, kind, at, user, text }`). Code that does something worth watching calls `eventLog.record(kind, user, text)`;
 it does not know who is listening (observer pattern).
 
@@ -169,7 +169,7 @@ it does not know who is listening (observer pattern).
 Delivery: `server/realtime/socket.js` subscribes once with `eventLog.onEvent` and emits every event to the
 Socket.io room `admins` as `server:event`. An admin joins that room with `events:watch` (the role is read from the
 database at that moment; players get `{ error: 'Admins only' }`) and receives the recent list in the
-acknowledgement. `client/src/screens/LiveEvents.jsx` listens for `server:event`, with a filter and pause.
+acknowledgement. `client/src/screens/Admin/LiveEvents.jsx` listens for `server:event`, with a filter and pause.
 
 Why push (WebSocket) rather than poll: events appear at once and the server sends nothing when nobody is
 watching. Polling `/api/admin/events` every few seconds would be simpler (plain HTTP, easy to cache) but is

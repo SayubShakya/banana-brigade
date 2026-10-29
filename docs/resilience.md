@@ -2,7 +2,7 @@
 
 <!-- Written with help from a generative AI coding assistant; reviewed by Sayub Shakya. -->
 
-The Banana API "may be discontinued without notice". Single calls: `server/services/bananaApi.js`. Calls over time: `server/pool.js`.
+The Banana API "may be discontinued without notice". Single calls: `server/services/bananaApi.js`. Calls over time: `server/services/pool.js`.
 
 ## Choices
 

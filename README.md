@@ -202,29 +202,39 @@ More detail, with sequence diagrams, is in [docs/architecture.md](docs/architect
 
 ## Project layout
 
-| Path | What it holds |
-|---|---|
-| `server/index.js` | Entry point: reads `.env`, connects to MongoDB, starts HTTP and Socket.io |
-| `server/app.js` | Express app: session cookie, puzzle routes, status, static files |
-| `server/routes/` | `auth.js` (register, login, logout, logout-all, password, account, available, sessions, me), `scores.js`, `campaign.js`, `daily.js`, `admin.js` |
-| `server/middleware/auth.js` | `requireLogin` and `requireAdmin` (the user and role are read from the database) |
-| `server/sessions.js` | Finds and ends every session of one player; drops their live sockets |
-| `server/db.js`, `server/models.js` | All database access and the Mongoose schemas |
-| `server/services/bananaApi.js` | The only code that calls the Banana API (timeout, retries with backoff, parsing, call statistics) |
-| `server/pool.js`, `server/puzzles.js` | Ready puzzles, reserve, deadline, in-flight limit, circuit breaker; solutions kept on the server |
-| `server/achievements.js` | Event-driven achievements (Node `EventEmitter`) |
-| `server/realtime/` | `socket.js` (login check), `rooms.js` (rooms, puzzles), `match.js` (server-run match) |
-| `client/src/App.jsx` | Screen state machine and the hand-over to battles |
-| `client/src/eventBus.js`, `hooks.js` | Publish/subscribe bus and the React `useBus` hook |
-| `client/src/api.js`, `net/socket.js` | Every HTTP call and the WebSocket connection |
-| `client/src/fullscreen.js` | Fullscreen button (Fullscreen API) |
-| `client/src/game/` | Engine shared by browser and server: `world.js`, `bots.js`, `map.js`, `config.js`, `campaign.js`; browser-only `GameSession.js`, `render.js`, `hud.js`, `input.js`, `sound.js`, `music.js` |
-| `client/src/net/NetGame.js` | Draws online matches from server snapshots |
-| `client/src/screens/` | React screens, including `PuzzleModal.jsx`, `Settings.jsx` and `Admin.jsx` |
-| `scripts/create-admin.js` | Command-line admin creation |
-| `scripts/demo.js` | `npm run demo`: the server with an in-memory MongoDB |
-| `tests/` | Automated tests |
-| `docs/` | Architecture, events, API, evaluation, ideas, video guide |
+Every file sits in the folder for its kind; the project root holds only config and the standard files
+(README, CHANGELOG, CONTRIBUTING, package files, `run.sh`, Vite and Playwright config).
+
+```
+client/                 the browser app (React screens + canvas game)
+  index.html            page shell, battle canvas and HUD markup
+  public/               static files: logo, icons, screenshot, manifest, service worker (sw.js)
+  src/
+    App.jsx, main.jsx   screen state machine; start-up and service worker registration
+    screens/            one file per screen; a folder when it has parts (Login/, Admin/)
+    components/         shared UI: common.jsx (Panel, Icon, Skeleton…), Toasts, PuzzleModal, PowerPicker
+    game/               the engine (world, bots, maps, weapons in config, input, auto-fire, render, sound);
+                        world/bots/map/config/campaign also run on the server for online matches
+    net/                Socket.io client and NetGame (draws online matches from snapshots)
+    hooks/              useBus (React listens to the event bus)
+    lib/                api.js (every HTTP call), eventBus.js, storage.js, rank.js, fullscreen.js, bridges
+    styles/             brigade.css
+server/                 Node.js + Express + MongoDB
+  index.js, app.js      start-up; the Express app (middleware order, puzzle routes, static files, 404)
+  config/               every setting, read from .env in one place
+  routes/               one file per area: auth, scores, daily, campaign, admin, public, docs (+ openapi.js)
+  services/             bananaApi, pool + puzzles (ready/reserve puzzles, circuit breaker), pwned,
+                        rateLimiter, sessions, achievements, eventLog
+  models/               index.js (Mongoose schemas), db.js (every database query)
+  middleware/           auth.js (requireLogin, requireAdmin, suspended check)
+  realtime/             socket.js (login check, admin feed), rooms.js, match.js (server-run match, 30 Hz)
+tests/
+  unit/                 engine and service tests (no server)
+  integration/          the real app with an in-memory MongoDB (helpers.js starts it)
+  e2e/                  Playwright: play.spec.js and its test server
+scripts/                create-admin, demo (in-memory MongoDB), openapi-yaml
+docs/                   architecture, api (+ openapi.yaml), events, evaluation, resilience, VIDEO-GUIDE, IDEAS, TASKS
+```
 
 ## Security summary
 
@@ -266,33 +276,33 @@ verification.
 |---|---|---|
 | Version control | Feature branches merged with `--no-ff`, small commits, CI | `git log --oneline --graph`, `CHANGELOG.md`, `CONTRIBUTING.md`, `.github/workflows/ci.yml` |
 | Version control | Annotated release tags for each milestone: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`, `v0.4-multiplayer`, `v0.5-campaign`, `v1.0.0` | `git tag -n` |
-| Version control | SQLite to MongoDB swap kept in history | commits `fadda7c` and `75afbbd`; `server/db.js:1-4` |
-| Event-driven | Browser event bus (observer pattern) | `client/src/eventBus.js:9-28` |
-| Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:195`, `world.js:245`, `client/src/game/hud.js:50`, `client/src/game/sound.js:74` |
-| Event-driven | React subscribes with a hook | `client/src/hooks.js:11-15`, `client/src/App.jsx:95-100` |
+| Version control | SQLite to MongoDB swap kept in history | commits `fadda7c` and `75afbbd`; `server/models/db.js:1-4` |
+| Event-driven | Browser event bus (observer pattern) | `client/src/lib/eventBus.js:9-13` |
+| Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:215`, `world.js:286`, `client/src/game/hud.js:52`, `client/src/game/sound.js:380` |
+| Event-driven | React subscribes with a hook | `client/src/hooks/useBus.js:11-15`, `client/src/App.jsx:136-141` |
 | Event-driven | Music crossfades on `game:state` | `client/src/game/music.js:131-136` |
-| Event-driven | DOM events to bus events | `client/src/game/input.js:62-70` |
-| Event-driven | Server `EventEmitter` achievements | `server/achievements.js:36-94` |
-| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/eventLog.js`, `server/realtime/socket.js`, `client/src/screens/LiveEvents.jsx` |
-| Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:140-257`, `server/realtime/match.js:130-132` |
-| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:91-164` (`createBananaApi` to `fetchPuzzle`) |
-| Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:43-80` |
-| Interoperability | Pool, reserve, deadline, circuit breaker | `server/pool.js:65-99`, `server/pool.js:136-171` |
-| Interoperability | API health in `/api/status` | `server/pool.js:173-186` |
-| Interoperability | Our own REST API for the browser | `server/app.js:79-112`, `client/src/api.js:9-19` |
-| Interoperability | API versioning, OpenAPI 3 + Swagger UI, public CORS leaderboard | `server/app.js` (v1 rewrite, `/api/public`), `server/openapi.js`, `tests/openapi.test.js` |
-| Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:25-30` |
-| Virtual identity | Session cookie settings | `server/app.js:48-60` |
-| Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:88-160`, `server/db.js` (`bumpCounter`) |
-| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js` (`/sessions/:handle`, `/export`), `server/db.js` (`exportUser`) |
-| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/routes/auth.js:223-275`, `client/src/screens/Login.jsx` |
-| Virtual identity | Session regeneration, remember me | `server/routes/auth.js:33-48` |
-| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:125-216`, `server/sessions.js:10-41` |
-| Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:13-46` |
-| Virtual identity | Suspend/restore (sessions and sockets ended, login refused) and the audit log | `server/routes/admin.js`, `server/middleware/auth.js` (suspended check), `server/models.js` (`AuditLog`) |
-| Virtual identity | Admin roles | `server/routes/admin.js:30-45`, `client/src/screens/Admin.jsx` |
-| Virtual identity | Sessions in MongoDB | `server/index.js:45-47` |
-| Virtual identity | Login on the WebSocket | `server/realtime/socket.js:20-32` |
+| Event-driven | DOM events to bus events | `client/src/game/input.js:67-75` |
+| Event-driven | Server `EventEmitter` achievements | `server/services/achievements.js:41-104` |
+| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/services/eventLog.js`, `server/realtime/socket.js`, `client/src/screens/Admin/LiveEvents.jsx` |
+| Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:143-180`, `server/realtime/match.js:150-152` |
+| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:91-109` (`createBananaApi` to `fetchPuzzle`) |
+| Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:43-58` |
+| Interoperability | Pool, reserve, deadline, circuit breaker | `server/services/pool.js:65-73`, `server/services/pool.js:136-170` |
+| Interoperability | API health in `/api/status` | `server/services/pool.js:173-186` |
+| Interoperability | Our own REST API for the browser | `server/app.js:106-139`, `client/src/lib/api.js:15-42` |
+| Interoperability | API versioning, OpenAPI 3 + Swagger UI, public CORS leaderboard | `server/app.js` (v1 rewrite, `/api/public`), `server/routes/openapi.js`, `tests/integration/openapi.test.js` |
+| Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:28-33` |
+| Virtual identity | Session cookie settings | `server/app.js:68-80` |
+| Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:110-138`, `server/services/rateLimiter.js`, `server/models/db.js` (`bumpCounter`) |
+| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/services/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js` (`/sessions/:handle`, `/export`), `server/models/db.js` (`exportUser`) |
+| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/routes/auth.js:310-381`, `client/src/screens/Login/Login.jsx` |
+| Virtual identity | Session regeneration, remember me | `server/routes/auth.js:69-86` |
+| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:183-195`, `server/services/sessions.js:13-75` |
+| Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:13-17` |
+| Virtual identity | Suspend/restore (sessions and sockets ended, login refused) and the audit log | `server/routes/admin.js`, `server/middleware/auth.js` (suspended check), `server/models/index.js` (`AuditLog`) |
+| Virtual identity | Admin roles | `server/routes/admin.js:65-85`, `client/src/screens/Admin/Admin.jsx` |
+| Virtual identity | Sessions in MongoDB | `server/index.js:37-39` |
+| Virtual identity | Login on the WebSocket | `server/realtime/socket.js:20-35` |
 
 Fuller notes: [docs/events.md](docs/events.md), [docs/api.md](docs/api.md),
 [docs/evaluation.md](docs/evaluation.md), [docs/VIDEO-GUIDE.md](docs/VIDEO-GUIDE.md).
@@ -304,12 +314,12 @@ npm test          # unit and API tests (Node's test runner)
 npm run build && npm run e2e   # end-to-end tests in a real browser (Playwright)
 ```
 
-**End-to-end** (`e2e/play.spec.js`, Playwright): a browser opens the home page, creates an account, logs out and
+**End-to-end** (`tests/e2e/play.spec.js`, Playwright): a browser opens the home page, creates an account, logs out and
 back in, picks Quick Play and Medium, solves the deploy puzzle and checks the battle is running; and checks the
-404 page. It runs against `scripts/e2e-server.js` (in-memory MongoDB, a fake Banana API whose answer is 7).
+404 page. It runs against `tests/e2e/server.js` (in-memory MongoDB, a fake Banana API whose answer is 7).
 Locally it uses the installed Chrome; GitHub Actions runs it in a second CI job with Chromium.
 
-119 unit and API tests run on Node's built-in test runner. Each test file starts a throw-away MongoDB
+120 unit and integration tests run on Node's built-in test runner. Each test file starts a throw-away MongoDB
 (mongodb-memory-server) and a fake Banana API, and talks to the real Express and Socket.io server over HTTP.
 They cover:
 

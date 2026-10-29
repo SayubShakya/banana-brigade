@@ -2,7 +2,7 @@
 
 Two interfaces connect the browser and the server:
 
-- a **REST-style HTTP/JSON API** under `/api` (called by `client/src/api.js` with `fetch`);
+- a **REST-style HTTP/JSON API** under `/api` (called by `client/src/lib/api.js` with `fetch`);
 - a **Socket.io (WebSocket) protocol** for online play (called by `client/src/net/socket.js` and `NetGame.js`).
 
 The server also calls one external API: the **Banana API** (last section).
@@ -14,10 +14,10 @@ Errors always have the shape `{ "error": "message" }`.
 
 ## Versioning, OpenAPI and the public endpoint
 
-- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/api.js`). The old paths without `/v1`
+- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/lib/api.js`). The old paths without `/v1`
   are the same handlers and keep working (`server/app.js` rewrites `/api/v1/x` to `/api/x`).
-- **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/openapi.js`), shown with Swagger UI at
-  **`/api/docs`**. `tests/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
+- **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/routes/openapi.js`), shown with Swagger UI at
+  **`/api/docs`**. `tests/integration/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
 - **Public leaderboard** for other sites: `GET /api/v1/public/leaderboard?mode=quick&limit=10`. No login and no
   cookie; `Access-Control-Allow-Origin: *` (CORS) and `OPTIONS` preflight; `Cache-Control: public, max-age=30`.
   It returns only `rank, username, kills, deaths, wave, puzzlesSolved, at`. Try it from any page's console:
@@ -211,7 +211,7 @@ usual bus events. In a snapshot, a gun's `spare: -1` means unlimited (JSON has n
 | URL | `https://marcconrad.com/uob/banana/api.php?out=json&base64=yes` (change with `BANANA_API_URL`) |
 | Method | `GET` over HTTPS |
 | Response | `{ "question": "<base64 PNG>", "solution": 7 }` |
-| Also supported | `out=csv` (`<image>,7`) and `base64=no` (an image URL); tested in `tests/server.test.js` |
+| Also supported | `out=csv` (`<image>,7`) and `base64=no` (an image URL); tested in `tests/integration/server.test.js` |
 | Checks | valid JSON; `question` is base64 (or an http(s) URL); `solution` is a whole number 0–9 |
 | Headers | `Accept: application/json`, `Cache-Control: no-store` |
 | Timeout | 5 s per attempt, body included (`AbortController`, change with `BANANA_API_TIMEOUT_MS`) |

@@ -1,6 +1,6 @@
 # Incomplete tasks: audit against the CIS046-3 brief
 
-Audit date: 28 Oct 2026. Source of truth: `../ASSIGNMENT-SUMMARY.md`, which summarises the brief, the Student Guide and the grade bands.
+Audit date: 28 Oct 2026. Source of truth: `../../ASSIGNMENT-SUMMARY.md`, which summarises the brief, the Student Guide and the grade bands.
 Status key: [ ] open · [x] done (with branch). All branches are merged into `main` with `--no-ff`.
 
 Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
@@ -43,7 +43,7 @@ Written with help from a generative AI coding assistant; reviewed by Sayub Shaky
 - [x] `docs/architecture.md`, `docs/IDEAS.md`, `docs/VIDEO-GUIDE.md` (facts and file:line pointers; the narration must be Sayub's own)
 - [x] `npm run demo` runs without installing MongoDB (in-memory), a safety net for the tutor demo (`fix/daily-and-demo`)
 - [x] `npm run package` creates the source zip for the separate code submission
-- [x] Week 8 Progress Form: draft answers in `../04 Assessment and Feedback/My plans/Week8-Progress-Form-DRAFT-answers.docx` (**rewrite in your own words before printing**)
+- [x] Week 8 Progress Form: draft answers in `../../04 Assessment and Feedback/My plans/Week8-Progress-Form-DRAFT-answers.docx` (**rewrite in your own words before printing**)
 - [x] Research doc updated with the level findings
 - [x] `package.json` version 1.0.0
 
@@ -57,7 +57,9 @@ Written with help from a generative AI coding assistant; reviewed by Sayub Shaky
 - [x] 7. Audit log, suspend/restore with a reason, Banana API health charts (`feature/admin-audit`)
 - [x] 8. Playwright end-to-end tests in CI (`feature/e2e-tests`); loading skeletons and error toasts (`feature/loading-states`)
 - [x] 9. Installable PWA that opens offline (`feature/pwa`)
-- [ ] 10. **For Sayub:** branch protection, one real pull request with a review comment and green CI, GitHub Releases from the tags. Exact steps: `../GITHUB-STEPS.md`.
+- [ ] 10. **For Sayub:** branch protection, one real pull request with a review comment and green CI, GitHub Releases from the tags. Exact steps: `../../GITHUB-STEPS.md`.
+- [x] UI audit of every screen at desktop and phone sizes, about 45 fixes (`fix/ui-audit`, `fix/ui-audit-remaining`, 1.3.1–1.3.2)
+- [x] Tidy folder structure: client lib/, hooks/, components/; server config/, models/, services/; tests unit/integration/e2e; `docs/openapi.yaml` (`chore/folder-structure`)
 - [ ] Optional if time: Docker Compose, free deployment (Render / Fly.io), two-factor login (TOTP), first-run tutorial, friends list.
 
 ## Known limits (said honestly in `docs/evaluation.md`)
