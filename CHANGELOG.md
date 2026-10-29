@@ -4,7 +4,12 @@ All notable changes to Banana Brigade. The format follows [Keep a Changelog](htt
 and the project uses [Semantic Versioning](https://semver.org/). Each milestone below is one feature branch
 merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
-## [Unreleased]
+## [1.3.0] - 2026-10-29
+
+Identity, interoperability and quality round. Merged from `feature/auto-fire`, `feature/password-reset-ip-limit`,
+`feature/public-pages`, `feature/pwned-passwords`, `feature/guest-play`, `feature/live-events`,
+`feature/openapi-v1`, `feature/sessions-export`, `feature/admin-audit`, `feature/e2e-tests`,
+`feature/loading-states` and `feature/pwa`.
 
 ### Added (`feature/public-pages`)
 - **Public home page** before login: the game in one line, a battle screenshot, Play, how the Banana puzzles
@@ -89,9 +94,7 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
   before the password is checked, so parallel guesses cannot get past the limit.
 - README: the banana crate row now describes Banana Powers.
 
-## Auto-fire - 2026-10-29
-
-Merged from `feature/auto-fire`.
+### Auto-fire (`feature/auto-fire`)
 
 ### Added
 - **Auto-fire.** Players only aim (mouse or right stick) and the gun fires by itself while the aim is on an

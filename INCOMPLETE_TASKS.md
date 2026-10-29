@@ -47,6 +47,19 @@ Written with help from a generative AI coding assistant; reviewed by Sayub Shaky
 - [x] Research doc updated with the level findings
 - [x] `package.json` version 1.0.0
 
+## Round 1.3.0 (29 Oct 2026, from Sayub's list of 10)
+- [x] 1. Forgot/reset password (single-use link, 30 min, console in dev) and per-IP login limits with an atomic counter (`feature/password-reset-ip-limit`)
+- [x] 2. Public home page, Privacy, Terms, 404 and server-down screens (`feature/public-pages`)
+- [x] 3. Have I Been Pwned check with k-anonymity (`feature/pwned-passwords`) and guest play that can be saved (`feature/guest-play`)
+- [x] 4. Event-driven: live event viewer for admins over Socket.io (`feature/live-events`); match replay was not built (battle events happen in the browser engine)
+- [x] 5. OpenAPI 3 at `/api/v1/openapi.json`, Swagger UI at `/api/docs`, `/api/v1` with old paths kept, public CORS leaderboard (`feature/openapi-v1`)
+- [x] 6. Where you're signed in (sign out one device) and download my data (`feature/sessions-export`)
+- [x] 7. Audit log, suspend/restore with a reason, Banana API health charts (`feature/admin-audit`)
+- [x] 8. Playwright end-to-end tests in CI (`feature/e2e-tests`); loading skeletons and error toasts (`feature/loading-states`)
+- [x] 9. Installable PWA that opens offline (`feature/pwa`)
+- [ ] 10. **For Sayub:** branch protection, one real pull request with a review comment and green CI, GitHub Releases from the tags. Exact steps: `../GITHUB-STEPS.md`.
+- [ ] Optional if time: Docker Compose, free deployment (Render / Fly.io), two-factor login (TOTP), first-run tutorial, friends list.
+
 ## Known limits (said honestly in `docs/evaluation.md`)
 - ~~Login lockout is per username and racy~~: fixed on `feature/password-reset-ip-limit` (per-IP limits, atomic counter). New limit: login limits depend on IP addresses (botnets, shared NAT).
 - Single-player kills are reported by the browser (online matches are server-authoritative).
