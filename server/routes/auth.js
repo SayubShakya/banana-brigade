@@ -1,4 +1,4 @@
-// Register, log in, log out and "who am I", plus the account tools: remember me,
+// Register, log in, log out and "who am I", guest play, plus the account tools: remember me,
 // log out of all devices, change password, delete account, a username check and
 // "forgot password" (a single-use reset link that lasts 30 minutes).
 // This is the virtual identity of the game: passwords are stored only as bcrypt
@@ -23,11 +23,14 @@ const LOCKOUT_MS = 10 * 60 * 1000;
 const RESET_MS = 30 * 60 * 1000;   // a reset link works for 30 minutes
 const RESETS_PER_IP = 5;           // reset requests from one IP per 15 minutes
 const RESET_WINDOW_MS = 15 * 60 * 1000;
+const GUEST_MS = 7 * 24 * 60 * 60 * 1000;   // a guest (and its cookie) lasts 7 days unless it is saved
+const GUESTS_PER_IP = 10;                    // new guests from one IP per hour
+const GUEST_WINDOW_MS = 60 * 60 * 1000;
 const BCRYPT_COST = 10;
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;   // "remember me": 30 days instead of 2 hours
 const AVAILABLE_PER_MINUTE = 20;
 
-const publicUser = (u) => ({ id: u.id, username: u.username, role: u.role });
+const publicUser = (u) => ({ id: u.id, username: u.username, role: u.role, guest: !!u.guest });
 
 // A real hash to compare against when the username does not exist (see /login).
 let dummyHash = null;
@@ -58,7 +61,7 @@ const waitMinutes = (resetAt, now) => Math.max(1, Math.ceil((resetAt - now) / 60
 // id an attacker planted before login is useless afterwards (session fixation).
 // remember: keep the cookie for 30 days. Off by default, because a long-lived cookie
 // on a shared computer lets the next person in.
-function startSession(req, user, { remember = false } = {}) {
+function startSession(req, user, { remember = false, maxAge = null } = {}) {
   return new Promise((resolve, reject) => {
     req.session.regenerate((err) => {
       if (err) return reject(err);
@@ -70,6 +73,7 @@ function startSession(req, user, { remember = false } = {}) {
       // Set after regenerate (which makes a fresh cookie); connect-mongo stores the
       // session with this cookie's expiry, so the server copy lives 30 days too.
       if (remember) req.session.cookie.maxAge = REMEMBER_MS;
+      if (maxAge) req.session.cookie.maxAge = maxAge;
       req.session.save((saveErr) => (saveErr ? reject(saveErr) : resolve()));
     });
   });
@@ -100,6 +104,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       if (typeof username !== 'string' || !USERNAME.test(username)) {
         return res.status(400).json({ error: 'Username must be 3–16 letters, numbers or _' });
       }
+      if (/^guest_/i.test(username)) return res.status(400).json({ error: 'Names starting with guest_ are kept for guests' });
       if (typeof password !== 'string' || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
         return res.status(400).json({ error: `Password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
       }
@@ -152,7 +157,9 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       const user = await db.findUserByName(username);
       // Compare even when the user does not exist, so the response time does not
       // reveal which usernames are registered.
-      const ok = await bcrypt.compare(password, user ? user.password_hash : getDummyHash());
+      // Guests have no password, so they cannot log in by name (only with their cookie).
+      const hash = user && !user.guest ? user.password_hash : getDummyHash();
+      const ok = (await bcrypt.compare(password, hash)) && !user?.guest;
       if (!user || !ok) {
         const left = LOCKOUT_ATTEMPTS - pair.n;
         return res.status(401).json({ error: left > 0 ? `Wrong username or password (${left} tries left)` : 'Wrong username or password. Locked for 10 min on this network.' });
@@ -193,6 +200,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         return res.status(400).json({ error: `New password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
       }
       const user = await db.findUserById(req.session.userId);
+      if (user?.guest) return res.status(403).json({ error: 'Save your account first, then you can set a password' });
       if (!user || typeof current !== 'string' || !(await bcrypt.compare(current, user.password_hash))) {
         return res.status(403).json({ error: 'Your current password is not right' });
       }
@@ -216,7 +224,8 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
     try {
       const { password } = req.body ?? {};
       const user = await db.findUserById(req.session.userId);
-      if (!user || typeof password !== 'string' || !(await bcrypt.compare(password, user.password_hash))) {
+      // A guest has no password to type; being logged in as the guest is enough.
+      if (!user || (!user.guest && (typeof password !== 'string' || !(await bcrypt.compare(password, user.password_hash))))) {
         return res.status(403).json({ error: 'Type your password to confirm' });
       }
       await db.deleteUser(user.id);
@@ -225,6 +234,65 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
       disconnectSocketsFor(req.app.locals.io, user.id);
       await endThisSession(req, res);
       res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Guest play: a temporary account with a made-up name (guest_k3x9q2) and no password,
+  // so a visitor can try the game at once. It lives 7 days (cookie and database) and
+  // is left off the leaderboards. Saving it (/upgrade) keeps everything earned.
+  router.post('/guest', async (req, res, next) => {
+    try {
+      const t = now();
+      const limit = await db.bumpCounter(`guest-ip:${req.ip}`, { windowMs: GUEST_WINDOW_MS, now: t, ip: req.ip });
+      if (limit.n > GUESTS_PER_IP) {
+        return res.status(429).json({ error: `Too many guest accounts from this network. Try again in ${waitMinutes(limit.resetAt, t)} min.` });
+      }
+      let user = null;
+      for (let i = 0; !user && i < 5; i++) {
+        const name = `guest_${crypto.randomBytes(4).toString('hex').slice(0, 6)}`;
+        try {
+          user = await db.createGuest(name, new Date(t + GUEST_MS));
+        } catch (err) {
+          if (err.code !== 11000) throw err;   // name taken: try another
+        }
+      }
+      if (!user) return res.status(503).json({ error: 'Could not make a guest name. Try again.' });
+      await startSession(req, user, { maxAge: GUEST_MS });
+      res.status(201).json({ user: publicUser(user) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Saves a guest as a full account with a name and password of the player's choice.
+  // It is the same database record, so scores, achievements and campaign stars stay.
+  // The session is regenerated, as at any login.
+  router.post('/upgrade', requireLogin, async (req, res, next) => {
+    try {
+      if (!req.user.guest) return res.status(400).json({ error: 'This account is already saved' });
+      const { username, password } = req.body ?? {};
+      if (typeof username !== 'string' || !USERNAME.test(username) || /^guest_/i.test(username)) {
+        return res.status(400).json({ error: 'Username must be 3–16 letters, numbers or _ (and not start with guest_)' });
+      }
+      if (typeof password !== 'string' || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
+        return res.status(400).json({ error: `Password must be ${MIN_PASSWORD}–${MAX_PASSWORD} characters` });
+      }
+      const other = await db.findUserByName(username);
+      if (other && other.id !== req.user.id) return res.status(409).json({ error: 'That username is taken' });
+      const breached = await breachMessage(pwnedCheck, password);
+      if (breached) return res.status(400).json({ error: breached, pwned: true });
+      let user;
+      try {
+        user = await db.upgradeGuest(req.user.id, username, await bcrypt.hash(password, BCRYPT_COST));
+      } catch (err) {
+        if (err.code === 11000) return res.status(409).json({ error: 'That username is taken' });
+        throw err;
+      }
+      if (!user) return res.status(400).json({ error: 'This account is already saved' });
+      await startSession(req, user);
+      res.json({ user: publicUser(user) });
     } catch (err) {
       next(err);
     }
@@ -245,7 +313,7 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
         return res.status(429).json({ error: `Too many reset requests. Try again in ${waitMinutes(limit.resetAt, t)} min.` });
       }
       const user = await db.findUserByName(username);
-      if (user) {
+      if (user && !user.guest) {   // guests have no password to reset
         const token = newResetToken();
         const expiresAt = t + RESET_MS;
         await db.createPasswordReset(user.id, hashToken(token), new Date(expiresAt));
