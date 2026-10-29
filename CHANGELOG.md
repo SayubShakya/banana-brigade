@@ -6,7 +6,24 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
-On `feature/auto-fire`.
+On `feature/password-reset-ip-limit`.
+
+### Added
+- **Forgot password.** "Forgot password?" on the login screen asks for a reset link by username. The link works
+  once, for 30 minutes; only a SHA-256 hash of its token is stored. Using it sets the new password, ends every
+  session of the account and clears its login limit. In development the link is printed in the server terminal.
+  The reply is the same for unknown names; 5 requests per IP every 15 minutes. `APP_URL` sets the link address.
+- Tests in `tests/password-reset.test.js`.
+
+### Changed
+- **Login limits are per IP address.** 5 wrong passwords for one name from one IP, or 20 from one IP across all
+  names, per 10 minutes. A stranger can no longer lock someone else out. Tries are counted with an atomic `$inc`
+  before the password is checked, so parallel guesses cannot get past the limit.
+- README: the banana crate row now describes Banana Powers.
+
+## Auto-fire - 2026-10-29
+
+Merged from `feature/auto-fire`.
 
 ### Added
 - **Auto-fire.** Players only aim (mouse or right stick) and the gun fires by itself while the aim is on an

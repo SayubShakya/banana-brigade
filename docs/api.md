@@ -24,12 +24,16 @@ Errors always have the shape `{ "error": "message" }`.
 | POST | `/api/auth/logout-all` (login) | none | `{ ok: true, ended }`, cookie cleared | |
 | POST | `/api/auth/password` (login) | `{ current, next }` | `{ ok: true, ended }` | 400 new password too short/long, 403 current password wrong |
 | DELETE | `/api/auth/account` (login) | `{ password }` | `{ ok: true }`, cookie cleared | 403 password wrong |
+| POST | `/api/auth/forgot` | `{ username }` | `{ ok: true, message }` (same for unknown names); the link goes to the server log | 400 bad name, 429 more than 5 requests per IP in 15 min |
+| POST | `/api/auth/reset` | `{ token, password }` | `{ ok: true, username, ended }` | 400 password too short/long, 400 link unknown, used or expired |
 | GET | `/api/auth/available?u=name` | none | `{ available, valid }` | 429 more than 20 checks a minute |
 | GET | `/api/auth/sessions` (login) | none | `{ count, current: { createdAt, expires }, memberSince, lastLogin }` | |
 | GET | `/api/auth/me` | none | `{ user, puzzles: { solved, attempted } }` or `{ user: null }` | |
 
-Rules: username `^[A-Za-z0-9_]{3,16}$` (case-insensitive unique); password 8–72 characters; 5 failed logins in
-10 minutes lock that username for 10 minutes. `remember: true` keeps the cookie (and the stored session) for
+Rules: username `^[A-Za-z0-9_]{3,16}$` (case-insensitive unique); password 8–72 characters; login tries are counted
+per IP: 5 for one name from one IP, or 20 from one IP across all names, in 10 minutes, then 429 until the window
+ends (a correct password does not count). A reset link (`/#reset=<token>`) works once, for 30 minutes, and ends
+every session of the account. `remember: true` keeps the cookie (and the stored session) for
 30 days instead of 2 hours. `logout-all` ends every session of the player and closes their WebSockets;
 `password` does the same for every other device (`ended` is how many sessions were ended). `account` deletes
 the user, their scores, daily results, failed-login records and sessions.

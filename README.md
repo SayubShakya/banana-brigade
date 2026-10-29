@@ -40,7 +40,8 @@ only shows pictures and sends controls and answers.
 - **Music and sound:** procedural menu and battle music (Web Audio, no audio files) that crossfades when a
   battle starts or ends; effects for every weapon; a chime or buzzer for each Banana answer.
 - **Accounts:** register (with a live "name is free" check), log in with an optional "remember me" (30 days),
-  bcrypt-hashed passwords, an HttpOnly session cookie, a lockout after 5 wrong passwords, and roles.
+  bcrypt-hashed passwords, an HttpOnly session cookie, login limits per IP address, "forgot password" with a
+  single-use reset link (30 minutes), and roles.
 - **Admin screen:** every account with its games, kills and puzzles; reset a player's scores; promote or demote.
 - **Phones:** touch sticks, a fullscreen button and a "turn your phone sideways" hint.
 
@@ -50,7 +51,7 @@ only shows pictures and sends controls and answers.
 |---|---|---|---|
 | Choosing a mode or mission | Deploy | 30 s, a new puzzle after a miss | You drop into the battle |
 | You are down | Respawn (press **B**) | 15 s, one try | Respawn now. In Survival it is the only revive |
-| Next to a banana crate (press **E**) | Crate | 20 s, one try | A power weapon, full health, +2 grenades |
+| Next to a banana crate (press **E**) | Crate | 20 s, one try | Choose a Banana Power (Rage, Overdrive, Bubble, Rapid Fire, Juice) |
 | Campaign: out of lives | Continue | a new puzzle after a miss | One more life (costs the 2nd and 3rd stars) |
 | Daily Banana Challenge | 5 daily puzzles | 20 s each | Points, streak, daily leaderboard |
 
@@ -221,7 +222,12 @@ More detail, with sequence diagrams, is in [docs/architecture.md](docs/architect
   end the player's other sessions and close their open WebSockets. Deleting removes the user, scores, daily
   results, failed-login records and sessions (GDPR right to erasure).
 - The session id is **regenerated at login** (against session fixation).
-- **Lockout:** 5 wrong passwords lock the name for 10 minutes (MongoDB TTL index clears old attempts).
+- **Login limits per IP:** 5 wrong passwords for one name from one IP, or 20 from one IP across all names, block
+  that IP for 10 minutes. A stranger cannot lock you out. Tries are counted with an atomic `$inc` before the
+  password is checked, so parallel guesses cannot slip past.
+- **Forgot password:** a single-use link that lasts 30 minutes. Only its SHA-256 hash is stored; using it ends
+  every session of the account. In development the link is printed in the server terminal (no email needed).
+  The reply is the same for unknown names, and requests are limited to 5 per IP every 15 minutes.
 - Login compares against a dummy hash when the user does not exist, so timing does not reveal usernames.
 - **Authorisation** is checked on the server: `requireLogin`, `requireAdmin`. The user and role are read from
   the database on every request, so a deleted account or a demoted admin loses access at once. An admin cannot
@@ -259,7 +265,8 @@ verification.
 | Interoperability | Our own REST API for the browser | `server/app.js:79-112`, `client/src/api.js:9-19` |
 | Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:25-30` |
 | Virtual identity | Session cookie settings | `server/app.js:48-60` |
-| Virtual identity | Register, hash, login, lockout, logout | `server/routes/auth.js:65-123` |
+| Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:88-160`, `server/db.js` (`bumpCounter`) |
+| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/routes/auth.js:223-275`, `client/src/screens/Login.jsx` |
 | Virtual identity | Session regeneration, remember me | `server/routes/auth.js:33-48` |
 | Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:125-216`, `server/sessions.js:10-41` |
 | Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:13-46` |
@@ -285,7 +292,7 @@ They cover:
 - resilience: retries only for transient failures, timeouts, normalised formats, the circuit breaker and its
   probe, the take() deadline, the in-flight limit, status statistics;
 - identity: HttpOnly SameSite cookie, bcrypt hashes in the database, validation, logout, session fixation,
-  lockout, login required, admin-only routes, remember me, log out everywhere (sessions and sockets), change
+  per-IP login limits (including parallel guesses), password reset links (single use, expiry, hashed), login required, admin-only routes, remember me, log out everywhere (sessions and sockets), change
   password, delete account, the username check, role changes, demoted or deleted admins losing access at once;
 - scores: invalid scores refused, puzzle counts taken from the server;
 - campaign, achievements and the daily challenge (including two answers sent at once, and an API outage not
