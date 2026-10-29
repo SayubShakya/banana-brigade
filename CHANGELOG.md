@@ -15,6 +15,13 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/sessions-export`)
+- **Where you're signed in** (Settings → Account): every live session with its device ("Chrome on macOS"),
+  when it started and when it was last used, read from the MongoDB session store; **Sign out** ends one other
+  device and drops its WebSocket. The browser only sees a hash of each session id, never the id.
+- **Download my data**: a JSON file with the profile, achievements, campaign, scores, daily results and
+  sessions (GDPR right of access). The password hash is never included.
+
 ### Added (`feature/openapi-v1`)
 - **API version 1** at `/api/v1/...` (the browser uses it); the old `/api/...` paths still work.
 - **OpenAPI 3** description at `/api/v1/openapi.json` and **Swagger UI** at `/api/docs`. A test checks that the
