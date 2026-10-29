@@ -13,7 +13,10 @@ const CASE_INSENSITIVE = { locale: 'en', strength: 2 };   // "Sayub" and "sayub"
 
 const userSchema = new Schema({
   username: { type: String, required: true },
-  passwordHash: { type: String, required: true },
+  // Guests have no password until they save their account (see /api/auth/guest).
+  passwordHash: { type: String, required() { return !this.guest; } },
+  guest: { type: Boolean, default: false },
+  guestExpiresAt: { type: Date, expires: 0 },   // MongoDB deletes an unsaved guest 7 days after it was made
   role: { type: String, enum: ['player', 'admin'], default: 'player' },
   achievements: [{ _id: false, id: String, at: { type: Date, default: Date.now } }],
   daily: {

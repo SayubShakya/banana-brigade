@@ -15,6 +15,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 - **Server down** screen when the game server cannot be reached; it checks `/api/status` every 5 s and carries
   on by itself.
 
+### Added (`feature/guest-play`)
+- **Play as guest** (home page and login): a temporary account `guest_xxxxxx` with no password, kept 7 days
+  (cookie and a MongoDB TTL index) and left off the leaderboards. **Save your progress** turns it into a full
+  account with a name and password; it is the same record, so scores, achievements and stars stay.
+
 ### Added (`feature/pwned-passwords`)
 - New passwords (sign-up, change, reset) are checked against **Have I Been Pwned** with the k-anonymity range
   API: only the first 5 characters of the SHA-1 hash are sent. If the service is down the password is allowed

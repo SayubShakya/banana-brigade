@@ -13,6 +13,8 @@ only shows pictures and sends controls and answers.
 
 ## Features
 
+- **Guest play:** try the game with no sign-up; a guest lasts 7 days and can be saved as a full account,
+  keeping everything it earned.
 - **Public pages:** a home page before login (pitch, screenshot, how the Banana puzzles work, the modes, live
   API status), Privacy and Terms, a 404 page and a "server down" screen that keeps checking `/api/status`.
 

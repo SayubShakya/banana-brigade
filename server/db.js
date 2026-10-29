@@ -18,6 +18,7 @@ const CASE_INSENSITIVE = { locale: 'en', strength: 2 };
 const userRow = (u) => u && ({
   id: String(u._id), username: u.username, role: u.role, password_hash: u.passwordHash,
   created_at: u.createdAt, last_login_at: u.lastLoginAt ?? null,
+  guest: !!u.guest,
   achievements: u.achievements ?? [], daily: u.daily ?? { lastDate: '', streak: 0, best: 0 },
 });
 const scoreRow = (s) => ({
@@ -41,6 +42,20 @@ async function openDatabase(uri) {
     // ----- players -----
     async createUser(username, passwordHash, role = 'player') {
       return userRow(await m.User.create({ username, passwordHash, role }));
+    },
+    // A temporary player with no password; MongoDB deletes it at expiresAt unless it is saved.
+    async createGuest(username, expiresAt) {
+      return userRow(await m.User.create({ username, guest: true, guestExpiresAt: expiresAt }));
+    },
+    // Turns a guest into a normal account: same _id, so scores, achievements and campaign
+    // progress stay. Only works while the player is still a guest.
+    async upgradeGuest(id, username, passwordHash) {
+      const doc = await m.User.findOneAndUpdate(
+        { _id: oid(id), guest: true },
+        { $set: { username, passwordHash, guest: false }, $unset: { guestExpiresAt: 1 } },
+        { returnDocument: 'after', lean: true },
+      );
+      return userRow(doc);
     },
     async findUserByName(username) {
       return userRow(await m.User.findOne({ username: String(username) }).collation(CASE_INSENSITIVE).lean());
@@ -129,8 +144,10 @@ async function openDatabase(uri) {
     dailyResult: (userId, date) => m.DailyResult.findOne({ user: oid(userId), date }).lean(),
     async dailyLeaderboard(date, limit = 10) {
       const rows = await m.DailyResult.aggregate([
-        { $match: { date } }, { $sort: { score: -1, createdAt: 1 } }, { $limit: limit },
+        { $match: { date } }, { $sort: { score: -1, createdAt: 1 } },
         { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'u' } },
+        { $match: { 'u.0': { $exists: true }, 'u.guest': { $ne: true } } },
+        { $limit: limit },
         { $project: { _id: 0, username: { $first: '$u.username' }, score: 1, solved: 1 } },
       ]);
       return rows;
@@ -151,8 +168,10 @@ async function openDatabase(uri) {
       const rows = await m.Score.aggregate([
         { $match: { mode, ...(since ? { createdAt: { $gte: since } } : {}) } },
         { $sort: { [main]: -1, puzzlesSolved: -1, createdAt: 1 } },
-        { $limit: limit },
         { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'u' } },
+        // Guests (and accounts that no longer exist) are not on the leaderboard.
+        { $match: { 'u.0': { $exists: true }, 'u.guest': { $ne: true } } },
+        { $limit: limit },
         { $set: { username: { $first: '$u.username' } } },
       ]);
       return rows.map(scoreRow);
