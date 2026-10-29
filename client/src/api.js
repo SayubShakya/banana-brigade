@@ -27,6 +27,12 @@ async function call(method, path, body, { quiet = false } = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // 401 (the session is gone: logged out elsewhere, signed out by another device,
+    // account deleted) or 403 for a suspended account, outside the login forms:
+    // tell the app, which signs out with a message instead of half-working screens.
+    if ((res.status === 401 && !/\/auth\/(login|register|forgot|reset)$/.test(path)) || data.suspended) {
+      emit('session:ended', { text: data.suspended ? data.error : 'You were signed out. Please log in again.' });
+    }
     // Server faults (5xx) are shown as a toast on any screen; 4xx answers (wrong
     // password, name taken...) are for the form that asked, so they are not.
     if (res.status >= 500 && !quiet) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });

@@ -48,7 +48,7 @@ export default function Offline({ onBack }) {
           ? <p>Your connection works, but the game server did not reply. It may be restarting.</p>
           : <p>The game opened from the copy saved on this device, but logging in, Banana puzzles and battles need the server.</p>}
         <p>This page checks again every 5 seconds and opens the game by itself when the server is back{tries ? ` (${tries} ${tries === 1 ? 'check' : 'checks'} so far)` : ''}.</p>
-        {deviceOnline && <p>Running it yourself? Start it with <code>./run.sh</code> in the <code>banana-brigade</code> folder.</p>}
+        {deviceOnline && import.meta.env.DEV && <p>Running it yourself? Start it with <code>./run.sh</code> in the <code>banana-brigade</code> folder.</p>}
       </div>
     </Panel>
   );

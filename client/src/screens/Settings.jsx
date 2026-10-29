@@ -5,6 +5,8 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { closeSocket } from '../net/socket.js';
+import { emit } from '../eventBus.js';
 import { Panel, Skeleton } from './common.jsx';
 import { toggleFullscreen, useFullscreen } from '../fullscreen.js';
 
@@ -71,7 +73,7 @@ function Devices() {
 
 // The account tools. Each one asks for the password again where it matters, so a
 // session left open on someone else's computer cannot take over the account.
-function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
+function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy }) {
   const [open, setOpen] = useState('');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -80,6 +82,8 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
 
   const show = (name) => { setOpen(open === name ? '' : name); setMsg({ text: '', ok: false }); setCurrent(''); setNext(''); setConfirmPw(''); };
   const fail = (err) => setMsg({ text: err.message, ok: false });
+  // The result of the open form is shown inside it, next to its button.
+  const note = msg.text ? <p className={msg.ok ? 'account-ok' : 'auth-error'} role="alert">{msg.text}</p> : null;
 
   async function changePassword(e) {
     e.preventDefault();
@@ -90,16 +94,17 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
     } catch (err) { fail(err); }
   }
   async function logoutAll() {
-    try { await api.logoutAll(); onSignedOut(); } catch (err) { fail(err); }
+    // Close our own WebSocket first, so the server dropping it is not mistaken for being thrown out.
+    try { closeSocket(); await api.logoutAll(); onSignedOut(); } catch (err) { fail(err); }
   }
   async function deleteAccount(e) {
     e.preventDefault();
-    try { await api.deleteAccount(confirmPw); onSignedOut(); } catch (err) { fail(err); }
+    try { closeSocket(); await api.deleteAccount(confirmPw); onSignedOut(); emit('toast:info', { text: 'Your account and all its data were deleted.' }); } catch (err) { fail(err); }
   }
 
   return (
     <>
-      <h3 className="sub-head">Account · {account.username}</h3>
+      <h3 className="sub-head">Account · <span className="name-case">{account.username}</span></h3>
       {account.guest && <div className="setting"><span>Guest account (deleted after 7 days)</span><button className="toggle" onClick={onSave}>Save it</button></div>}
       {!account.guest && <div className="setting"><span>Password</span><button className="toggle" aria-pressed={open === 'password'} onClick={() => show('password')}>Change</button></div>}
       {open === 'password' && (
@@ -107,22 +112,31 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
           <label className="field">Current password<input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></label>
           <label className="field">New password (8–72 characters)<input type="password" autoComplete="new-password" minLength={8} maxLength={72} value={next} onChange={(e) => setNext(e.target.value)} /></label>
           <button className="mbtn primary" type="submit">Save new password</button>
+          {note}
         </form>
       )}
       <Devices />
-      <div className="setting"><span>All devices</span><button className="toggle" onClick={logoutAll}>Log out everywhere</button></div>
-      <div className="setting"><span>Your data (JSON file)</span><a className="toggle" href="/api/v1/auth/export" download>Download my data</a></div>
-      <div className="setting"><span>What we store and why</span><a className="toggle" href="#privacy">Privacy</a></div>
+      <div className="setting"><span>All devices</span><button className="toggle action" aria-pressed={open === 'all'} onClick={() => show('all')}>Log out everywhere</button></div>
+      {open === 'all' && (
+        <div className="account-form">
+          <p className="setting-note">This signs you out on every device, this one too.</p>
+          <button className="mbtn danger" onClick={logoutAll}>Yes, log out everywhere</button>
+          {note}
+        </div>
+      )}
+      <div className="setting"><span>Your data (JSON file)</span><a className="toggle action" href="/api/v1/auth/export" download>Download my data</a></div>
+      <div className="setting"><span>What we store and why</span><button className="toggle action" onClick={onPrivacy}>Privacy</button></div>
       <div className="setting"><span>Delete account</span><button className="toggle danger" aria-pressed={open === 'delete'} onClick={() => show('delete')}>Delete</button></div>
       {open === 'delete' && (
         <form className="account-form" onSubmit={deleteAccount}>
           <p className="setting-note">This removes your account, scores, campaign stars and daily results for good.</p>
           {!account.guest && <label className="field">Type your password to confirm<input type="password" autoComplete="current-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} /></label>}
           <button className="mbtn danger" type="submit" disabled={!confirmPw && !account.guest}>Delete my account</button>
+          {note}
         </form>
       )}
       {account.role === 'admin' && <div className="setting"><span>Admin tools</span><button className="toggle" onClick={onAdmin}>Open</button></div>}
-      <p className={msg.ok ? 'account-ok' : 'auth-error'} role="alert">{msg.text}</p>
+      {!open && note}
       <button className="mbtn ghost" onClick={onLogout}>Log out</button>
     </>
   );
@@ -140,12 +154,12 @@ function Toggle({ label, value, onClick }) {
 
 const TABS = [['game', 'Game'], ['sound', 'Sound'], ['access', 'Accessibility'], ['account', 'Account']];
 
-export default function Settings({ settings, account, onToggle, onSet, onControls, onLogout, onSignedOut, onAdmin, onSave, onBack }) {
+export default function Settings({ settings, account, onToggle, onSet, onControls, onLogout, onSignedOut, onAdmin, onSave, onPrivacy, onBack }) {
   const apiStatus = useApiStatus();
   const [isFullscreen, canFullscreen] = useFullscreen();
   const [tab, setTab] = useState('game');
   return (
-    <Panel title="Settings" subtitle="Game options are saved in this browser; your account lives on the server."
+    <Panel wide title="Settings" subtitle="Game options are saved in this browser; your account lives on the server."
       footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
       <div className="tabs" role="tablist">
         {TABS.map(([key, label]) => <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>)}
@@ -172,7 +186,7 @@ export default function Settings({ settings, account, onToggle, onSet, onControl
           <Toggle label="Mute all sound" value={settings.muted} onClick={() => onToggle('muted')} />
         </>}
         {tab === 'access' && ACCESSIBILITY.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
-        {tab === 'account' && <Account account={account} onLogout={onLogout} onSignedOut={onSignedOut} onAdmin={onAdmin} onSave={onSave} />}
+        {tab === 'account' && <Account account={account} onLogout={onLogout} onSignedOut={onSignedOut} onAdmin={onAdmin} onSave={onSave} onPrivacy={onPrivacy} />}
       </div>
     </Panel>
   );
