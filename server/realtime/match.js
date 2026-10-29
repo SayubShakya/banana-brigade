@@ -120,6 +120,9 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     if (soldier.busy || !pickup.active || ended) return;
     const userId = soldier.id.slice(1);
     if (Date.now() < (cooldowns.get(userId) ?? 0)) return;   // no crate spamming
+    // One player at a time per crate: a second player cannot open a crate someone is
+    // already solving (before, both got a puzzle and the slower one lost it).
+    for (const c of crates.values()) if (c.pickup === pickup) return;
     soldier.busy = true;                    // frozen and protected while solving
     soldier.shieldTimer = 999;
     const seconds = world.difficulty.puzzle.crate;

@@ -1,15 +1,23 @@
 // Lets plain JavaScript (the game session) open the React puzzle window and wait
 // for the result: askPuzzle(purpose, options) resolves to 'solved', 'failed' or
 // 'cancelled'. The PuzzleModal component registers itself here when it mounts.
+// closePuzzle() shuts an open window from code (the server gave up waiting); the
+// waiting askPuzzle then resolves to 'closed'.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 let opener = null;
+let closer = null;
 let open = false;
 
-export function registerPuzzleOpener(fn) {
+export function registerPuzzleOpener(fn, close) {
   opener = fn;
-  return () => { if (opener === fn) opener = null; };
+  closer = close;
+  return () => { if (opener === fn) { opener = null; closer = null; } };
+}
+
+export function closePuzzle() {
+  if (open) closer?.();
 }
 
 export const isPuzzleOpen = () => open;
