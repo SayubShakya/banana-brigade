@@ -51,6 +51,10 @@ only shows pictures and sends controls and answers.
   single-use reset link (30 minutes), and roles.
 - **Open API:** `/api/v1` with an OpenAPI 3 file and Swagger UI at `/api/docs`, plus a public read-only
   leaderboard (`/api/v1/public/leaderboard`, CORS) that other websites can use.
+- **Headshots and animations:** every bullet gun can headshot (gold HEADSHOT tag and pop); ragdolls, respawn
+  rings, jetpack smoke, big explosions, melee/throw/reload/swap poses, multi-kill banners, low-health glow.
+- **Fair online crates:** a player solving a banana-crate puzzle is protected and shown in a banana bubble until
+  the window closes, then gets a 2 s shield; the server ends puzzles left open.
 - **Live event feed** (Admin → Live events): server events pushed over Socket.io as they happen.
 - **Admin tools:** audit log of every admin action with its reason; suspend and restore players (signed out at
   once); Banana API health charts.

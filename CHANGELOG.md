@@ -6,6 +6,25 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/headshots`)
+- **Headshots for every bullet gun:** magnum ×1.5, SMG ×1.3, rifle ×1.5, shotgun ×1.25 per pellet, sniper ×2.0.
+  The head zone matches the drawn head (top 45% of the body plus a small cap above it). A gold 🎯 HEADSHOT tag in
+  the kill feed; the headshot ding is rate-limited.
+
+### Fixed (`fix/online-crate-fairness`, `fix/crate-follow-ups`)
+- **Online banana crates are fair:** the player solving stays frozen and protected until the puzzle window has
+  closed (also 1.6 s after a wrong answer), then gets a 2 s exit shield; explosions do not push a solver; bots
+  leave solvers alone (and for 1 s after). The server closes a puzzle nobody answers (crate time + 6 s) and the
+  window closes by itself; online uses the room difficulty's crate time; a 5 s cooldown between crates; one player
+  at a time per crate; the online respawn puzzle is one try per death.
+
+### Added (`feature/battle-animations`)
+- **Mini Militia–style animations:** killed soldiers ragdoll away from the killer, bounce and fade; gold HEADSHOT!
+  pop, marker and damage number; respawn light ring; jetpack smoke trail; explosions with fireball, shockwave,
+  smoke, debris and scorch mark; melee swing, grenade throw, reload (with a falling magazine), weapon swap, landing
+  squash, hit flinch and lean; a banana bubble with a 🍌? badge over players solving a crate online; a red
+  low-health vignette; DOUBLE KILL / TRIPLE KILL / RAMPAGE! banners. Reduced motion tones them down.
+
 ### Changed (`feature/gun-pickups`)
 - **Weapon pickups are drawn as the gun itself**, not a wooden box: the same detailed gun a soldier holds, floating
   over a soft glow with a shadow and a gentle tilt, with its name above. A gun dropped by a soldier lies flat on

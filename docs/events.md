@@ -175,3 +175,18 @@ Why push (WebSocket) rather than poll: events appear at once and the server send
 watching. Polling `/api/admin/events` every few seconds would be simpler (plain HTTP, easy to cache) but is
 always late and costs a request per admin per interval. The ring buffer is in memory, so the feed starts empty
 after a restart; the audit log (MongoDB) is the permanent record.
+
+
+## Battle animations (added on `feature/battle-animations`)
+
+All in `client/src/game/effects.js` (fixed-size pools, drawn by `render.js`); they listen to the same bus events,
+so they also work online, where `NetGame.js` re-emits the server's events.
+
+| Event | New listener does |
+|---|---|
+| `soldier:killed` | ragdoll corpse flung away from the killer (harder on a headshot); multi-kill banners; gold HEADSHOT! pop |
+| `soldier:damaged` | gold marker and damage number on headshots; small hit flinch |
+| `soldier:respawned` | banana-yellow light ring and sparkles |
+| `explosion` | fireball, shockwave ring, smoke, debris, scorch mark |
+| `melee:swing`, `grenade:thrown`, `weapon:reloading`, `soldier:landed` | melee swing, throw arm, reload tilt and falling magazine, landing squash (dust from 260 px/s) |
+| (snapshot state) `jetting`, `current`, `busy`, `health` | jetpack smoke; weapon-swap lower/raise when `current` changes; banana bubble for crate solvers; low-health vignette |
