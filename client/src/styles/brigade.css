@@ -782,3 +782,6 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 @media (orientation: portrait) {
   .home-hero { grid-template-columns: 1fr; }
 }
+.role-badge[data-role="guest"] { background: var(--khaki); color: var(--ink); }
+.welcome.guest-save { border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: 2.2cqh; text-align: left; }
+.welcome.guest-save b { color: var(--olive-dark); text-decoration: underline; }

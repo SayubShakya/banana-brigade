@@ -39,7 +39,7 @@ function describeHealth(s) {
 
 // The account tools. Each one asks for the password again where it matters, so a
 // session left open on someone else's computer cannot take over the account.
-function Account({ account, onLogout, onSignedOut, onAdmin }) {
+function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
   const [open, setOpen] = useState('');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -68,7 +68,8 @@ function Account({ account, onLogout, onSignedOut, onAdmin }) {
   return (
     <>
       <h3 className="sub-head">Account · {account.username}</h3>
-      <div className="setting"><span>Password</span><button className="toggle" aria-pressed={open === 'password'} onClick={() => show('password')}>Change</button></div>
+      {account.guest && <div className="setting"><span>Guest account (deleted after 7 days)</span><button className="toggle" onClick={onSave}>Save it</button></div>}
+      {!account.guest && <div className="setting"><span>Password</span><button className="toggle" aria-pressed={open === 'password'} onClick={() => show('password')}>Change</button></div>}
       {open === 'password' && (
         <form className="account-form" onSubmit={changePassword}>
           <label className="field">Current password<input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></label>
@@ -81,8 +82,8 @@ function Account({ account, onLogout, onSignedOut, onAdmin }) {
       {open === 'delete' && (
         <form className="account-form" onSubmit={deleteAccount}>
           <p className="setting-note">This removes your account, scores, campaign stars and daily results for good.</p>
-          <label className="field">Type your password to confirm<input type="password" autoComplete="current-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} /></label>
-          <button className="mbtn danger" type="submit" disabled={!confirmPw}>Delete my account</button>
+          {!account.guest && <label className="field">Type your password to confirm<input type="password" autoComplete="current-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} /></label>}
+          <button className="mbtn danger" type="submit" disabled={!confirmPw && !account.guest}>Delete my account</button>
         </form>
       )}
       {account.role === 'admin' && <div className="setting"><span>Admin tools</span><button className="toggle" onClick={onAdmin}>Open</button></div>}
@@ -104,7 +105,7 @@ function Toggle({ label, value, onClick }) {
 
 const TABS = [['game', 'Game'], ['sound', 'Sound'], ['access', 'Accessibility'], ['account', 'Account']];
 
-export default function Settings({ settings, account, onToggle, onSet, onControls, onLogout, onSignedOut, onAdmin, onBack }) {
+export default function Settings({ settings, account, onToggle, onSet, onControls, onLogout, onSignedOut, onAdmin, onSave, onBack }) {
   const apiStatus = useApiStatus();
   const [isFullscreen, canFullscreen] = useFullscreen();
   const [tab, setTab] = useState('game');
@@ -136,7 +137,7 @@ export default function Settings({ settings, account, onToggle, onSet, onControl
           <Toggle label="Mute all sound" value={settings.muted} onClick={() => onToggle('muted')} />
         </>}
         {tab === 'access' && ACCESSIBILITY.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
-        {tab === 'account' && <Account account={account} onLogout={onLogout} onSignedOut={onSignedOut} onAdmin={onAdmin} />}
+        {tab === 'account' && <Account account={account} onLogout={onLogout} onSignedOut={onSignedOut} onAdmin={onAdmin} onSave={onSave} />}
       </div>
     </Panel>
   );

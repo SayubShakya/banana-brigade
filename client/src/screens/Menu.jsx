@@ -35,12 +35,14 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
       <div className="menu-left">
         <div className="brand"><img className="emblem" src="/logo.svg" alt="" /><h1 className="logo">BANANA<span>BRIGADE</span></h1></div>
         <div className="podium">
-          <div className="name-tag"><b>{account.username}</b>{account.role === 'admin' && <span className="role-badge" data-role="admin">admin</span>}</div>
+          <div className="name-tag"><b>{account.username}</b>{account.role === 'admin' && <span className="role-badge" data-role="admin">admin</span>}{account.guest && <span className="role-badge" data-role="guest">guest</span>}</div>
           <AvatarCanvas id="menu-avatar" parts={parts} aria-label="Your soldier" />
           <div className="rock" aria-hidden="true" />
         </div>
         <RankCard rank={rank} />
-        {isNew && <p className="welcome">Welcome to the Brigade, {account.username}!</p>}
+        {account.guest
+          ? <button className="welcome guest-save" onClick={() => onOpen('save')}>Playing as a guest · <b>Save your progress</b></button>
+          : isNew && <p className="welcome">Welcome to the Brigade, {account.username}!</p>}
       </div>
 
       <nav className="menu-right" aria-label="Play">

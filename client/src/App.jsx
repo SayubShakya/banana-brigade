@@ -39,6 +39,7 @@ import { mapName } from './game/maps.js';
 import { DIFFICULTY } from './game/config.js';
 import Toasts from './screens/Toasts.jsx';
 import Home from './screens/Home.jsx';
+import SaveAccount from './screens/SaveAccount.jsx';
 import Offline from './screens/Offline.jsx';
 import { NotFound, Privacy, Terms } from './screens/Legal.jsx';
 
@@ -174,6 +175,13 @@ export default function App() {
   // Back to the login screen once the server has ended the session (logout,
   // log out everywhere or a deleted account).
   const signedOut = () => { game().quit(); netGame?.leave(); closeSocket(); setAccount(null); setScreen('home'); };
+  // "Play as guest": a temporary account straight away (the server makes it).
+  const playAsGuest = async () => {
+    try {
+      const { user } = await api.guest();
+      setAccount(user); setIsNew(true); setScreen('menu');
+    } catch (err) { alert(err.message); }
+  };
   // Privacy and Terms go back to wherever the player came from: the menu or the home page.
   const leavePublic = () => setScreen(account ? 'menu' : 'home');
   const logout = async () => {
@@ -206,18 +214,19 @@ export default function App() {
   const back = () => setScreen('menu');
   return (
     <>
-      {screen === 'home' && <Home onPlay={() => setScreen('login')} onOpen={setScreen} />}
+      {screen === 'home' && <Home onPlay={() => setScreen('login')} onGuest={playAsGuest} onOpen={setScreen} />}
+      {screen === 'save' && account?.guest && <SaveAccount account={account} onSaved={(user) => { setAccount(user); setIsNew(true); setScreen('menu'); }} onBack={back} />}
       {screen === 'privacy' && <Privacy onBack={leavePublic} />}
       {screen === 'terms' && <Terms onBack={leavePublic} />}
       {screen === 'notfound' && <NotFound onHome={() => { location.replace('/'); }} />}
       {screen === 'offline' && <Offline onBack={start} />}
-      {screen === 'login' && <Login onHome={() => setScreen('home')} onLogin={(user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); }} />}
+      {screen === 'login' && <Login onGuest={playAsGuest} onHome={() => setScreen('home')} onLogin={(user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); }} />}
       {screen === 'menu' && <Menu account={account} isNew={isNew} parts={parts} onDeploy={deploy} onOpen={setScreen} />}
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => setScreen('avatar')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
       {screen === 'settings' && <Settings settings={settings} account={account} onToggle={toggle} onSet={setSetting} onControls={() => setScreen('controls')} onLogout={logout}
-        onSignedOut={signedOut} onAdmin={() => setScreen('admin')} onBack={back} />}
+        onSignedOut={signedOut} onAdmin={() => setScreen('admin')} onSave={() => setScreen('save')} onBack={back} />}
       {/* Only offered to admins; the server still checks the role on every admin request. */}
       {screen === 'admin' && account?.role === 'admin' && <Admin account={account} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
