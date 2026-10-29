@@ -1,4 +1,4 @@
-// Avatar customiser: headgear, uniform, skin, goggles and beard, with a live preview
+// Avatar customiser: headgear, uniform, skin, goggles and face (stubble, beard, moustache), with a live preview
 // that cycles through the weapons and the jetpack.
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
@@ -67,7 +67,7 @@ export default function Avatar({ name, parts, setParts, onBack }) {
   return (
     <Panel wide title="Avatar" subtitle="Build your soldier. It is saved on this device." footer={<>
       <button className="mbtn ghost" onClick={() => setParts({
-        hat: randomOf(PARTS.hat).id, uniform: randomOf(PARTS.uniform).id, skin: randomOf(PARTS.skin), goggles: randomOf(PARTS.goggles), beard: Math.random() < 0.3,
+        hat: randomOf(PARTS.hat).id, uniform: randomOf(PARTS.uniform).id, skin: randomOf(PARTS.skin), goggles: randomOf(PARTS.goggles), face: randomOf(PARTS.face).id,
       })}>Randomise</button>
       <button className="mbtn ghost" onClick={() => setParts({ ...DEFAULT_AVATAR })}>Reset</button>
       <button className="mbtn primary" onClick={onBack}>Done</button>
@@ -83,9 +83,7 @@ export default function Avatar({ name, parts, setParts, onBack }) {
           <div className="opt-group"><h4>Uniform</h4><Swatches values={PARTS.uniform} current={parts.uniform} onPick={pick('uniform')} label={(v) => v.name} /></div>
           <div className="opt-group"><h4>Skin</h4><Swatches values={PARTS.skin} current={parts.skin} onPick={pick('skin')} label={() => 'Skin tone'} /></div>
           <div className="opt-group"><h4>Goggles</h4><Swatches values={PARTS.goggles} current={parts.goggles} onPick={pick('goggles')} label={() => 'Goggles colour'} /></div>
-          <div className="opt-group"><h4>Face</h4>
-            <button className="swatch text" type="button" aria-pressed={!!parts.beard} onClick={() => setParts({ ...parts, beard: !parts.beard })}>Beard: {parts.beard ? 'on' : 'off'}</button>
-          </div>
+          <div className="opt-group"><h4>Face</h4><Swatches values={PARTS.face} current={makeAvatar(parts).face} onPick={(face) => setParts({ ...parts, face, beard: undefined })} label={(v) => v.name} /></div>
         </div>
       </div>
     </Panel>

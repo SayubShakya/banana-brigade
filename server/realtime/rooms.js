@@ -36,7 +36,7 @@ const ack = (cb) => (typeof cb === 'function' ? cb : () => {});
 function cleanParts(p) {
   if (!p || typeof p !== 'object') return {};
   const out = {};
-  for (const k of ['hat', 'uniform', 'skin', 'goggles']) if (typeof p[k] === 'string' && p[k].length <= 24) out[k] = p[k];
+  for (const k of ['hat', 'uniform', 'skin', 'goggles', 'face']) if (typeof p[k] === 'string' && p[k].length <= 24) out[k] = p[k];
   out.beard = p.beard === true;
   return out;
 }
