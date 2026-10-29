@@ -90,7 +90,7 @@ test('deleting the account removes the user, their scores and their session', as
     const { c, id } = await registered(s, 'leaver');
     const second = (await loggedIn(s, 'leaver')).c;
     await s.db.addScore({ userId: id, mode: 'quick', kills: 3, deaths: 1 });
-    await s.db.recordFailedLogin('leaver');
+    await client(s.base).post('/api/auth/login', { username: 'leaver', password: 'wrongpass' });
     assert.equal((await c.del('/api/auth/account', { password: 'wrongpass' })).status, 403);
     const res = await c.del('/api/auth/account', { password: PW });
     assert.equal(res.status, 200);
@@ -98,7 +98,7 @@ test('deleting the account removes the user, their scores and their session', as
     assert.equal((await s.db.scoresForUser(id)).length, 0);
     assert.equal((await c.get('/api/auth/me')).body.user, null);
     assert.equal((await second.get('/api/auth/me')).body.user, null);
-    assert.equal((await s.db.recentFailedLogins('leaver', 0)).n, 0);
+    assert.equal(await s.db.countersFor('leaver'), 0);
     // The name is free again.
     assert.deepEqual((await client(s.base).get('/api/auth/available?u=leaver')).body, { available: true, valid: true });
   } finally { await s.close(); }

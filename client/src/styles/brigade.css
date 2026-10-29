@@ -131,7 +131,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .field { display: flex; flex-direction: column; gap: 0.6cqh; font-weight: 600; font-size: 1.9cqh; color: var(--khaki); }
 .field input { font: 600 2.4cqh 'Rubik', sans-serif; padding: 1.1cqh 1.4cqh; border-radius: 1cqh; border: 0.3cqh solid var(--panel-line); background: var(--paper); color: var(--ink); }
 .field input:focus { outline: 0.4cqh solid var(--banana); outline-offset: 0.1cqh; }
-#auth-form[data-mode="login"] .register-only { display: none; }
+#auth-form[data-mode="login"] .register-only, #auth-form[data-mode="forgot"] .register-only { display: none; }
 .register-only { display: flex; flex-direction: column; gap: 0.8cqh; }
 .meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6cqh; }
 .meter i { height: 0.8cqh; border-radius: 0.4cqh; background: rgba(255,255,255,0.12); }
@@ -142,6 +142,10 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .meter-text { font-size: 1.7cqh; color: var(--khaki); min-height: 2cqh; }
 .auth-error { margin: 0; min-height: 2.6cqh; color: var(--red); font-weight: 600; font-size: 2cqh; }
 .auth-note { margin: 0; font-size: 1.6cqh; color: var(--khaki); text-align: center; }
+.auth-title { margin: 0; font-size: 2.8cqh; color: var(--banana); text-align: center; }
+.auth-info { margin: 0; font-size: 1.9cqh; color: var(--good); font-weight: 600; }
+.link-btn { background: none; border: 0; padding: 0.4cqh; color: var(--khaki); font: inherit; font-size: 1.8cqh; text-decoration: underline; cursor: pointer; align-self: center; }
+.link-btn:hover, .link-btn:focus-visible { color: var(--banana); }
 .account { display: flex; gap: 0.8cqh; align-items: center; }
 .role-badge { margin-left: 0.4cqh; padding: 0.1cqh 0.9cqh; border-radius: 2cqh; background: rgba(255,255,255,0.12); color: var(--khaki); font-size: 1.5cqh; text-transform: uppercase; letter-spacing: 0.1cqh; }
 .role-badge[data-role="admin"] { background: var(--banana); color: var(--ink); }

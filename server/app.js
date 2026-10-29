@@ -39,10 +39,13 @@ function createApp({
   puzzleStore = createPuzzleStore(),
   pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats }),
   achievements = createAchievements({ db }),
+  trustProxy = production ? 1 : false,   // read the client IP from X-Forwarded-For (only behind a proxy)
+  sendResetLink,                         // how reset links reach the player (default: the server log)
+  appUrl = null,                         // the site address used in reset links (APP_URL)
 }) {
   const app = express();
   app.set('sessionCookieName', SESSION_COOKIE);
-  if (production) app.set('trust proxy', 1);
+  if (trustProxy) app.set('trust proxy', trustProxy);
   app.use(express.json({ limit: '4kb' }));
 
   const sessionMiddleware = session({
@@ -62,7 +65,7 @@ function createApp({
   // The WebSocket server (realtime/) reuses the same sessions and puzzle store.
   Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements });
 
-  app.use('/api/auth', createAuthRouter({ db }));
+  app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl }));
   app.use('/api/scores', createScoresRouter({ db, achievements }));
   app.use('/api/admin', createAdminRouter({ db }));
   app.use('/api/daily', createDailyRouter({ db, pool, achievements }));

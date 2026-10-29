@@ -88,12 +88,46 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
 ## 4. Virtual identity
 
 **Chosen:** username and password; bcrypt hashes (cost 10); a server-side session in MongoDB identified by an
-HttpOnly, SameSite=Lax cookie; session regeneration at login; lockout after 5 failures in 10 minutes; a dummy
+HttpOnly, SameSite=Lax cookie; session regeneration at login; login limits per IP address (5 tries for one name
+from one IP, 20 tries from one IP across all names, per 10 minutes, counted atomically); a dummy
 hash compare so timing does not reveal usernames; roles (`player`, `admin`) checked by middleware, which loads the user from the
 database on every request so a deleted or demoted account loses access at once; the same session authenticates
 the WebSocket. Account tools: "remember me" (30 days, off by default), log out everywhere, change password
 (needs the current one, ends the other sessions) and delete account (GDPR erasure). Each of these also closes
 the player's open WebSockets, because ending a session does not close a socket that is already connected.
+"Forgot password" gives a single-use reset link that lasts 30 minutes; in development the link is printed in
+the server terminal instead of emailed.
+
+**Login limits: why per IP, and why atomic** (changed on `feature/password-reset-ip-limit`)
+
+The first version locked a *username* after 5 wrong passwords. That had two problems: anyone who knew your name
+could lock you out for 10 minutes, and the check ("fewer than 5 failures?") and the record ("one more failure")
+were two separate steps, so guesses sent in parallel could all pass the check before any was recorded.
+Now every try is counted *before* the password is checked, with one atomic `findOneAndUpdate` + `$inc` on a
+counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
+5 are checked and 7 are refused (`tests/password-reset.test.js`). A correct password takes its try back.
+
+| Option | For | Against |
+|---|---|---|
+| Per username (old) | Simple; stops guessing one account from many IPs | Anyone can lock out anyone |
+| **Per username + IP, plus a cap per IP (chosen)** | A stranger only locks themselves out; one machine cannot spray many names | A botnet with many IPs gets 5 tries per IP; a whole lab behind one NAT IP shares the 20-try cap |
+| Per IP only | Cannot lock out a name | Students behind the same university IP block each other |
+| CAPTCHA after a few failures | Stops bots, not people | Needs a third-party service; worse for players |
+| `express-rate-limit` package | Ready-made | Counts in memory by default, so it resets on restart and is not shared between servers; ours is in MongoDB |
+
+**Password reset: design choices**
+
+| Choice | Why | Alternative |
+|---|---|---|
+| Request by username | Accounts have no email address | Add an email field (more personal data to protect under GDPR) |
+| Link printed in the server log | No mail service needed for the demo | Real email (SMTP or a service such as SendGrid): the function `sendResetLink` is the place to plug it in |
+| 32 random bytes, only the SHA-256 hash stored | A database leak does not give working links; a fast hash is fine because the token is random, unlike a password | Store the token itself (a leak would let anyone reset any account) |
+| Single use, marked used in the same atomic step that checks it | The same link sent twice at once still works once | Check then update (racy) |
+| 30-minute expiry, MongoDB TTL index deletes it | Short window if a link leaks (e.g. from history) | A signed JWT link: no storage, but cannot be made single-use without storing something anyway |
+| Same reply for known and unknown names, 5 requests per IP every 15 min | Cannot be used to find accounts or to flood the log | Saying "no such user" (user enumeration) |
+| All sessions ended and the lockout cleared after a reset | Whoever had the old password is thrown out | Keep sessions (an attacker stays logged in) |
+| Link address from `APP_URL` in production | The Host header can be faked to send links to an attacker's site | Use the Host header (host header injection) |
+| The token is removed from the address bar after it is read | Not left in browser history or a screen recording | Leave it (it is single-use, but still) |
 
 | Alternative | For | Against |
 |---|---|---|
@@ -105,12 +139,13 @@ the player's open WebSockets, because ending a session does not close a socket t
 | PHP-style sessions in memory | Simple | Lost on restart; cannot list or end one player's sessions |
 
 **Limits (honest)**
-- **Lockout is per username, so anyone can lock a username.** Someone who knows your name can lock you out for
-  10 minutes by typing wrong passwords. A per-IP limit (or per username + IP) would avoid that, but IPs are
-  shared behind NAT and change on mobile networks.
-- **The lockout check and the failed-attempt record are separate steps.** Many guesses sent in parallel can all
-  pass the check before any of them is recorded, so more than 5 guesses can get through. An atomic counter
-  (one `findOneAndUpdate` with `$inc`, or a rate limiter in front of the route) would close that gap.
+- **Login limits depend on the IP address.** An attacker with many IP addresses (a botnet) gets 5 tries per
+  address, and players who share one IP (a university network) share the cap of 20 wrong passwords per 10 minutes.
+  Behind a proxy, `trust proxy` must be set correctly or every player looks like the proxy's IP.
+- **Reset links go to the server log, not to the player.** In a real deployment only the server owner sees them,
+  so a mail service is needed before this is useful to players. The reply time for a known name is slightly
+  longer than for an unknown one (it writes the link), which could hint that a name exists; usernames are public
+  on the leaderboard anyway.
 - Loading the user on every request costs one small database read per request; that is the price of instant
   revocation.
 - "Remember me" on a shared computer lets the next person in; that is why it is off by default.
@@ -118,7 +153,7 @@ the player's open WebSockets, because ending a session does not close a socket t
   server, and online matches are fully server-authoritative, but in offline modes a modified browser could post
   a high kill count (within the limits in `routes/scores.js`).
 - No HTTPS in local development; the cookie becomes `Secure` only with `NODE_ENV=production`.
-- No email, so no password reset or verification; no multi-factor authentication.
+- No email address on accounts, so no email verification; no multi-factor authentication.
 - SameSite=Lax is the CSRF defence; there is no separate CSRF token.
 - bcrypt only uses the first 72 bytes, so passwords are capped at 72 characters.
 
@@ -131,7 +166,7 @@ The project started on SQLite (`fadda7c`) and moved to MongoDB (`75afbbd`).
 | Setup | One file, nothing to install | A server (Homebrew or Atlas) |
 | Shape | Tables and joins | A player document holds achievements, daily streak and campaign progress |
 | Sessions | Needs a separate store | `connect-mongo` keeps sessions in the same database |
-| Expiry | Manual clean-up | TTL index deletes failed logins by itself |
+| Expiry | Manual clean-up | TTL indexes delete old login counters and reset links by themselves |
 | Hosting | Hard to share between servers | Atlas works from anywhere |
 | Risk | SQL injection if strings are concatenated (prepared statements were used) | NoSQL injection if objects come straight from input (queries are built from checked values) |
 

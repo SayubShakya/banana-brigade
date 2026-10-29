@@ -47,7 +47,8 @@ async function main() {
   });
   const bananaApi = createBananaApi({ baseUrl, timeoutMs: Number(process.env.BANANA_API_TIMEOUT_MS) || 5000 });
   const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats });
-  const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production });
+  if (production && !process.env.APP_URL) console.warn('APP_URL is not set: password reset links will use the Host header of the request.');
+  const app = createApp({ db, bananaApi, pool, sessionSecret, sessionStore, production, appUrl: process.env.APP_URL || null });
 
   // One HTTP server for the web pages, the JSON API and the WebSocket (Socket.io).
   const server = http.createServer(app);

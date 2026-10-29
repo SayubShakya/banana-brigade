@@ -48,7 +48,7 @@ Written with help from a generative AI coding assistant; reviewed by Sayub Shaky
 - [x] `package.json` version 1.0.0
 
 ## Known limits (said honestly in `docs/evaluation.md`)
-- Login lockout is per username and checks before it records, so parallel guesses can go past 5, and anyone can lock out a name. A per-IP or atomic counter would be the alternative.
+- ~~Login lockout is per username and racy~~: fixed on `feature/password-reset-ip-limit` (per-IP limits, atomic counter). New limit: login limits depend on IP addresses (botnets, shared NAT).
 - Single-player kills are reported by the browser (online matches are server-authoritative).
 - Daily puzzles are the same for everyone, so answers could be shared.
 - A daily run that crosses midnight UTC cannot be finished.

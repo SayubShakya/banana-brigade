@@ -1,4 +1,4 @@
-// MongoDB storage for players, match results, failed logins and the daily challenge.
+// MongoDB storage for players, match results, login limits, reset links and the daily challenge.
 // The rest of the server only calls the functions returned below, so it does not
 // know (or care) which database is behind them. Until October 2026 this file used
 // SQLite with prepared statements; the git history keeps that version for comparison.
@@ -55,6 +55,7 @@ async function openDatabase(uri) {
       if (!isId(id)) return false;
       await m.Score.deleteMany({ user: oid(id) });
       await m.DailyResult.deleteMany({ user: oid(id) });
+      await m.PasswordReset.deleteMany({ user: oid(id) });
       return (await m.User.deleteOne({ _id: oid(id) })).deletedCount === 1;
     },
     async listUsers() {
@@ -177,13 +178,50 @@ async function openDatabase(uri) {
       return isId(userId) ? (await m.Score.deleteMany({ user: oid(userId) })).deletedCount : 0;
     },
 
-    // ----- failed logins (lockout) -----
-    recordFailedLogin: (username, now = Date.now()) => m.LoginAttempt.create({ username, failedAt: new Date(now) }),
-    async recentFailedLogins(username, sinceMs) {
-      const rows = await m.LoginAttempt.find({ username: String(username).toLowerCase(), failedAt: { $gt: new Date(sinceMs) } }).sort({ failedAt: -1 }).lean();
-      return { n: rows.length, last: rows[0]?.failedAt.getTime() ?? null };
+    // ----- rate limits (login lockout, reset requests) -----
+    // Adds one to the counter for `key` and returns the new count and when the window
+    // ends. The first hit starts a window of windowMs; later hits do not extend it.
+    // A counter whose window has ended is removed first (MongoDB's TTL clean-up only
+    // runs once a minute). If two first hits race, the unique key makes one fail with
+    // 11000 and it simply tries again, now finding the other's document.
+    async bumpCounter(key, { windowMs, now = Date.now(), username = null, ip = null }) {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await m.RateLimit.deleteOne({ key, expiresAt: { $lte: new Date(now) } });
+          const doc = await m.RateLimit.findOneAndUpdate(
+            { key },
+            { $inc: { n: 1 }, $setOnInsert: { username, ip, expiresAt: new Date(now + windowMs) } },
+            { upsert: true, returnDocument: 'after', lean: true },
+          );
+          return { n: doc.n, resetAt: doc.expiresAt.getTime() };
+        } catch (err) {
+          if (err.code !== 11000 || attempt > 0) throw err;
+        }
+      }
     },
-    clearFailedLogins: (username) => m.LoginAttempt.deleteMany({ username: String(username).toLowerCase() }),
+    undoCounter: (key) => m.RateLimit.updateOne({ key, n: { $gt: 0 } }, { $inc: { n: -1 } }),
+    clearCounter: (key) => m.RateLimit.deleteOne({ key }),
+    clearFailedLogins: (username) => m.RateLimit.deleteMany({ username: String(username).toLowerCase() }),
+    countersFor: (username) => m.RateLimit.countDocuments({ username: String(username).toLowerCase() }),
+
+    // ----- password reset links -----
+    // Only the newest link for a player works: making a new one deletes the old ones.
+    async createPasswordReset(userId, tokenHash, expiresAt) {
+      await m.PasswordReset.deleteMany({ user: oid(userId) });
+      await m.PasswordReset.create({ user: oid(userId), tokenHash, expiresAt });
+    },
+    // Marks the link used and returns its player id, in one atomic step, so the same
+    // link sent twice at once still works only once. Null if unknown, used or expired.
+    async usePasswordReset(tokenHash, now = Date.now()) {
+      const doc = await m.PasswordReset.findOneAndUpdate(
+        { tokenHash, usedAt: null, expiresAt: { $gt: new Date(now) } },
+        { usedAt: new Date(now) },
+        { returnDocument: 'after', lean: true },
+      );
+      if (!doc) return null;
+      await m.PasswordReset.deleteMany({ user: doc.user, _id: { $ne: doc._id } });
+      return String(doc.user);
+    },
   };
 }
 
