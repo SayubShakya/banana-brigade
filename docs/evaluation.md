@@ -128,6 +128,19 @@ counter document (`server/db.js`, `bumpCounter`). Twelve guesses sent at once ge
 | CAPTCHA after a few failures | Stops bots, not people | Needs a third-party service; worse for players |
 | `express-rate-limit` package | Ready-made | Counts in memory by default, so it resets on restart and is not shared between servers; ours is in MongoDB |
 
+**Signed-in devices and data export** (`feature/sessions-export`)
+
+Each session stores a short device name made from the User-Agent ("Chrome on macOS") and a `lastSeen` time
+(updated at most once a minute). The list is read straight from the MongoDB session store. The browser gets a
+16-character SHA-256 **handle** of each session id, never the id itself, because the id is the secret in the cookie.
+
+| Choice | For | Against / alternative |
+|---|---|---|
+| Server-side sessions in MongoDB | Listing and ending one device is one query | With JWTs there is nothing on the server to list or end without adding a store |
+| Device from the User-Agent | No extra data collected | Easy to fake and only roughly right; a fingerprinting library would be more exact but collects much more |
+| No IP address or location in the list | Less personal data (GDPR data minimisation) | Big services show the city, which helps spot an intruder |
+| Export as JSON from `/auth/export` | Complete, machine-readable (GDPR right of access and portability) | Not friendly to read; a PDF summary would be, but is harder to reuse |
+
 **Guest play** (`feature/guest-play`)
 
 A guest is a real account record with `guest: true`, no password and a TTL date 7 days ahead; the session cookie

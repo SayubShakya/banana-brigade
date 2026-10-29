@@ -37,6 +37,38 @@ function describeHealth(s) {
   return parts.join(' · ');
 }
 
+// "Where you're signed in": every live session of this account (device, last used),
+// read from the MongoDB session store, with a button to sign out any other device.
+const ago = (iso) => {
+  if (!iso) return 'unknown';
+  const min = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  return min < 1 ? 'just now' : min < 60 ? `${min} min ago` : min < 1440 ? `${Math.round(min / 60)} h ago` : `${Math.round(min / 1440)} days ago`;
+};
+function Devices() {
+  const [list, setList] = useState(null);
+  const [error, setError] = useState('');
+  const load = () => api.sessions().then((s) => setList(s.list)).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+  async function end(handle) {
+    try { await api.endSession(handle); load(); } catch (e) { setError(e.message); }
+  }
+  return (
+    <div className="devices">
+      <h4>Where you're signed in</h4>
+      {!list && !error && <div className="skeleton-row" aria-label="Loading" />}
+      <ul>
+        {list?.map((d) => (
+          <li key={d.handle}>
+            <span><b>{d.device}</b>{d.current && <span className="role-badge" data-role="guest">this device</span>}<small>Signed in {ago(d.createdAt)} · last used {ago(d.lastSeen)}</small></span>
+            {!d.current && <button className="toggle" onClick={() => end(d.handle)}>Sign out</button>}
+          </li>
+        ))}
+      </ul>
+      {error && <p className="auth-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
 // The account tools. Each one asks for the password again where it matters, so a
 // session left open on someone else's computer cannot take over the account.
 function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
@@ -77,7 +109,10 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave }) {
           <button className="mbtn primary" type="submit">Save new password</button>
         </form>
       )}
+      <Devices />
       <div className="setting"><span>All devices</span><button className="toggle" onClick={logoutAll}>Log out everywhere</button></div>
+      <div className="setting"><span>Your data (JSON file)</span><a className="toggle" href="/api/v1/auth/export" download>Download my data</a></div>
+      <div className="setting"><span>What we store and why</span><a className="toggle" href="#privacy">Privacy</a></div>
       <div className="setting"><span>Delete account</span><button className="toggle danger" aria-pressed={open === 'delete'} onClick={() => show('delete')}>Delete</button></div>
       {open === 'delete' && (
         <form className="account-form" onSubmit={deleteAccount}>

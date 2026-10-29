@@ -13,6 +13,8 @@ only shows pictures and sends controls and answers.
 
 ## Features
 
+- **Your sessions and your data:** see every signed-in device (device, last used) and sign one out; download
+  everything stored about you as JSON.
 - **Guest play:** try the game with no sign-up; a guest lasts 7 days and can be saved as a full account,
   keeping everything it earned.
 - **Public pages:** a home page before login (pitch, screenshot, how the Banana puzzles work, the modes, live
@@ -278,6 +280,7 @@ verification.
 | Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:25-30` |
 | Virtual identity | Session cookie settings | `server/app.js:48-60` |
 | Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:88-160`, `server/db.js` (`bumpCounter`) |
+| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js` (`/sessions/:handle`, `/export`), `server/db.js` (`exportUser`) |
 | Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/routes/auth.js:223-275`, `client/src/screens/Login.jsx` |
 | Virtual identity | Session regeneration, remember me | `server/routes/auth.js:33-48` |
 | Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:125-216`, `server/sessions.js:10-41` |

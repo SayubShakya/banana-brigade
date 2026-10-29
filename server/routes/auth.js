@@ -11,7 +11,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { requireLogin } = require('../middleware/auth');
-const { endSessionsFor, countSessionsFor, disconnectSocketsFor } = require('../sessions');
+const { endSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle } = require('../sessions');
 const { noPwnedCheck } = require('../services/pwned');
 
 const USERNAME = /^[A-Za-z0-9_]{3,16}$/;
@@ -57,6 +57,18 @@ async function breachMessage(pwnedCheck, password) {
 
 const waitMinutes = (resetAt, now) => Math.max(1, Math.ceil((resetAt - now) / 60000));
 
+// A short, readable name for the device from its User-Agent header, e.g.
+// "Chrome on macOS", for the "where you're signed in" list. Only this short name is
+// kept, not the whole header.
+function describeDevice(ua = '') {
+  const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
+    : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : null;
+  const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows'
+    : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : null;
+  if (!browser && !os) return 'Unknown device';
+  return `${browser ?? 'Browser'}${os ? ` on ${os}` : ''}`;
+}
+
 // Starts a fresh session for the user. Regenerating the session id at login means an
 // id an attacker planted before login is useless afterwards (session fixation).
 // remember: keep the cookie for 30 days. Off by default, because a long-lived cookie
@@ -70,6 +82,8 @@ function startSession(req, user, { remember = false, maxAge = null } = {}) {
       req.session.role = user.role;
       req.session.puzzles = { solved: 0, attempted: 0 };
       req.session.createdAt = new Date().toISOString();
+      req.session.lastSeen = req.session.createdAt;
+      req.session.device = describeDevice(req.get('user-agent'));
       // Set after regenerate (which makes a fresh cookie); connect-mongo stores the
       // session with this cookie's expiry, so the server copy lives 30 days too.
       if (remember) req.session.cookie.maxAge = REMEMBER_MS;
@@ -387,11 +401,43 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
     try {
       const user = await db.findUserById(req.session.userId);
       if (!user) return res.status(404).json({ error: 'No such user' });
+      const list = await listSessionsFor(req.sessionStore, user.id, req.sessionID);
       res.json({
-        count: await countSessionsFor(req.sessionStore, user.id),
+        count: list.length,
+        list,
         current: { createdAt: req.session.createdAt ?? null, expires: req.session.cookie.expires ?? null },
         memberSince: user.created_at, lastLogin: user.last_login_at,
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Signs out one other device from the list. The current one uses /logout instead.
+  router.delete('/sessions/:handle', requireLogin, async (req, res, next) => {
+    try {
+      const mine = (await listSessionsFor(req.sessionStore, req.user.id, req.sessionID)).find((s) => s.handle === req.params.handle);
+      if (!mine) return res.status(404).json({ error: 'That session has already ended' });
+      if (mine.current) return res.status(400).json({ error: 'Use Log out to end the session you are using' });
+      const sid = await endSessionByHandle(req.sessionStore, req.user.id, req.params.handle);
+      if (sid) req.app.locals.io?.in(`sid:${sid}`).disconnectSockets(true);
+      log('security', req.user.username, `signed out ${mine.device} from another device`);
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // "Download my data" (GDPR right of access): everything stored about the player as
+  // one JSON file, including the list of signed-in devices. No password hash.
+  router.get('/export', requireLogin, async (req, res, next) => {
+    try {
+      const data = await db.exportUser(req.user.id);
+      if (!data) return res.status(404).json({ error: 'No such user' });
+      const sessions = await listSessionsFor(req.sessionStore, req.user.id, req.sessionID);
+      const file = `banana-brigade-${req.user.username}-${new Date().toISOString().slice(0, 10)}.json`;
+      res.set('Content-Disposition', `attachment; filename="${file}"`);
+      res.json({ exportedAt: new Date().toISOString(), game: 'Banana Brigade', ...data, sessions });
     } catch (err) {
       next(err);
     }
@@ -411,4 +457,4 @@ function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logReset
   return router;
 }
 
-module.exports = { createAuthRouter, USERNAME, MIN_PASSWORD };
+module.exports = { createAuthRouter, USERNAME, MIN_PASSWORD, describeDevice };
