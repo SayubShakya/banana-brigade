@@ -5,3 +5,5 @@ node_modules/
 data/
 
 client/dist/
+test-results/
+playwright-report/
