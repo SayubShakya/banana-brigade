@@ -108,3 +108,36 @@ test('the host picks the bot difficulty; the server checks it and passes it to t
     s.realtime.rooms.endMatch(room.code);
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
+
+test('banana crates online: the room difficulty time, a server time limit, and one respawn try per death', async () => {
+  const s = await startServer({ matchOptions: { crateTimings: { extraMs: -11800 } } });   // hard: 12 s - 11.8 s = a 0.2 s limit
+  const a = await player(s, 'crater');
+  try {
+    const { room } = await call(a.socket, 'room:create', { difficulty: 'hard' });
+    const started = once(a.socket, 'match:start');
+    await call(a.socket, 'room:start');
+    assert.equal((await started).difficulty, 'hard');
+    const match = s.realtime.rooms.room(room.code).match;
+    const me = match.world.soldiers.find((x) => x.id === `u${a.me.id}`);
+
+    // Pressing E at a crate: the offer carries the hard crate time; nobody answers, so the server closes it.
+    const offered = once(a.socket, 'puzzle:offer');
+    match.world.emit('banana:crate', { soldier: me, pickup: match.world.pickups.find((p) => p.kind === 'banana') });
+    assert.deepEqual(await offered, { purpose: 'crate', seconds: 12 });
+    assert.equal(me.busy, true);
+    assert.deepEqual(await once(a.socket, 'puzzle:closed'), { purpose: 'crate', reason: 'time' });
+    assert.equal(me.busy, false);
+    assert.ok(me.shieldTimer > 1.5);
+
+    // Down: one respawn puzzle, then no more until the next death.
+    me.alive = false;
+    me.respawnTimer = 99;
+    const first = await call(a.socket, 'puzzle:get', { purpose: 'respawn' });
+    assert.ok(first.puzzleId);
+    assert.equal((await call(a.socket, 'puzzle:get', { purpose: 'respawn' })).error, 'No puzzle needed right now');
+    assert.equal((await call(a.socket, 'puzzle:answer', { puzzleId: first.puzzleId, answer: 3 })).correct, false);
+    assert.equal(me.alive, false);
+    assert.equal((await call(a.socket, 'puzzle:get', { purpose: 'respawn' })).error, 'No puzzle needed right now');
+    s.realtime.rooms.endMatch(room.code);
+  } finally { a.socket.close(); await s.close(); }
+});
