@@ -1,11 +1,4 @@
-// Soldier avatars and how they are drawn, in the doodle-army chibi style: a big round
-// head (bald, or with headgear), chunky goggles on a strap, ears and a determined face,
-// a small body in a jacket with pouches, camo trousers with bending knees, brown boots,
-// a jetpack strapped to the back, and both hands on the gun, which follows the aim.
-// Everything has the same thick dark outline. An avatar is built from parts (headgear,
-// skin, uniform, goggles, face); add options to PARTS to give players more choice.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 export const PARTS = {
   hat: [
@@ -14,7 +7,6 @@ export const PARTS = {
     { id: 'bandana', name: 'Bandana' }, { id: 'drill', name: 'Drill hat' },
   ],
   skin: ['#ffdbb4', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5c3a1e'],
-  // main: jacket, dark: vest and pouches, pants and camo: trousers and their blotches.
   uniform: [
     { id: 'woodland', name: 'Woodland', main: '#5f7a3a', dark: '#43572a', pants: '#8f9a5c', camo: '#5d6b3a' },
     { id: 'jungle', name: 'Jungle', main: '#4f7a3a', dark: '#36572a', pants: '#3f6230', camo: '#2c4622' },
@@ -32,10 +24,8 @@ export const PARTS = {
 };
 
 const HAT_COLORS = { beret: '#c0392b', drill: '#b08850', bandana: '#7b2cbf', headband: '#7b2cbf', beanie: '#5b6770', cap: '#3d4f2a' };
-const HAIRLESS = new Set(['none', 'headband']);   // the top of the head shows
+const HAIRLESS = new Set(['none', 'headband']);
 
-// Turns a choice of parts into everything drawSoldier needs. Older saves used a
-// beard on/off switch; it becomes the "beard" face.
 export function makeAvatar(parts = {}) {
   const hat = PARTS.hat.some((h) => h.id === parts.hat) ? parts.hat : 'headband';
   const uniform = PARTS.uniform.find((u) => u.id === parts.uniform) ?? PARTS.uniform[0];
@@ -58,7 +48,6 @@ export function makeAvatar(parts = {}) {
 
 export const DEFAULT_AVATAR = { hat: 'headband', uniform: 'woodland', skin: PARTS.skin[1], goggles: PARTS.goggles[0], face: 'none' };
 
-// Looks for the computer-controlled soldiers: each one easy to tell apart.
 export const BOT_AVATARS = [
   { hat: 'helmet', uniform: 'desert', skin: PARTS.skin[3], goggles: PARTS.goggles[0], face: 'beard' },
   { hat: 'beanie', uniform: 'arctic', skin: PARTS.skin[0], goggles: PARTS.goggles[1], face: 'none' },
@@ -70,8 +59,8 @@ export const BOT_AVATARS = [
   { hat: 'headband', uniform: 'banana', skin: PARTS.skin[1], goggles: PARTS.goggles[3], face: 'stubble' },
 ].map(makeAvatar);
 
-const INK = '#1d1d1d';           // the thick cartoon outline used on every part
-const STRAP = '#5a3b22';         // goggle and jetpack straps
+const INK = '#1d1d1d';
+const STRAP = '#5a3b22';
 const BOOT = '#5b3a22';
 const SOLE = '#2a1c12';
 const METAL = '#8d949c';
@@ -86,7 +75,6 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Fills the current path and gives it the dark cartoon outline.
 function inked(ctx, fill, width = 2) {
   ctx.fillStyle = fill;
   ctx.fill();
@@ -95,7 +83,6 @@ function inked(ctx, fill, width = 2) {
   ctx.stroke();
 }
 
-// A thick outlined stroke: a limb or a strap.
 function limb(ctx, color, width, points) {
   for (const [w, c] of [[width + 3, INK], [width, color]]) {
     ctx.strokeStyle = c; ctx.lineWidth = w;
@@ -109,7 +96,6 @@ function drawHat(ctx, a, hx, hy, f, time) {
   ctx.lineJoin = 'round';
   switch (a.hat) {
     case 'headband': {
-      // A band round the forehead, knotted at the back, with two tails that flutter.
       ctx.save();
       ctx.beginPath(); ctx.arc(hx, hy, 14.2, 0, Math.PI * 2); ctx.clip();
       roundRect(ctx, hx - 16, hy - 10, 32, 6, 2); inked(ctx, a.hatColor, 1.6);
@@ -139,13 +125,13 @@ function drawHat(ctx, a, hx, hy, f, time) {
       inked(ctx, a.hatColor);
       ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(hx, hy - 4, 11, 1.15 * Math.PI, 1.45 * Math.PI); ctx.stroke();
-      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(hx - 15, hy - 6, 30, 2);   // band round the helmet
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(hx - 15, hy - 6, 30, 2);
       break;
     case 'beret':
       ctx.beginPath();
       ctx.ellipse(hx - f * 3, hy - 11, 17, 7, -0.2 * f, 0, Math.PI * 2);
       inked(ctx, a.hatColor);
-      ctx.beginPath(); ctx.arc(hx + f * 7, hy - 12, 2.5, 0, Math.PI * 2); inked(ctx, '#f4d35e', 1);   // badge
+      ctx.beginPath(); ctx.arc(hx + f * 7, hy - 12, 2.5, 0, Math.PI * 2); inked(ctx, '#f4d35e', 1);
       break;
     case 'beanie':
       ctx.beginPath(); ctx.arc(hx, hy - 5, 15, Math.PI, 0); ctx.closePath();
@@ -158,7 +144,7 @@ function drawHat(ctx, a, hx, hy, f, time) {
       ctx.beginPath(); ctx.arc(hx, hy - 4, 15, Math.PI * 1.02, -0.02 * Math.PI); ctx.closePath();
       inked(ctx, a.hatColor);
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      for (const dx of [-7, 0, 7]) { ctx.beginPath(); ctx.arc(hx + dx, hy - 10, 1.3, 0, Math.PI * 2); ctx.fill(); }   // dots
+      for (const dx of [-7, 0, 7]) { ctx.beginPath(); ctx.arc(hx + dx, hy - 10, 1.3, 0, Math.PI * 2); ctx.fill(); }
       ctx.beginPath(); ctx.moveTo(hx - f * 13, hy - 6); ctx.lineTo(hx - f * 23, hy - 1); ctx.lineTo(hx - f * 21, hy - 10); ctx.closePath();
       inked(ctx, a.hatColor);
       break;
@@ -178,78 +164,67 @@ function drawHat(ctx, a, hx, hy, f, time) {
   }
 }
 
-// A cartoon gun pointing along +x from the hand, all parts outlined. Returns where the
-// second hand holds it (null for one-handed guns).
 function drawGun(ctx, weaponKey) {
   switch (weaponKey) {
     case 'smg':
-      roundRect(ctx, 1, -3, 7, 6, 2); inked(ctx, '#3a3f3a', 1.5);                         // folding stock
-      roundRect(ctx, 6, -4, 16, 8, 2); inked(ctx, '#3a4a3a', 1.5);                        // body
-      ctx.fillStyle = INK; ctx.fillRect(22, -1.5, 7, 3);                                   // barrel
-      roundRect(ctx, 13, 3, 4, 9, 1); inked(ctx, '#222', 1);                               // long magazine
+      roundRect(ctx, 1, -3, 7, 6, 2); inked(ctx, '#3a3f3a', 1.5);
+      roundRect(ctx, 6, -4, 16, 8, 2); inked(ctx, '#3a4a3a', 1.5);
+      ctx.fillStyle = INK; ctx.fillRect(22, -1.5, 7, 3);
+      roundRect(ctx, 13, 3, 4, 9, 1); inked(ctx, '#222', 1);
       return [19, 2];
     case 'rifle':
       ctx.beginPath(); ctx.moveTo(-3, -2); ctx.lineTo(6, -3); ctx.lineTo(6, 4); ctx.lineTo(-3, 6); ctx.closePath();
-      inked(ctx, '#6b4a2b', 1.5);                                                          // wooden stock
-      roundRect(ctx, 5, -4, 15, 8, 2); inked(ctx, '#3d3f45', 1.5);                         // receiver
-      roundRect(ctx, 19, -3, 10, 6, 2); inked(ctx, '#6b4a2b', 1.5);                        // wooden handguard
-      ctx.fillStyle = INK; ctx.fillRect(29, -1.5, 9, 3);                                   // barrel
-      ctx.fillRect(34, -4.5, 2, 3);                                                        // front sight
-      roundRect(ctx, 9, -7, 8, 3, 1); inked(ctx, '#2b2b2b', 1);                            // carry handle
+      inked(ctx, '#6b4a2b', 1.5);
+      roundRect(ctx, 5, -4, 15, 8, 2); inked(ctx, '#3d3f45', 1.5);
+      roundRect(ctx, 19, -3, 10, 6, 2); inked(ctx, '#6b4a2b', 1.5);
+      ctx.fillStyle = INK; ctx.fillRect(29, -1.5, 9, 3);
+      ctx.fillRect(34, -4.5, 2, 3);
+      roundRect(ctx, 9, -7, 8, 3, 1); inked(ctx, '#2b2b2b', 1);
       ctx.beginPath(); ctx.moveTo(13, 4); ctx.quadraticCurveTo(14, 10, 18, 12); ctx.lineTo(21, 10); ctx.quadraticCurveTo(18, 8, 18, 4); ctx.closePath();
-      inked(ctx, '#2a2a2a', 1);                                                            // curved magazine
+      inked(ctx, '#2a2a2a', 1);
       return [23, 3];
     case 'shotgun':
       ctx.beginPath(); ctx.moveTo(-3, -2); ctx.lineTo(7, -3); ctx.lineTo(7, 4); ctx.lineTo(-3, 6); ctx.closePath();
       inked(ctx, '#5a3e2b', 1.5);
       roundRect(ctx, 6, -4, 12, 7, 2); inked(ctx, '#3d3f45', 1.5);
-      roundRect(ctx, 17, -3, 18, 3, 1); inked(ctx, '#2b2b2b', 1);                          // barrel
-      roundRect(ctx, 18, 0, 10, 4, 1.5); inked(ctx, '#7a5638', 1);                         // pump
+      roundRect(ctx, 17, -3, 18, 3, 1); inked(ctx, '#2b2b2b', 1);
+      roundRect(ctx, 18, 0, 10, 4, 1.5); inked(ctx, '#7a5638', 1);
       return [23, 2];
     case 'sniper':
       ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(7, -3); ctx.lineTo(7, 4); ctx.lineTo(-4, 6); ctx.closePath();
       inked(ctx, '#3a3f2a', 1.5);
       roundRect(ctx, 6, -3.5, 18, 7, 2); inked(ctx, '#2b2b33', 1.5);
-      ctx.fillStyle = INK; ctx.fillRect(24, -1.2, 22, 2.4);                                // long barrel
-      roundRect(ctx, 11, -9, 14, 5, 2.5); inked(ctx, '#111', 1.2);                         // scope
-      ctx.fillStyle = '#4cc9f0'; ctx.fillRect(23.5, -8, 1.5, 3);                           // lens glint
+      ctx.fillStyle = INK; ctx.fillRect(24, -1.2, 22, 2.4);
+      roundRect(ctx, 11, -9, 14, 5, 2.5); inked(ctx, '#111', 1.2);
+      ctx.fillStyle = '#4cc9f0'; ctx.fillRect(23.5, -8, 1.5, 3);
       return [20, 3];
     case 'rocket':
-      roundRect(ctx, -6, -6, 40, 11, 4); inked(ctx, '#4a5d23', 1.5);                      // tube
+      roundRect(ctx, -6, -6, 40, 11, 4); inked(ctx, '#4a5d23', 1.5);
       ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-6, -1, 40, 2);
-      ctx.beginPath(); ctx.moveTo(34, -5); ctx.lineTo(40, -1); ctx.lineTo(34, 4); ctx.closePath(); inked(ctx, '#c0392b', 1.2);   // warhead
-      roundRect(ctx, 6, 4, 4, 6, 1); inked(ctx, '#222', 1);                                // grip
+      ctx.beginPath(); ctx.moveTo(34, -5); ctx.lineTo(40, -1); ctx.lineTo(34, 4); ctx.closePath(); inked(ctx, '#c0392b', 1.2);
+      roundRect(ctx, 6, 4, 4, 6, 1); inked(ctx, '#222', 1);
       return [18, 5];
     case 'flamer':
       roundRect(ctx, 0, -4, 24, 8, 3); inked(ctx, '#a33b20', 1.5);
       ctx.fillStyle = INK; ctx.fillRect(24, -2, 10, 4);
-      ctx.beginPath(); ctx.arc(14, 9, 5, 0, Math.PI * 2); inked(ctx, '#e8a33d', 1.2);       // fuel tank
-      ctx.fillStyle = '#ff9f1c'; ctx.beginPath(); ctx.arc(35, 0, 1.6, 0, Math.PI * 2); ctx.fill();   // pilot flame
+      ctx.beginPath(); ctx.arc(14, 9, 5, 0, Math.PI * 2); inked(ctx, '#e8a33d', 1.2);
+      ctx.fillStyle = '#ff9f1c'; ctx.beginPath(); ctx.arc(35, 0, 1.6, 0, Math.PI * 2); ctx.fill();
       return [20, 3];
-    default:   // magnum: a one-handed revolver
+    default:
       roundRect(ctx, 4, -4, 10, 7, 2); inked(ctx, '#8a8f98', 1.5);
-      ctx.beginPath(); ctx.arc(9, 0, 3, 0, Math.PI * 2); inked(ctx, '#6b7078', 1);           // cylinder
+      ctx.beginPath(); ctx.arc(9, 0, 3, 0, Math.PI * 2); inked(ctx, '#6b7078', 1);
       ctx.fillStyle = INK; ctx.fillRect(14, -1.5, 8, 3);
       roundRect(ctx, 4, 2, 4, 6, 1.5); inked(ctx, '#5a3e2b', 1);
       return null;
   }
 }
 
-// How far the gun arm has turned during a melee swing (t from 0 to 1): a wind-up
-// back, a fast swing down through the aim line, then back to the aim.
 function swingAngle(t) {
   if (t < 0.3) return -1.3 * (t / 0.3);
   if (t < 0.55) return -1.3 + 2.2 * ((t - 0.3) / 0.25);
   return 0.9 * (1 - (t - 0.55) / 0.45);
 }
 
-// s: { x, y, w, h, facing, aim, walkPhase, onGround, jetting, weapon, hurtFlash, shielded, recoil? }
-// Optional pose fields (from effects.js; all default to 0, the normal pose):
-//   lean     body tilt in radians around the feet (moving, jetting, flinching)
-//   squash   0..0.3, squashes the body flat on a hard landing
-//   gunTilt  radians the gun droops (reloading, swapping weapons)
-//   swing    0..1 progress of a melee swing
-//   throwArm 0..1 progress of a grenade throw (a free arm swings over the head)
 export function drawSoldier(ctx, s, avatar, time) {
   const cx = s.x + s.w / 2;
   const top = s.y;
@@ -274,7 +249,6 @@ export function drawSoldier(ctx, s, avatar, time) {
   }
   if (s.shielded) ctx.globalAlpha = 0.55 + 0.25 * Math.sin(time * 20);
 
-  // Jetpack flames.
   const jx = cx - f * 12;
   if (s.jetting) {
     const fl = 16 + Math.random() * 10;
@@ -289,15 +263,12 @@ export function drawSoldier(ctx, s, avatar, time) {
     ctx.fill();
   }
 
-  // Jetpack: a grey tank with a cap, a band and a nozzle.
   roundRect(ctx, jx - 6.5, top + 18, 13, 22, 5); inked(ctx, METAL);
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(jx - f * 3 - 1, top + 21, 2, 15);
   ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(jx - 6, top + 28, 12, 3);
   roundRect(ctx, jx - 4, top + 15, 8, 4, 1.5); inked(ctx, '#6b7078', 1.5);
   roundRect(ctx, jx - 4, top + 38, 8, 4, 1); inked(ctx, '#55595f', 1.5);
 
-  // Legs: thigh and shin, so the knees bend while walking and tuck while flying;
-  // camo trousers and brown boots.
   const walk = s.onGround ? s.walkPhase : 0;
   for (const [dx, phase] of [[-4, 0], [4, Math.PI]]) {
     const sw = s.onGround ? Math.sin(walk + phase) * 6 : (phase ? -2 : 3);
@@ -313,7 +284,6 @@ export function drawSoldier(ctx, s, avatar, time) {
     ctx.fillStyle = SOLE; ctx.fillRect(ankle[0] - 4 + f * 1.5, ankle[1] + 3.2, 9, 1.6);
   }
 
-  // Body: jacket with a collar, a vest with two pouches, the jetpack strap and a belt.
   roundRect(ctx, cx - 9.5, top + 18, 19, 21, 6); inked(ctx, jacket);
   roundRect(ctx, cx - 7, top + 25, 14, 9, 2); inked(ctx, vest, 1.3);
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
@@ -321,25 +291,23 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.strokeStyle = STRAP; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(cx - f * 9, top + 20); ctx.lineTo(cx + f * 5, top + 34); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(cx - 6, top + 18.5); ctx.lineTo(cx, top + 22); ctx.lineTo(cx + 6, top + 18.5);
-  ctx.strokeStyle = vest; ctx.lineWidth = 2.5; ctx.stroke();                                       // collar
+  ctx.strokeStyle = vest; ctx.lineWidth = 2.5; ctx.stroke();
   ctx.fillStyle = '#3b2a1a'; ctx.fillRect(cx - 9.5, top + 34, 19, 3);
-  ctx.fillStyle = '#c9a227'; ctx.fillRect(cx - 2, top + 34, 4, 3);                                 // buckle
+  ctx.fillStyle = '#c9a227'; ctx.fillRect(cx - 2, top + 34, 4, 3);
 
-  // Head: a big round chibi head with an ear on the far side.
   const hx = cx + f;
   const hy = top + 9;
   ctx.beginPath(); ctx.arc(hx, hy, 14.5, 0, Math.PI * 2); inked(ctx, avatar.skin);
-  const ear = () => {   // drawn after the goggle strap, on the side of the head away from the aim
+  const ear = () => {
     ctx.beginPath(); ctx.arc(hx - f * 10.5, hy + 4, 3.4, 0, Math.PI * 2); inked(ctx, avatar.skin, 1.6);
     ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(hx - f * 10.5, hy + 4, 1.6, 0.5 * Math.PI, 1.5 * Math.PI, f < 0); ctx.stroke();
   };
-  if (HAIRLESS.has(avatar.hat)) {   // a shine on the bald head
+  if (HAIRLESS.has(avatar.hat)) {
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
     ctx.beginPath(); ctx.ellipse(hx - f * 3, hy - 9, 5, 2.4, -0.3 * f, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Face: stubble, beard or moustache, then a small determined mouth.
   if (avatar.face === 'beard') {
     ctx.fillStyle = 'rgba(70,45,25,0.85)';
     ctx.beginPath(); ctx.arc(hx + f * 2, hy + 3, 12, 0.08 * Math.PI, 0.92 * Math.PI); ctx.fill();
@@ -354,8 +322,6 @@ export function drawSoldier(ctx, s, avatar, time) {
     ctx.beginPath(); ctx.ellipse(hx + f * 5.5, hy + 7.5, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Goggles: a strap round the head and two big round lenses facing the aim side,
-  // with a frowning brow line above them.
   ctx.save();
   ctx.beginPath(); ctx.arc(hx, hy, 14, 0, Math.PI * 2); ctx.clip();
   ctx.fillStyle = STRAP; ctx.fillRect(hx - 16, hy - 1, 32, 4);
@@ -364,7 +330,7 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.strokeStyle = INK; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(hx + f * -1, hy - 6.5); ctx.lineTo(hx + f * 13, hy - 4.5); ctx.stroke();
   ctx.strokeStyle = '#3b3530'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(hx + f * 5, hy + 1); ctx.lineTo(hx + f * 7, hy + 1); ctx.stroke();   // bridge
+  ctx.beginPath(); ctx.moveTo(hx + f * 5, hy + 1); ctx.lineTo(hx + f * 7, hy + 1); ctx.stroke();
   for (const lx of [hx + f * 1, hx + f * 11]) {
     ctx.beginPath(); ctx.arc(lx, hy + 1, 5.8, 0, Math.PI * 2);
     inked(ctx, '#3b3530', 2);
@@ -375,26 +341,23 @@ export function drawSoldier(ctx, s, avatar, time) {
   }
   drawHat(ctx, avatar, hx, hy, f, time);
 
-  // Arms + gun, rotated to the aim angle around the shoulder: the back hand on the
-  // grip, the front hand on the handguard of two-handed guns.
   ctx.save();
   ctx.translate(cx, top + 25);
   ctx.rotate(s.aim);
   if (Math.cos(s.aim) < 0) ctx.scale(1, -1);
-  // In this frame +x is the aim and +y is always "down", so a positive turn lowers the gun.
   const swing = s.swing || 0;
   if (swing > 0 && swing < 1) {
     const now = swingAngle(swing);
-    if (swing > 0.28 && swing < 0.7) {   // a white swoosh behind the swinging gun
+    if (swing > 0.28 && swing < 0.7) {
       ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - Math.abs(swing - 0.45) / 0.25)})`;
       ctx.lineWidth = 5;
       ctx.beginPath(); ctx.arc(0, 0, 36, -1.3, Math.max(-1.3, now)); ctx.stroke();
     }
     ctx.rotate(now);
-    ctx.translate(Math.sin(swing * Math.PI) * 6, 0);   // lunge forward with the butt
+    ctx.translate(Math.sin(swing * Math.PI) * 6, 0);
   }
   if (s.gunTilt) ctx.rotate(s.gunTilt);
-  if (s.recoil) ctx.translate(-s.recoil, 0);   // the gun kicks back after a shot
+  if (s.recoil) ctx.translate(-s.recoil, 0);
   limb(ctx, jacket, 5, [[0, 0], [9, 1]]);
   const fore = drawGun(ctx, s.weapon);
   if (fore) {
@@ -404,8 +367,6 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.beginPath(); ctx.arc(9.5, 1.5, 3.2, 0, Math.PI * 2); inked(ctx, avatar.skin, 1.5);
   ctx.restore();
 
-  // Grenade throw: a free arm swings from behind the head over the top and forward,
-  // with the grenade still in the hand for the first half.
   const thr = s.throwArm || 0;
   if (thr > 0 && thr < 1) {
     const ang = thr < 0.35 ? -1.7 - 0.9 * (thr / 0.35) : -2.6 + 3.0 * ((thr - 0.35) / 0.65);
@@ -421,12 +382,8 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.restore();
 }
 
-// Rough length of each gun as drawn by drawGun (from the hand to the muzzle), so a
-// gun on its own can be centred on a point.
 const GUN_SPAN = { magnum: [4, 22], smg: [1, 29], rifle: [-3, 38], shotgun: [-3, 35], sniper: [-4, 46], rocket: [-6, 40], flamer: [0, 36] };
 
-// A weapon lying in the world as a pickup: the same gun a soldier holds, centred on
-// (x, y), scaled up a little and tilted by `angle`.
 export function drawWeaponPickup(ctx, weaponKey, x, y, { scale = 1.25, angle = 0 } = {}) {
   const [from, to] = GUN_SPAN[weaponKey] ?? GUN_SPAN.magnum;
   ctx.save();
@@ -440,7 +397,6 @@ export function drawWeaponPickup(ctx, weaponKey, x, y, { scale = 1.25, angle = 0
   ctx.restore();
 }
 
-// Small standalone preview used on the character select screen.
 export function drawAvatarPreview(canvas, avatar, time = 0) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);

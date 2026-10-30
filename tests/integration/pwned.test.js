@@ -1,7 +1,4 @@
-// Tests for the Have I Been Pwned check (server/services/pwned.js) and its use when
-// registering, changing a password and resetting one. No real network: fetch is faked.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,13 +9,12 @@ const { startServer, client } = require('./helpers');
 const sha1 = (s) => crypto.createHash('sha1').update(s).digest('hex').toUpperCase();
 const BREACHED = 'password123';
 
-// A fake range API that knows one breached password (seen 250,000 times) plus padding.
 function fakeRangeApi() {
   const calls = [];
   const fetchImpl = async (url) => {
     calls.push(url);
     const prefix = url.slice(-5);
-    const lines = ['0018A45C4D1DEF81644B54AB7F969B88D65:0'];   // a padding line
+    const lines = ['0018A45C4D1DEF81644B54AB7F969B88D65:0'];
     const h = sha1(BREACHED);
     if (h.startsWith(prefix)) lines.push(`${h.slice(5)}:250000`);
     return { ok: true, text: async () => lines.join('\r\n') };
@@ -61,7 +57,6 @@ test('register, change password and reset refuse a breached password', async () 
     await client(s.base).post('/api/auth/forgot', { username: 'safe_one' });
     const token = new URL(sent[0].link).hash.replace('#reset=', '');
     assert.equal((await client(s.base).post('/api/auth/reset', { token, password: BREACHED })).status, 400);
-    // The link was not used up by the refused password.
     assert.equal((await client(s.base).post('/api/auth/reset', { token, password: 'another-banana-88' })).status, 200);
   } finally { await s.close(); }
 });

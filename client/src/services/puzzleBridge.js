@@ -1,10 +1,4 @@
-// Lets plain JavaScript (the game session) open the React puzzle window and wait
-// for the result: askPuzzle(purpose, options) resolves to 'solved', 'failed' or
-// 'cancelled'. The PuzzleModal component registers itself here when it mounts.
-// closePuzzle() shuts an open window from code (the server gave up waiting); the
-// waiting askPuzzle then resolves to 'closed'.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 let opener = null;
 let closer = null;

@@ -1,20 +1,10 @@
-// Log in / create account. The password goes to the server once over HTTPS and is
-// stored there only as a bcrypt hash; after that an HttpOnly cookie identifies the
-// player, which page JavaScript (and so an XSS attack) cannot read.
-//
-// "Forgot password?" asks the server for a reset link (in this demo it is printed in
-// the server terminal instead of emailed). Opening the link (#reset=<token>) shows
-// the "Choose a new password" form; the token is then removed from the address bar
-// so it is not left in the browser history.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api.js';
 import { Sky } from '../../components/common.jsx';
 import { useNameHint, strength, LEVELS } from './authFields.js';
 
-// The reset token from a link like http://localhost:3100/#reset=abc..., or null.
 const tokenFromHash = () => (location.hash.startsWith('#reset=') ? location.hash.slice(7) : null);
 
 const SUBMIT = { login: 'Log in', register: 'Create account', forgot: 'Send reset link', reset: 'Save new password' };
@@ -33,9 +23,7 @@ export default function Login({ onLogin, onHome, onGuest }) {
   const hint = useNameHint(username.trim(), mode === 'register');
   const level = password ? strength(password) : '';
 
-  // Take the token out of the address bar once it has been read.
   useEffect(() => { if (resetToken) history.replaceState(null, '', location.pathname); }, [resetToken]);
-  // Which account the reset link is for (or that it has expired), before typing a new password.
   const [resetFor, setResetFor] = useState(null);
   useEffect(() => {
     if (!resetToken) return;

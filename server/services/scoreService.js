@@ -1,20 +1,14 @@
-// Match results and the leaderboards.
-// Kills and deaths come from the browser (the game runs there), but the Banana
-// puzzle counts are taken from the server-side session tally, where every answer was
-// checked. A player can therefore not fake their puzzle record.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { badRequest } = require('../lib/errors');
 const { cleanPowers } = require('./achievements');
 
-const MODES = ['quick', 'survival', 'training', 'team'];   // modes a browser may report
-const BOARDS = [...MODES, 'online'];                          // online scores are written by the server
+const MODES = ['quick', 'survival', 'training', 'team'];
+const BOARDS = [...MODES, 'online'];
 const PUBLIC_MODES = ['quick', 'survival', 'team', 'online', 'campaign'];
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
 const clampLimit = (value, max, fallback) => Math.min(max, Math.max(1, Number.parseInt(value, 10) || fallback));
 
-// A result sent by the browser, checked field by field (null marks a bad field).
 function parseScore(userId, b) {
   return {
     userId,
@@ -29,8 +23,6 @@ function parseScore(userId, b) {
 }
 
 function createScoreService({ db, achievements }) {
-  // tally: this session's puzzle results (lib/httpSession.js); they are used for this
-  // match and then start again from zero.
   async function save(userId, body, tally) {
     const score = parseScore(userId, body);
     if (Object.values(score).some((v) => v === null)) throw badRequest('Send mode, kills, deaths and durationS as whole numbers');
@@ -39,12 +31,11 @@ function createScoreService({ db, achievements }) {
     score.puzzlesAttempted = p.attempted;
     const id = await db.addScore(score);
     const unlocked = score.mode === 'training' ? [] : await achievements.emit('score:saved', score.userId, { ...score, won: !!score.won });
-    const powers = score.mode === 'training' ? [] : cleanPowers(body.powers);   // only real power names, not in Training
+    const powers = score.mode === 'training' ? [] : cleanPowers(body.powers);
     if (powers.length) unlocked.push(...await achievements.emit('power:used', score.userId, { powers }));
     return { id, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted, unlocked };
   }
 
-  // period=today shows only games since midnight UTC (the "daily leaders").
   async function leaderboard({ mode: askedMode, limit: askedLimit, period: askedPeriod }) {
     const mode = BOARDS.includes(askedMode) ? askedMode : 'quick';
     const limit = clampLimit(askedLimit, 50, 20);
@@ -58,7 +49,6 @@ function createScoreService({ db, achievements }) {
     return { totals, recent };
   }
 
-  // The read-only leaderboard for other websites (no guests, no ids).
   async function publicLeaderboard({ mode: askedMode, limit: askedLimit }) {
     const mode = PUBLIC_MODES.includes(askedMode) ? askedMode : 'quick';
     const rows = await db.leaderboard(mode, clampLimit(askedLimit, 50, 10));

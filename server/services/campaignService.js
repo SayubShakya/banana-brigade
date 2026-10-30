@@ -1,9 +1,4 @@
-// Campaign progress. The mission table (client/src/game/campaign.js) is shared with
-// the browser, but unlocking and stars are decided here: a mission that is still
-// locked for this player is refused, and the "every puzzle solved" star uses the
-// puzzle counts kept in the session, where every answer was checked by the server.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { badRequest, forbidden } = require('../lib/errors');
 const { cleanPowers } = require('./achievements');
@@ -17,7 +12,6 @@ function createCampaignService({ db, achievements }) {
     return { chapters: CHAPTERS, missions: MISSIONS, progress, stars: totalStars(progress) };
   }
 
-  // tally: this session's puzzle results, used for this mission and then reset.
   async function finishMission(userId, b, tally) {
     const mission = missionById(b.mission);
     const kills = int(b.kills, 200);
@@ -28,7 +22,7 @@ function createCampaignService({ db, achievements }) {
     const before = await db.campaignProgress(userId);
     if (!isUnlocked(mission, before)) throw forbidden('That mission is still locked');
 
-    const won = !!b.won && kills >= mission.target;               // a win needs the target reached
+    const won = !!b.won && kills >= mission.target;
     const p = tally.take();
     const stars = starsFor({ won, continues, puzzlesSolved: p.solved, puzzlesAttempted: p.attempted });
 

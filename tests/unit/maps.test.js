@@ -1,8 +1,4 @@
-// Tests for the battlefields: every map has the right size, soldiers spawn on empty
-// tiles standing on solid ground, a flood fill shows every spawn and pickup can be
-// reached from every other (no sealed pockets), and a full world builds on each map.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,8 +9,6 @@ const { TILE } = require('../../client/src/game/config.js');
 
 const toTile = (p) => [Math.floor(p.x / TILE), Math.floor(p.y / TILE)];
 
-// A soldier is 50 px tall, so it needs its feet tile and the tile above to be empty.
-// With the jetpack it can move up, down, left or right between any two such cells.
 function reachableFrom(map, [c0, r0]) {
   const fits = (c, r) => c > 0 && r > 1 && c < map.cols && r < map.rows && map.grid[r][c] === 0 && map.grid[r - 1][c] === 0;
   const seen = new Set();
@@ -73,7 +67,6 @@ for (const id of Object.keys(MAPS)) {
     const { seen, fits } = reachableFrom(map, toTile(map.spawns[0]));
     const all = [...map.spawns, ...map.healthSpots, ...map.crateSpots, ...map.bananaSpots];
     for (const p of all) assert.ok(seen.has(toTile(p).join(',')), `${id}: ${toTile(p)} is reachable from the first spawn`);
-    // Any space a soldier fits in must be connected to the rest of the map.
     for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) {
       if (fits(c, r)) assert.ok(seen.has(`${c},${r}`), `${id}: sealed pocket at ${c},${r}`);
     }

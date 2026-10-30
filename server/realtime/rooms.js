@@ -1,39 +1,17 @@
-// Online rooms over Socket.io (WebSockets): create a room, share its 6-letter code or
-// list it publicly, get ready, and the host starts a match that the server runs.
-//
-// Who a socket belongs to comes from the login session (see socket.js), never from
-// anything the browser sends. Messages from the browser are checked like any other
-// input: a room code must exist, only the host can start, puzzles can only be asked
-// for when allowed, and a puzzle can only be answered by the player it was given to.
-//
-//   browser → server                       server → browser
-//   rooms:list                (ack)        room:update   { code, host, players, state, ... }
-//   room:create {teamMode, isPublic, difficulty}  rooms:changed (someone made / closed a room)
-//   room:join   {code}        (ack)        match:start   { matchId, me, teamMode, map, difficulty, roster }
-//   room:leave, room:ready {ready}         match:snapshot / match:end
-//   room:start               (ack)         puzzle:offer  { purpose: 'crate', seconds }
-//                                          puzzle:closed { purpose: 'crate', reason: 'time' }  the server gave up waiting
-//   input       {controls}
-//   puzzle:get  {purpose}     (ack)  →  { puzzleId, image, source }
-//   puzzle:answer {puzzleId, answer} (ack)  →  { correct, solution }
-//   puzzle:cancel {purpose}
-//   power:choose {power}      (ack)  →  { power }   after server → browser power:offer { choices, seconds }
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const crypto = require('node:crypto');
 const { createMatch } = require('./match');
 const { DIFFICULTY } = require('../../client/src/game/config.js');
 
 const MAX_PLAYERS = 6;
-const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O, so codes are easy to read out
+const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const PUZZLE_PURPOSES = ['respawn', 'crate'];
-const DIFFICULTIES = Object.keys(DIFFICULTY);       // easy, medium, hard: the same list the engine uses
+const DIFFICULTIES = Object.keys(DIFFICULTY);
 
 const makeCode = () => Array.from(crypto.randomBytes(6), (b) => CODE_LETTERS[b % CODE_LETTERS.length]).join('');
 const ack = (cb) => (typeof cb === 'function' ? cb : () => {});
 
-// Avatar looks are only cosmetic, but still accept nothing except short strings.
 function cleanParts(p) {
   if (!p || typeof p !== 'object') return {};
   const out = {};
@@ -43,7 +21,6 @@ function cleanParts(p) {
 }
 
 function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchOptions = {} }) {
-  // Achievement unlocks are pushed to the player straight away.
   const award = async (userId, eventName, data) => {
     try {
       for (const a of await achievements.emit(eventName, userId, data)) io.to(`user:${userId}`).emit('achievement:unlocked', a);
@@ -52,9 +29,9 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     }
   };
 
-  const rooms = new Map();          // code -> room
-  const roomOf = new Map();         // userId -> code
-  const issued = new Map();         // puzzleId -> { userId, purpose }
+  const rooms = new Map();
+  const roomOf = new Map();
+  const issued = new Map();
 
   const view = (room) => ({
     code: room.code, host: room.host, teamMode: room.teamMode, isPublic: room.isPublic, difficulty: room.difficulty, state: room.state,
@@ -63,7 +40,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
   const update = (room) => io.to(`room:${room.code}`).emit('room:update', view(room));
   const listChanged = () => io.emit('rooms:changed');
   const publicList = () => [...rooms.values()]
-    .filter((r) => r.isPublic && r.state === 'lobby' && r.players.size < MAX_PLAYERS)   // rooms in a match cannot be joined
+    .filter((r) => r.isPublic && r.state === 'lobby' && r.players.size < MAX_PLAYERS)
     .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, difficulty: r.difficulty, state: r.state }));
 
   function nextTeam(room) {
@@ -78,7 +55,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     if (!room) return;
     for (const s of sockets) s.leave(`room:${code}`);
     if (room.match && !room.match.over) {
-      room.match.leave(userId);                     // a bot takes over the soldier
+      room.match.leave(userId);
       room.players.get(userId).connected = false;
     } else {
       room.players.delete(userId);
@@ -146,7 +123,6 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     socket.join(`user:${userId}`);
     const userSockets = () => [...io.sockets.sockets.values()].filter((s) => s.data.userId === userId);
 
-    // Back in a room you were in (e.g. the page was reloaded)?
     const existing = rooms.get(roomOf.get(userId));
     if (existing) {
       socket.join(`room:${existing.code}`);
@@ -161,8 +137,6 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     socket.on('rooms:list', (cb) => ack(cb)({ rooms: publicList() }));
 
     socket.on('room:create', (opts, cb) => {
-      // The browser picks the bots' difficulty, so check it against the known list;
-      // leaving it out means medium.
       const difficulty = opts?.difficulty ?? 'medium';
       if (!DIFFICULTIES.includes(difficulty)) return ack(cb)({ error: 'Unknown difficulty' });
       if (roomOf.has(userId)) leaveRoom(userId, userSockets());
@@ -220,7 +194,6 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       if (room?.match && controls && typeof controls === 'object') room.match.setControls(userId, controls);
     });
 
-    // ----- Banana API puzzles inside an online match -----
     socket.on('puzzle:get', async (opts, cb) => {
       const room = rooms.get(roomOf.get(userId));
       const purpose = opts?.purpose;
@@ -229,7 +202,6 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       }
       try {
         const { image, solution, source } = await pool.take();
-        // Check again: the player may have respawned, or asked twice, while the puzzle was fetched.
         if (room.match?.canAsk(userId, purpose) !== true) return ack(cb)({ error: 'No puzzle needed right now' });
         room.match.puzzleIssued(userId, purpose);
         const puzzleId = puzzleStore.add(solution, purpose);

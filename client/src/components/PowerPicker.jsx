@@ -1,8 +1,4 @@
-// "Choose your Banana Power": shown after a banana crate puzzle is solved. Three
-// random powers, or Random for a few bonus seconds. Keys 1–3 pick a card, R picks
-// Random; when the countdown runs out, Random is chosen.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { POWERS, BANANA_CRATE } from '../game/config.js';
@@ -11,7 +7,7 @@ import { registerPowerOpener } from '../services/powerBridge.js';
 const RING = 2 * Math.PI * 26;
 
 export default function PowerPicker() {
-  const [req, setReq] = useState(null);      // { choices, seconds, resolve }
+  const [req, setReq] = useState(null);
   const [left, setLeft] = useState(0);
   const deadline = useRef(0);
 
@@ -35,7 +31,6 @@ export default function PowerPicker() {
       if (s <= 0) choose('random');
     }, 100);
     const onKey = (e) => {
-      // Ignore a key still held from answering the puzzle (auto-repeat, or the first moment).
       if (e.repeat || performance.now() - opened.current < 300) return;
       const n = /^(Digit|Numpad)([1-3])$/.exec(e.code);
       if (n && req.choices[Number(n[2]) - 1]) choose(req.choices[Number(n[2]) - 1]);

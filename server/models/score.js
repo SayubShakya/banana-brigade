@@ -1,4 +1,4 @@
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { Schema } = require('mongoose');
 
@@ -15,7 +15,7 @@ const scoreSchema = new Schema({
   puzzlesSolved: { type: Number, default: 0 },
   puzzlesAttempted: { type: Number, default: 0 },
   durationS: { type: Number, default: 0 },
-  matchId: String,          // set for online matches (one per room)
+  matchId: String,
   multiplayer: { type: Boolean, default: false },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 scoreSchema.index({ mode: 1, kills: -1 });

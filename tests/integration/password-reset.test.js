@@ -1,8 +1,4 @@
-// Tests for "forgot password" (single-use reset links that last 30 minutes) and the
-// login limits counted per IP address (so nobody can lock out someone else's name).
-// Different IP addresses are faked with X-Forwarded-For and trust proxy turned on.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +7,6 @@ const { startServer, client } = require('./helpers');
 const PW = 'bananas123';
 const NEW_PW = 'new-bananas-456';
 
-// A server whose reset "emails" land in an array instead of the log.
 async function resetServer() {
   const sent = [];
   const s = await startServer({ appOptions: { trustProxy: true, sendResetLink: (msg) => { sent.push(msg); } } });
@@ -31,22 +26,20 @@ test('a reset link sets a new password, works once and ends every session', asyn
     assert.match(sent[0].link, /\/#reset=[\w-]{43}$/);
 
     const token = tokenOf(sent[0]);
-    // Checking the link shows the account and does not use it up.
     assert.deepEqual((await client(s.base).post('/api/auth/reset/check', { token })).body, { ok: true, username: 'forgetful' });
     assert.equal((await client(s.base).post('/api/auth/reset/check', { token: 'not-a-real-token' })).status, 400);
     const used = await client(s.base).post('/api/auth/reset', { token, password: NEW_PW });
     assert.equal(used.status, 200);
     assert.equal(used.body.username, 'forgetful');
-    assert.equal((await owner.get('/api/auth/me')).body.user, null);   // old session ended
+    assert.equal((await owner.get('/api/auth/me')).body.user, null);
 
     assert.equal((await client(s.base).post('/api/auth/login', { username: 'forgetful', password: PW })).status, 401);
     assert.equal((await client(s.base).post('/api/auth/login', { username: 'forgetful', password: NEW_PW })).status, 200);
 
-    // The same link a second time does nothing.
     const again = await client(s.base).post('/api/auth/reset', { token, password: 'third-password-1' });
     assert.equal(again.status, 400);
     assert.match(again.body.error, /not valid/);
-    assert.equal((await client(s.base).post('/api/auth/reset/check', { token })).status, 400);   // used links are refused
+    assert.equal((await client(s.base).post('/api/auth/reset/check', { token })).status, 400);
   } finally { await s.close(); }
 });
 
@@ -58,7 +51,7 @@ test('the token is stored only as a hash, and two uses at once still work only o
     const token = tokenOf(sent[0]);
     const stored = await s.db.models.PasswordReset.findOne().lean();
     assert.notEqual(stored.tokenHash, token);
-    assert.equal(stored.tokenHash.length, 64);   // SHA-256 in hex
+    assert.equal(stored.tokenHash.length, 64);
 
     const results = await Promise.all([1, 2, 3].map((i) => client(s.base).post('/api/auth/reset', { token, password: `parallel-pw-${i}` })));
     assert.equal(results.filter((r) => r.status === 200).length, 1);
@@ -70,7 +63,6 @@ test('an expired link is refused, and only the newest link works', async () => {
   try {
     await client(s.base).post('/api/auth/register', { username: 'slowpoke', password: PW });
     await client(s.base).post('/api/auth/forgot', { username: 'slowpoke' });
-    // Move the link's expiry into the past (as if 30 minutes had gone by).
     await s.db.models.PasswordReset.updateMany({}, { expiresAt: new Date(Date.now() - 1000) });
     assert.equal((await client(s.base).post('/api/auth/reset', { token: tokenOf(sent[0]), password: NEW_PW })).status, 400);
 
@@ -134,7 +126,6 @@ test('a correct password does not use up the IP allowance', async () => {
   const { s } = await resetServer();
   try {
     await client(s.base).post('/api/auth/register', { username: 'regular', password: PW });
-    // A lab where everyone shares one IP: 25 good logins in a row are all fine.
     for (let i = 0; i < 25; i++) {
       const res = await fromIp(s, '192.0.2.1').post('/api/auth/login', { username: 'regular', password: PW });
       assert.equal(res.status, 200);

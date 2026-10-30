@@ -1,7 +1,4 @@
-// Ranks: experience points (XP) are worked out from the record saved on the server:
-//   10 XP per kill, 25 per Banana puzzle solved, 100 per win.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 export const RANKS = [
   { name: 'Recruit', xp: 0 },

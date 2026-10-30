@@ -1,13 +1,10 @@
-// Main menu: your soldier and rank, the ways to play, and the daily challenge.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { rankFor, xpFor } from '../services/rank.js';
 import { Icon, AvatarCanvas, RankCard, Sky } from '../components/common.jsx';
 
-// Three clear choices, like the original's Quick Play / Online / Local menu.
 const MAIN = [
   { action: 'campaign', icon: 'map', name: 'Campaign', text: '9 missions · earn stars · unlock chapters', tag: 'Missions', primary: true },
   { action: 'quick', icon: 'cross', name: 'Quick Play', text: 'Free-for-all vs 5 bots · first to 20 kills', tag: 'Deploy' },

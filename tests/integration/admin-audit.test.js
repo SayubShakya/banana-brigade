@@ -1,8 +1,4 @@
-// Tests for the admin tools: every action needs a reason and is written to the
-// audit log; a suspended player is thrown out at once and cannot log in until
-// restored; the Banana API health history.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +28,7 @@ test('admin actions need a reason and are written to the audit log', async () =>
     assert.equal((await admin.patch(`/api/admin/users/${cheat.id}/role`, { role: 'player', reason: 'testing over' })).status, 200);
 
     const { rows } = (await admin.get('/api/admin/audit')).body;
-    assert.deepEqual(rows.map((r) => r.action), ['set-role', 'set-role', 'reset-scores']);   // newest first
+    assert.deepEqual(rows.map((r) => r.action), ['set-role', 'set-role', 'reset-scores']);
     assert.deepEqual(rows[2], { ...rows[2], actor: 'boss', target: 'cheater', reason: '99 kills in 30 s', detail: 'reset 1 score' });
     assert.equal((await player.get('/api/admin/audit')).status, 403);
   } finally { await s.close(); }
@@ -51,8 +47,8 @@ test('a suspended player is signed out at once, cannot log in or connect, and ca
     const res = await admin.post(`/api/admin/users/${cheat.id}/suspend`, { reason: 'aimbot' });
     assert.equal(res.status, 200);
     assert.equal(res.body.ended, 1);
-    await dropped;                                                            // live socket closed
-    assert.equal((await player.get('/api/auth/me')).body.user, null);         // session gone
+    await dropped;
+    assert.equal((await player.get('/api/auth/me')).body.user, null);
     assert.equal((await admin.post(`/api/admin/users/${cheat.id}/suspend`, { reason: 'again' })).status, 409);
 
     const login = await client(s.base).post('/api/auth/login', { username: 'cheater', password: PW });

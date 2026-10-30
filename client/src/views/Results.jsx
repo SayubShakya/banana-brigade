@@ -1,9 +1,4 @@
-// Results: the final ranking, puzzle stats for this deployment, and saving the score.
-// In a local game the kills come from this browser, but the server takes the puzzle
-// counts from the session, where every answer was checked. In an online match the
-// server has already saved everyone's score itself, so nothing is sent from here.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
@@ -17,7 +12,7 @@ const PURPOSES = [['deploy', 'Deploy'], ['respawn', 'Respawn'], ['crate', 'Crate
 
 export default function Results({ game, me, onMenu, onAgain, onMission, onMap }) {
   const mission = game.mission;
-  const [camp, setCamp] = useState(null);   // the server's verdict on a campaign mission
+  const [camp, setCamp] = useState(null);
   const { result, outcome, session: s, durationS } = game;
   const [saved, setSaved] = useState(game.online
     ? { state: 'ok', text: 'Online match: the server saved every player\'s score.' }

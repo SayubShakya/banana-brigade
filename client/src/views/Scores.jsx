@@ -1,6 +1,4 @@
-// Leaderboards: today's leaders next to the all-time leaders, one tab per mode.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
@@ -40,7 +38,7 @@ export default function Scores({ me, onBack }) {
     setAll(null);
     Promise.all([api.leaderboard(mode, 'today'), api.leaderboard(mode, 'all')])
       .then(([t, a]) => { if (alive) { setToday(t.rows); setAll(a.rows); } })
-      .catch(() => { if (alive) { setToday(false); setAll(false); } });   // false = failed (the toast says why)
+      .catch(() => { if (alive) { setToday(false); setAll(false); } });
     return () => { alive = false; };
   }, [mode]);
 

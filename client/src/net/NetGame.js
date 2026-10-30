@@ -1,15 +1,4 @@
-// Plays an online match in the browser. The server runs the world; this file only:
-//   - sends the player's controls as soon as they change (and at least 20 times a second),
-//   - turns server snapshots into a world the normal renderer and HUD can draw,
-//     showing everyone 60 ms in the past and blending between the two snapshots
-//     around that moment, so movement is smooth at any screen refresh rate,
-//   - turns server events back into the usual event-bus events (kill feed, sounds),
-//   - opens Banana puzzles that are fetched and checked over the WebSocket.
-//
-// It emits the same game:state / game:over events as a local game, so the React
-// screens treat both the same way.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on, emit } from '../services/eventBus.js';
 import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS, DIFFICULTY } from '../game/config.js';
@@ -22,15 +11,13 @@ import { askPuzzle, closePuzzle, isPuzzleOpen } from '../services/puzzleBridge.j
 import { askPower, isPowerOpen, closePower } from '../services/powerBridge.js';
 import { getSocket, request } from './socket.js';
 
-const DELAY_MS = 60;             // how far in the past soldiers are shown (about two snapshots)
-const RESEND_MS = 50;            // send controls at least this often, even if nothing changed
+const DELAY_MS = 60;
+const RESEND_MS = 50;
 const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup'];
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => a + Math.random() * (b - a);
 const fromGun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === -1 ? Infinity : g.spare };
 
-// Puzzles in an online match go over the WebSocket, so the server knows which
-// player solved which puzzle and can apply the reward itself.
 const socketPuzzles = {
   get: (purpose) => request('puzzle:get', { purpose }),
   answer: (puzzleId, answer) => request('puzzle:answer', { puzzleId, answer }),
@@ -39,9 +26,9 @@ const socketPuzzles = {
 export function createNetGame() {
   const socket = getSocket();
   const { renderer, input, hud, meter } = getStage();
-  let view = null;              // the world as drawn in this browser
-  let me = null;                // this player's soldier in `view`
-  let snaps = [];               // recent snapshots with their arrival time
+  let view = null;
+  let me = null;
+  let snaps = [];
   let active = false;
   let paused = false;
   let lastSend = 0;
@@ -49,8 +36,8 @@ export function createNetGame() {
   let stats = null;
   let started = 0;
   let near = false;
-  let level = DIFFICULTY.medium;  // the room's difficulty: puzzle times
-  let crateOpen = false;        // the open puzzle window is a crate puzzle
+  let level = DIFFICULTY.medium;
+  let crateOpen = false;
 
   const soldierById = (id) => view?.soldiers.find((s) => s.id === id) ?? null;
 
@@ -114,7 +101,6 @@ export function createNetGame() {
     }, 1500);
   });
 
-  // The server sends the time limit (the room difficulty), the same as single player.
   socket.on('puzzle:offer', async ({ purpose, seconds }) => {
     if (!active || purpose !== 'crate' || isPuzzleOpen()) return;
     crateOpen = true;
@@ -123,14 +109,11 @@ export function createNetGame() {
     if (result === 'cancelled') socket.emit('puzzle:cancel', { purpose: 'crate' });
   });
 
-  // The server stopped waiting for this crate puzzle (no answer in time): close the
-  // window so the player is not stuck behind it (no cancel is sent; the server knows).
   socket.on('puzzle:closed', ({ purpose }) => {
     if (purpose !== 'crate' || !crateOpen) return;
     closePuzzle();
   });
 
-  // A solved crate online: the server offers powers; the choice goes back to the server.
   socket.on('power:offer', async ({ choices, seconds }) => {
     if (!active) return;
     input.setEnabled(false);
@@ -154,23 +137,20 @@ export function createNetGame() {
     return result;
   }
 
-  // One Banana respawn try per death, as in single player (the server checks it too).
   async function bananaRespawn() {
     if (!active || me.alive || me.bananaUsed || isPuzzleOpen()) return;
     const result = await openPuzzle('respawn', { title: 'Banana respawn', subtitle: 'Solve it to respawn right now instead of waiting. One try.', cancelText: 'Wait instead', seconds: level.puzzle.respawn });
-    if (result !== 'solved' && view && !me.alive) me.bananaUsed = true;   // the next snapshot says the same
+    if (result !== 'solved' && view && !me.alive) me.bananaUsed = true;
   }
   on('input:banana', bananaRespawn);
   document.getElementById('center-msg').addEventListener('click', bananaRespawn);
 
-  // An online match cannot be paused for everyone; the menu opens over the live game.
   on('input:pause', () => {
     if (!active || isPuzzleOpen() || isPowerOpen()) return;
     if (paused) net.resume();
     else { paused = true; input.setEnabled(false); emit('game:state', { state: 'paused', online: true }); }
   });
 
-  // Server events → the same bus events a local game produces (kill feed, HUD, sounds).
   function relay(type, e) {
     const s = (id) => soldierById(id);
     switch (type) {
@@ -199,7 +179,6 @@ export function createNetGame() {
     }
   }
 
-  // Puts the snapshots into `view`: every soldier is blended between the two snapshots around (now - 60 ms).
   function applySnapshots(now) {
     if (!snaps.length) return;
     const latest = snaps[snaps.length - 1];
@@ -238,8 +217,6 @@ export function createNetGame() {
     });
   }
 
-  // Sends the controls the moment they change (a key press reaches the server one
-  // frame later instead of waiting for a timer), and repeats them every 50 ms.
   function sendControls(now) {
     const c = me.controls;
     if (me.alive && !paused && !isPuzzleOpen()) input.apply(me, view);

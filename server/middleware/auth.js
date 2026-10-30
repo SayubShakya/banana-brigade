@@ -1,15 +1,5 @@
-// Access checks that run on the server before a protected request is handled.
-// The identity always comes from the server-side session, never from the request
-// body, so a player cannot pretend to be someone else by sending another id.
-//
-// The user (and their role) is read from the database on every request rather than
-// trusted from the session: a deleted, suspended or demoted account loses access at
-// once, not when the cookie runs out. The cost is one small lookup by _id per request.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-// Loads the logged-in user into req.user, or answers 401. A session whose account
-// no longer exists is destroyed so the stale cookie stops working.
 async function loadUser(req, res) {
   if (!req.session.userId) {
     res.status(401).json({ error: 'Please log in first' });
@@ -22,7 +12,6 @@ async function loadUser(req, res) {
     res.status(401).json({ error: 'Please log in first' });
     return null;
   }
-  // A suspended player is thrown out at once, even with a live session.
   if (user.suspended) {
     await new Promise((resolve) => req.session.destroy(() => resolve()));
     res.clearCookie(req.app.get('sessionCookieName'), { path: '/' });

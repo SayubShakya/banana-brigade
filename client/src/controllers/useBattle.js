@@ -1,4 +1,4 @@
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useRef, useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
@@ -9,19 +9,16 @@ import { mapName } from '../game/maps.js';
 import { getSocket } from '../net/socket.js';
 import { game, net, netIfStarted } from './gameEngine.js';
 
-// The hand-over between the React screens and the game engine: deploying, battles,
-// campaign missions, the online lobby and the results.
 export function useBattle({ setScreen, setParent }, { account, accountRef, parts }, { settings, setSetting }) {
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
   const [pendingMode, setPendingMode] = useState('quick');
 
-  // Engine → React: battle state changes and the end of a match.
   useBus('game:state', ({ state, online: isOnline = false }) => {
     setOnline(isOnline);
     if (state === 'paused') setScreen('pause');
-    else if (state === 'playing' || state === 'ending') setScreen('battle');   // ending: the last moment before results
+    else if (state === 'playing' || state === 'ending') setScreen('battle');
   });
   useBus('game:over', (payload) => { setOver(payload); setScreen('results'); });
 
@@ -31,13 +28,11 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     setScreen('battle');
   }, [account, parts]);
 
-  // Choosing a mode opens the difficulty picker (online matches use the room's rules).
   const deploy = useCallback((mode) => {
     if (mode === 'online') { net(); setScreen('lobby'); return; }
     setPendingMode(mode);
     setScreen('difficulty');
   }, []);
-  // Deploying from a screen: Back from the difficulty picker returns there (null: the menu).
   const deployFrom = (from, mode) => { setParent(from); deploy(mode); };
 
   const deployWith = useCallback(async (mode, difficulty) => {
@@ -51,7 +46,6 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     if (result === 'solved') startBattle(mode);
   }, [startBattle]);
 
-  // A campaign mission: the chapter decides the difficulty; the deploy puzzle comes first.
   const playMission = useCallback(async (mission) => {
     const difficulty = chapterOf(mission).difficulty;
     game().quit();
@@ -73,11 +67,9 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     setScreen('menu');
   };
 
-  // Pause screen.
   const resume = () => (online ? net().resume() : game().resume());
   const endNow = () => game().endNow();
 
-  // Results screen.
   const toMap = () => { game().quit(); setOver(null); setScreen('campaign'); };
   const playAgain = () => {
     if (over.online) { setOver(null); setScreen('lobby'); return; }

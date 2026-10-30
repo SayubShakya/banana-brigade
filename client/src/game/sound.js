@@ -1,31 +1,18 @@
-// Sound effects made with the Web Audio API (no audio files). Each effect is an
-// event listener: the world emits "weapon:fired" or "explosion" and this module
-// plays the matching sound. Every sound is built from two ingredients, a burst of
-// filtered noise and a filtered tone, layered and shaped with volume envelopes.
-// Sounds are placed in the world: they are panned left/right by where they happen
-// compared with the player, get quieter with distance, and lose their high end
-// when far away (a lowpass filter), like real distant gunfire.
-// All effects go through one gain node (the "effects bus"), so the Effects volume
-// slider in Settings changes them all at once; music.js has its own bus.
-// To stay light, noise is read from two buffers made once, and a small voice
-// budget plus per-sound rate limits stop a busy fight from creating hundreds of
-// audio nodes at the same time.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../services/eventBus.js';
 
 let ctx = null;
-let effects = null;     // gain node every effect plays through
+let effects = null;
 let muted = false;
 let effectsVolume = 0.8;
 let listener = { x: 0, y: 0 };
-let whiteNoise = null;  // shared noise buffers, made once when audio starts
-let brownNoise = null;  // darker noise for rumbles and the jetpack
+let whiteNoise = null;
+let brownNoise = null;
 
-const HEARING = 1300;   // pixels: further away than this is silent
-const MAX_VOICES = 28;  // world sounds playing at once; the player's own sounds may go over
-const voiceEnds = [];   // end times (audio clock) of the sounds still playing
+const HEARING = 1300;
+const MAX_VOICES = 28;
+const voiceEnds = [];
 
 function makeNoise(a, seconds, brown) {
   const buffer = a.createBuffer(1, Math.floor(a.sampleRate * seconds), a.sampleRate);
@@ -43,7 +30,6 @@ function audio() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     effects = ctx.createGain();
     effects.gain.value = effectsVolume;
-    // A gentle compressor keeps explosions and shotgun blasts from clipping.
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -10;
     limiter.ratio.value = 6;
@@ -63,13 +49,11 @@ function volumeAt(x, y) {
   return Math.max(0, 1 - d / HEARING);
 }
 
-// Left/right position from -0.8 to 0.8, from the sound's x compared with the player.
 function panAt(x) {
   if (x === undefined) return 0;
   return Math.max(-0.8, Math.min(0.8, (x - listener.x) / 700));
 }
 
-// Simple per-sound rate limits: a sound may not start again within `gapMs`.
 const lastPlayed = new Map();
 function allow(key, gapMs) {
   const now = performance.now();
@@ -78,9 +62,6 @@ function allow(key, gapMs) {
   return true;
 }
 
-// Opens a "voice": a gain → (distance lowpass) → panner chain into the effects bus,
-// placed at (x, y). Returns null when the sound would be silent or the voice budget
-// is used up, so callers just skip it. `length` is how long the sound lasts (seconds).
 function voice(x, y, volume, length, { priority = false } = {}) {
   if (silent()) return null;
   const v = volume * volumeAt(x, y);
@@ -91,7 +72,7 @@ function voice(x, y, volume, length, { priority = false } = {}) {
   if (!priority && voiceEnds.length >= MAX_VOICES) return null;
   const end = now + length;
   const at = voiceEnds.findIndex((e) => e > end);
-  voiceEnds.splice(at < 0 ? voiceEnds.length : at, 0, end);   // kept sorted by end time
+  voiceEnds.splice(at < 0 ? voiceEnds.length : at, 0, end);
 
   const g = a.createGain();
   g.gain.value = v;
@@ -100,7 +81,7 @@ function voice(x, y, volume, length, { priority = false } = {}) {
   if (d > 300) {
     const lp = a.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 1200 * Math.pow(15, 1 - Math.min(1, d / HEARING));   // 18 kHz near, 1.2 kHz far
+    lp.frequency.value = 1200 * Math.pow(15, 1 - Math.min(1, d / HEARING));
     last = last.connect(lp);
   }
   if (a.createStereoPanner && x !== undefined) {
@@ -112,7 +93,6 @@ function voice(x, y, volume, length, { priority = false } = {}) {
   return { out: g, t: now + 0.005 };
 }
 
-// A burst of filtered noise into `out`, starting `delay` seconds after `t`.
 function noise(v, { dur = 0.1, volume = 0.3, type = 'lowpass', freq = 1800, freqTo, q = 0.7, delay = 0, attack = 0.002, brown = false } = {}) {
   if (!v) return;
   const t = v.t + delay;
@@ -128,13 +108,10 @@ function noise(v, { dur = 0.1, volume = 0.3, type = 'lowpass', freq = 1800, freq
   g.gain.exponentialRampToValueAtTime(volume, t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   src.connect(f).connect(g).connect(v.out);
-  // A random slice of the shared 2 s buffer, so repeats differ, but never so late
-  // that a long sound (explosion rumble, sniper tail) runs off the end of it.
   src.start(t, Math.random() * Math.max(0, 2 - dur - 0.05));
   src.stop(t + dur + 0.02);
 }
 
-// A tone (optionally sliding in pitch) into `out`, starting `delay` seconds after `t`.
 function tone(v, freq, dur, { volume = 0.15, type = 'square', slideTo, delay = 0, attack = 0.003 } = {}) {
   if (!v) return;
   const t = v.t + delay;
@@ -151,12 +128,8 @@ function tone(v, freq, dur, { volume = 0.15, type = 'square', slideTo, delay = 0
   o.stop(t + dur + 0.02);
 }
 
-// UI sounds that are not placed in the world (puzzle chimes, hit markers).
 const ui = (length, volume = 1) => voice(undefined, undefined, volume, length, { priority: true });
 
-// ---------- Weapons ----------
-// Each gun is a recipe of layers: a crack (high noise), a body (mid noise) and a
-// thump (falling low tone). `v` is the voice the layers play into.
 const GUNS = {
   magnum: { length: 0.3, play(v) {
     noise(v, { dur: 0.05, volume: 0.5, type: 'highpass', freq: 2200 });
@@ -178,37 +151,32 @@ const GUNS = {
     tone(v, 85, 0.3, { volume: 0.5, type: 'sine', slideTo: 32 });
   } },
   sniper: { length: 1.2, play(v) {
-    noise(v, { dur: 0.03, volume: 0.7, type: 'highpass', freq: 3500 });                     // whip crack
+    noise(v, { dur: 0.03, volume: 0.7, type: 'highpass', freq: 3500 });
     noise(v, { dur: 0.25, volume: 0.5, type: 'lowpass', freq: 2200, freqTo: 600 });
     tone(v, 110, 0.25, { volume: 0.4, type: 'sine', slideTo: 38 });
-    noise(v, { dur: 0.9, volume: 0.12, type: 'lowpass', freq: 600, delay: 0.1, attack: 0.05, brown: true });  // rolling tail
-    noise(v, { dur: 0.5, volume: 0.06, type: 'bandpass', freq: 900, delay: 0.25, attack: 0.03 });              // echo
+    noise(v, { dur: 0.9, volume: 0.12, type: 'lowpass', freq: 600, delay: 0.1, attack: 0.05, brown: true });
+    noise(v, { dur: 0.5, volume: 0.06, type: 'bandpass', freq: 900, delay: 0.25, attack: 0.03 });
   } },
   rocket: { length: 0.8, play(v) {
-    noise(v, { dur: 0.7, volume: 0.4, type: 'bandpass', freq: 350, freqTo: 2200, q: 1.5, attack: 0.06 });  // whoosh
+    noise(v, { dur: 0.7, volume: 0.4, type: 'bandpass', freq: 350, freqTo: 2200, q: 1.5, attack: 0.06 });
     noise(v, { dur: 0.15, volume: 0.35, type: 'lowpass', freq: 900 });
     tone(v, 70, 0.25, { volume: 0.35, type: 'sine', slideTo: 40 });
   } },
-  flamer: { length: 0.12, gap: 90, play(v) {   // the hiss loop (updateSound) carries the rest
+  flamer: { length: 0.12, gap: 90, play(v) {
     noise(v, { dur: 0.1, volume: 0.12, type: 'lowpass', freq: 700, brown: true });
   } },
 };
 
-// ---------- Settings ----------
 export function setListener(x, y) { listener = { x, y }; }
 export function setMuted(value) { muted = value; }
 export const isMuted = () => muted;
-// 0..1, from the Effects volume slider.
 export function setEffectsVolume(value) {
   effectsVolume = Math.min(1, Math.max(0, value));
   if (effects) effects.gain.setTargetAtTime(effectsVolume, ctx.currentTime, 0.05);
 }
-// Browsers only allow sound after a click or key press, so this is called from one.
 export const unlockAudio = () => audio();
-// The shared AudioContext, or null if no gesture has unlocked sound yet (music.js uses it).
 export const audioContext = () => ctx;
 
-// Banana puzzle feedback: a rising chime when right, a low buzz when wrong or out of time.
 function chime() {
   const v = ui(0.7);
   [784, 988, 1319].forEach((f, i) => tone(v, f, 0.35, { volume: 0.12, type: 'sine', delay: i * 0.09 }));
@@ -219,15 +187,14 @@ function buzzer() {
   tone(v, 156, 0.32, { volume: 0.08, type: 'square' });
 }
 
-// ---------- Impacts ----------
 const mid = (s) => (s ? { x: s.x + (s.w ?? 0) / 2, y: s.y + (s.h ?? 0) / 2 } : {});
 
 function explosion(x, y) {
   const v = voice(x, y, 1, 1.4, { priority: true });
-  tone(v, 62, 0.9, { volume: 0.55, type: 'sine', slideTo: 24 });                         // sub-bass
+  tone(v, 62, 0.9, { volume: 0.55, type: 'sine', slideTo: 24 });
   noise(v, { dur: 1.0, volume: 0.6, type: 'lowpass', freq: 900, freqTo: 150, brown: true });
-  noise(v, { dur: 0.25, volume: 0.35, type: 'lowpass', freq: 2500 });                    // initial blast
-  for (let i = 0; i < 6; i++) {                                                           // debris crackle
+  noise(v, { dur: 0.25, volume: 0.35, type: 'lowpass', freq: 2500 });
+  for (let i = 0; i < 6; i++) {
     noise(v, { dur: 0.03, volume: 0.08 + Math.random() * 0.08, type: 'highpass', freq: 2500 + Math.random() * 2500, delay: 0.12 + Math.random() * 0.6 });
   }
 }
@@ -244,13 +211,10 @@ function ricochet(x, y) {
   if (!allow('ricochet', 70)) return;
   const v = voice(x, y, 0.5, 0.2);
   noise(v, { dur: 0.025, volume: 0.3, type: 'highpass', freq: 3500 });
-  if (Math.random() < 0.3) tone(v, 2400 + Math.random() * 800, 0.15, { volume: 0.04, type: 'sine', slideTo: 1300 });   // occasional whine
+  if (Math.random() < 0.3) tone(v, 2400 + Math.random() * 800, 0.15, { volume: 0.04, type: 'sine', slideTo: 1300 });
 }
 
-// ---------- Player feedback ----------
 const hitMarker = () => { if (allow('hitmarker', 50)) tone(ui(0.05), 2400, 0.035, { volume: 0.07, type: 'sine' }); };
-// At most one ding per 120 ms, so a shotgun blast or a headshot kill (damage + kill
-// events in the same frame) does not stack several dings on top of each other.
 function headshotDing() {
   if (!allow('headshot', 120)) return;
   const v = ui(0.5);
@@ -273,7 +237,6 @@ const click = (v, freq, delay = 0, volume = 0.18) => {
   tone(v, freq / 2, 0.02, { volume: volume / 3, type: 'square', delay });
 };
 
-// One sound per pickup kind (shield, fuel and ammo crates may not exist yet; unknown kinds get the default).
 const PICKUPS = {
   banana(v) { [523, 659, 784, 1047].forEach((f, i) => tone(v, f, 0.18, { volume: 0.09, type: 'triangle', delay: i * 0.06 })); },
   health(v) { tone(v, 440, 0.3, { volume: 0.1, type: 'sine', slideTo: 660 }); tone(v, 880, 0.25, { volume: 0.06, type: 'sine', delay: 0.1 }); },
@@ -284,8 +247,8 @@ const PICKUPS = {
   default(v) { tone(v, 660, 0.08, { volume: 0.1, type: 'triangle' }); tone(v, 990, 0.1, { volume: 0.1, type: 'triangle', delay: 0.07 }); },
 };
 
-const lastSwing = new Map();   // soldier id → time of their last melee swing (a hit right after it is a melee hit)
-let landedEvents = false;      // true once the world sends 'soldier:landed' itself
+const lastSwing = new Map();
+let landedEvents = false;
 
 function landing(soldier, speed) {
   const p = mid(soldier);
@@ -297,7 +260,6 @@ function landing(soldier, speed) {
 }
 
 export function initSound() {
-  // If the frame loop stops calling updateSound (menu, pause), fade out any loops left playing.
   setInterval(() => { if (ctx && loops.size && performance.now() - lastUpdate > 250) reapLoops(-1); }, 250);
   on('banana:answered', ({ correct }) => (correct ? chime() : buzzer()));
   on('weapon:fired', ({ soldier, weapon, x, y }) => {
@@ -327,21 +289,21 @@ export function initSound() {
     if (!soldier) return;
     const p = mid(soldier);
     const v = voice(p.x, p.y, soldier.isPlayer ? 1 : 0.6, 0.25, { priority: soldier.isPlayer });
-    click(v, 2500, 0, 0.1);                                                                    // pin
+    click(v, 2500, 0, 0.1);
     noise(v, { dur: 0.15, volume: 0.12, type: 'bandpass', freq: 700, freqTo: 1400, q: 1.2, delay: 0.05, attack: 0.03 });
   });
 
   on('weapon:reloading', ({ soldier }) => {
     if (!soldier?.isPlayer) return;
     const v = ui(0.3);
-    click(v, 1400);                                                                            // mag release
-    noise(v, { dur: 0.12, volume: 0.08, type: 'bandpass', freq: 700, delay: 0.05 });            // mag sliding out
+    click(v, 1400);
+    noise(v, { dur: 0.12, volume: 0.08, type: 'bandpass', freq: 700, delay: 0.05 });
   });
   on('weapon:reloaded', ({ soldier }) => {
     if (!soldier?.isPlayer) return;
     const v = ui(0.3);
-    click(v, 900, 0, 0.22);                                                                    // mag in
-    click(v, 1700, 0.12, 0.16);                                                                // slide rack
+    click(v, 900, 0, 0.22);
+    click(v, 1700, 0.12, 0.16);
   });
   on('weapon:empty', ({ soldier }) => {
     if (soldier?.isPlayer && allow('empty', 150)) click(ui(0.05), 2200, 0, 0.12);
@@ -350,7 +312,6 @@ export function initSound() {
     if (!soldier?.isPlayer) return;
     (PICKUPS[kind] ?? PICKUPS.default)(ui(0.6));
   });
-  // Banana Powers: a rising fanfare when one starts, ticks near the end, a fall when it ends.
   on('power:start', ({ soldier }) => {
     if (!soldier?.isPlayer) return;
     const v = ui(0.7);
@@ -362,7 +323,6 @@ export function initSound() {
   on('power:end', ({ soldier }) => {
     if (soldier?.isPlayer) tone(ui(0.6), 700, 0.35, { volume: 0.1, type: 'sawtooth', slideTo: 180 });
   });
-  // Your shield is used up: a falling glassy tone.
   on('shield:broken', ({ soldier }) => {
     if (soldier?.isPlayer) tone(ui(0.5), 1400, 0.25, { volume: 0.12, type: 'triangle', slideTo: 380 });
   });
@@ -372,7 +332,7 @@ export function initSound() {
     if (victim.isPlayer) hurt();
     else fleshHit(victim);
     if (attacker && performance.now() - (lastSwing.get(attacker.id) ?? -1e9) < 250) {
-      lastSwing.delete(attacker.id);                                                           // melee connected
+      lastSwing.delete(attacker.id);
       const p = mid(victim);
       const v = voice(p.x, p.y, 1, 0.2, { priority: !!attacker.isPlayer });
       noise(v, { dur: 0.1, volume: 0.4, type: 'lowpass', freq: 700 });
@@ -401,18 +361,13 @@ export function initSound() {
   });
 }
 
-// ---------- Continuous sounds (called every frame) ----------
-// Jetpack roars, the flamethrower hiss, footsteps, landings and the low-health
-// heartbeat depend on what soldiers are doing right now rather than on one event,
-// so GameSession and NetGame call updateSound() once per frame with the soldiers.
-const flaming = new Map();   // soldier → time of their last flamer shot
-const loops = new Map();     // `${kind}:${soldier id}` → { src, gain, pan, filter, seen }
-const tracks = new Map();    // soldier id → { x, y, vy, onGround, step } from the last frame
-const JET_BOTS = 3;          // only the nearest few bots get a jetpack loop
+const flaming = new Map();
+const loops = new Map();
+const tracks = new Map();
+const JET_BOTS = 3;
 let lastUpdate = 0;
 let nextBeat = 0;
 
-// A looping noise source with its own filter, gain and panner, faded in from silence.
 function startLoop(kind) {
   const a = audio();
   const src = a.createBufferSource();
@@ -439,10 +394,9 @@ function setLoop(key, kind, x, y, volume, frame) {
   const t = ctx.currentTime;
   l.gain.gain.setTargetAtTime(volume * volumeAt(x, y), t, 0.06);
   if (l.pan) l.pan.pan.setTargetAtTime(panAt(x), t, 0.05);
-  if (kind === 'jet') l.filter.frequency.setTargetAtTime(380 + Math.random() * 120, t, 0.03);   // a little flutter
+  if (kind === 'jet') l.filter.frequency.setTargetAtTime(380 + Math.random() * 120, t, 0.03);
 }
 
-// Fades out and stops loops nobody asked for this frame.
 function reapLoops(frame) {
   for (const [key, l] of loops) {
     if (l.seen === frame) continue;
@@ -473,12 +427,10 @@ export function updateSound(soldiers = [], player = null) {
   frameNo += 1;
   if (silent() || !soldiers.length) { reapLoops(frameNo); return; }
 
-  // Jetpacks: the player's own loop is loud and centred, the nearest bots are quieter.
   const jetting = soldiers.filter((s) => s.alive && s.jetting && (s.isPlayer || volumeAt(mid(s).x, mid(s).y) > 0.05));
   jetting.sort((a, b) => (b.isPlayer - a.isPlayer) || volumeAt(mid(b).x, mid(b).y) - volumeAt(mid(a).x, mid(a).y));
   jetting.slice(0, JET_BOTS + 1).forEach((s) => { const p = mid(s); setLoop(`jet:${s.id}`, 'jet', p.x, p.y, s.isPlayer ? 0.3 : 0.12, frameNo); });
 
-  // Flamethrower hiss: lasts while shots keep coming (a gap of 150 ms ends it).
   for (const [s, at] of flaming) {
     if (now - at > 150 || !s.alive) { flaming.delete(s); continue; }
     const p = mid(s);
@@ -486,7 +438,6 @@ export function updateSound(soldiers = [], player = null) {
   }
   reapLoops(frameNo);
 
-  // Footsteps and landings come from how each nearby soldier moved since the last frame.
   for (const s of soldiers) {
     const p = mid(s);
     const near = s.isPlayer || volumeAt(p.x, p.y) > 0.6;
@@ -504,7 +455,6 @@ export function updateSound(soldiers = [], player = null) {
     tracks.set(s.id, { x: p.x, y: p.y, vy, onGround: s.onGround, step });
   }
 
-  // Heartbeat while the player is badly hurt: faster as health drops.
   if (player?.alive && player.health < 30 && player.health > 0) {
     const t = ctx.currentTime;
     if (t >= nextBeat) { heartbeat(); nextBeat = t + 0.55 + (player.health / 30) * 0.45; }

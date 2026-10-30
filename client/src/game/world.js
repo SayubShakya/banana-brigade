@@ -1,12 +1,4 @@
-// The game world: soldiers, bullets, rockets, grenades, pickups and the match rules
-// for the modes (Quick Play, Survival, Training, Team Battle, and Online, where several
-// human players share one world run by the server).
-// It never touches the screen. It announces what happens through world.emit
-// ("weapon:fired", "soldier:killed", "match:ended", ...): in the browser that is the
-// page's event bus (HUD, sound and renderer listen); on the server each online room
-// passes its own emit, so rooms never hear each other's events.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../services/eventBus.js';
 import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, HEAD_CAP_ABOVE, HEAD_CAP_HALF_WIDTH, POWERS } from './config.js';
@@ -20,7 +12,6 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export function emptyControls() {
   return {
     left: false, right: false, jet: false, fire: false, aimX: 0, aimY: 0,
-    // one-shot actions, cleared by the world after use
     reload: false, swap: false, grenade: false, melee: false, pickup: false,
   };
 }
@@ -32,7 +23,7 @@ function createSoldier(id, name, avatar, isPlayer, team = id) {
     facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, groundTime: 0,
     jetHeld: false, jetBuffer: 0, coyote: 0, sputterCooldown: 0,
-    armor: 0, armorTimer: 0, fuelBoost: 0,   // power-ups: shield points (and how long they last), infinite fuel
+    armor: 0, armorTimer: 0, fuelBoost: 0,
     alive: false, respawnTimer: 0, shieldTimer: 0, hurtFlash: 0,
     sidearm: newGun(SIDEARM), primary: null, current: 'primary', lastHurt: 0,
     fireCooldown: 0, reloadTimer: 0, meleeCooldown: 0, grenades: SOLDIER.grenades,
@@ -50,7 +41,6 @@ function newGun(key) {
   return { key, ammo: w.mag, spare: w.spareMags === Infinity ? Infinity : w.mag * w.spareMags };
 }
 
-// Segment p0->p1 against a box; returns the entry distance (0..1) or null.
 function segmentHitsBox(x0, y0, x1, y1, b) {
   let t0 = 0, t1 = 1;
   const dx = x1 - x0, dy = y1 - y0;
@@ -65,9 +55,6 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
   return null;
 }
 
-// A bullet hits a soldier if it crosses the soldier's box, or the small head cap just
-// above it (the drawn head pokes out of the top of the box; see HEAD_CAP_ABOVE in config.js).
-// Returns the entry distance (0..1) of whichever is hit first, or null.
 function bulletHitsSoldier(x0, y0, x1, y1, s) {
   const body = segmentHitsBox(x0, y0, x1, y1, s);
   const cap = { x: s.x + s.w / 2 - HEAD_CAP_HALF_WIDTH, y: s.y - HEAD_CAP_ABOVE, w: HEAD_CAP_HALF_WIDTH * 2, h: HEAD_CAP_ABOVE };
@@ -77,16 +64,10 @@ function bulletHitsSoldier(x0, y0, x1, y1, s) {
   return Math.min(body, head);
 }
 
-// mode: 'quick' | 'survival' | 'training' | 'team' | 'online' (see MODES in config.js)
-// Online worlds take `humans` ([{ id, name, avatar, team }]) instead of one player,
-// `teamMode` for Blue vs Red, and are topped up with bots to cfg.size soldiers.
-// map: 'jungle' | 'desert' | 'snow' | 'night' (maps.js); left out, a random one is used.
 export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null, map: mapId = null }) {
-  // A campaign mission brings its own bot count, kill target, time limit and lives.
   const cfg = mode === 'campaign'
     ? { name: mission.name, bots: mission.bots, killLimit: mission.target, timeLimit: mission.timeLimit, respawn: 5, lives: mission.lives }
     : MODES[mode];
-  // The battlefield: asked for by id (online rooms), fixed by a campaign mission, or random.
   const map = createMap(MAPS[mapId] ? mapId : mission?.map ?? randomMapId());
   const online = mode === 'online';
   const player = online ? null : createSoldier('p0', playerName, playerAvatar, true, mode === 'team' ? 'blue' : 'p0');
@@ -161,8 +142,6 @@ function spawn(world, s, initial = false) {
   let bestScore = -Infinity;
   for (const p of world.map.spawns) {
     const d = enemies.length ? Math.min(...enemies.map((e) => Math.hypot(center(e).x - p.x, center(e).y - p.y))) : rand(0, 1000);
-    // Soldiers spawn away from enemies; training dummies spawn near the player, so
-    // there is something on screen to shoot at.
     const score = (s.isDummy ? -d : d) + rand(0, 250);
     if (score > bestScore) { bestScore = score; best = p; }
   }
@@ -170,21 +149,18 @@ function spawn(world, s, initial = false) {
     x: best.x - s.w / 2, y: best.y + TILE / 2 - s.h - 1, vx: 0, vy: 0,
     health: SOLDIER.maxHealth, fuel: PHYSICS.fuelMax, alive: true,
     shieldTimer: SOLDIER.spawnShield, hurtFlash: 0, reloadTimer: 0, fireCooldown: 0, armor: 0, armorTimer: 0, fuelBoost: 0, power: null,
-    bananaUsed: false,   // one Banana respawn try per death
+    bananaUsed: false,
     sidearm: newGun(SIDEARM), primary: newGun(pick(CRATE_WEAPONS)), current: 'primary', grenades: SOLDIER.grenades,
   });
   if (!initial) world.emit('soldier:respawned', { soldier: s });
 }
 
-// info.headshot marks a bullet headshot (already multiplied into amount).
 export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (!victim.alive || victim.shieldTimer > 0 || world.over) return;
-  if (attacker && attacker !== victim && attacker.team === victim.team) return; // no friendly fire
-  if (hasPower(victim, 'bubble')) return;                                         // Banana Bubble: untouchable
-  if (attacker && attacker !== victim && hasPower(attacker, 'rage')) amount *= POWERS.rage.damage;   // Banana Rage (not on yourself)
-  // Bots hit human players softer, depending on the difficulty.
+  if (attacker && attacker !== victim && attacker.team === victim.team) return;
+  if (hasPower(victim, 'bubble')) return;
+  if (attacker && attacker !== victim && hasPower(attacker, 'rage')) amount *= POWERS.rage.damage;
   if (attacker && !attacker.isPlayer && victim.isPlayer) amount *= world.difficulty.damage;
-  // A Shield power-up soaks up damage before health does.
   if (victim.armor > 0) {
     const soak = Math.min(victim.armor, amount);
     victim.armor -= soak;
@@ -201,7 +177,7 @@ export function damage(world, victim, amount, attacker, weaponName, info = {}) {
 
   victim.health = 0;
   victim.alive = false;
-  if (victim.power) { world.emit('power:end', { soldier: victim, power: victim.power.id }); victim.power = null; }   // powers end on death
+  if (victim.power) { world.emit('power:end', { soldier: victim, power: victim.power.id }); victim.power = null; }
   victim.deaths += 1;
   victim.streak = 0;
   victim.respawnTimer = victim.isDummy ? world.cfg.respawn : world.cfg.respawn ?? SOLDIER.respawnDelay;
@@ -210,8 +186,8 @@ export function damage(world, victim, amount, attacker, weaponName, info = {}) {
     if (victim.lives <= 0) { victim.respawnTimer = Infinity; world.emit('player:out', { continues: world.continues }); }
   }
   if (world.mode === 'survival') {
-    if (victim.isPlayer) victim.respawnTimer = Infinity;   // only a Banana puzzle can revive you
-    else victim.gone = true;                                // enemies stay dead in survival
+    if (victim.isPlayer) victim.respawnTimer = Infinity;
+    else victim.gone = true;
   }
   if (attacker && attacker !== victim) {
     attacker.kills += 1;
@@ -235,13 +211,11 @@ export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (world.teamMode && Math.max(world.teamKills.blue, world.teamKills.red) >= world.cfg.killLimit) endMatch(world, 'kill limit');
 }
 
-// Brings a soldier straight back (used when the player solves a respawn puzzle).
 export function revive(world, s) {
   if (s.alive || world.over) return;
   spawn(world, s);
 }
 
-// Campaign: out of lives, but a solved Banana puzzle buys one more.
 export function continueMission(world) {
   const p = world.player;
   if (world.over || p.lives > 0) return;
@@ -250,17 +224,13 @@ export function continueMission(world) {
   spawn(world, p);
 }
 
-// ---------- Banana Powers ----------
 export const hasPower = (s, id) => s.power?.id === id;
 const POWER_IDS = Object.keys(POWERS);
 
-// `n` different powers for the crate's choice screen.
 export function powerChoices(n = BANANA_CRATE.choices) {
   return [...POWER_IDS].sort(() => Math.random() - 0.5).slice(0, n);
 }
 
-// A solved Banana crate puzzle: the chosen super power for a few seconds. 'random'
-// (or no choice) picks one at random and adds a few bonus seconds for the gamble.
 export function rewardBananaCrate(world, s, choice = 'random') {
   const random = !POWERS[choice];
   const id = random ? pick(POWER_IDS) : choice;
@@ -288,7 +258,6 @@ export function closeBananaCrate(pickup) {
   pickup.timer = BANANA_CRATE.respawn;
 }
 
-// Called when the player gives up (survival) or quits.
 export function endMatchNow(world, reason) { endMatch(world, reason); }
 
 function endMatch(world, reason) {
@@ -298,7 +267,6 @@ function endMatch(world, reason) {
   world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills }, mission: world.mission, continues: world.continues });
 }
 
-// selfDamage scales what the blast does to its own owner (rockets: WEAPONS.rocket.selfDamage).
 function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
   world.emit('explosion', { x, y, radius });
   for (let i = 0; i < 26; i++) {
@@ -311,12 +279,10 @@ function explode(world, x, y, radius, dmg, owner, weaponName, selfDamage = 1) {
     const c = center(s);
     const d = Math.hypot(c.x - x, c.y - y);
     if (d > radius) continue;
-    // Walls and floors shelter you from the blast. The blast point can sit right on a
-    // wall's surface, so only count a wall that is more than a few pixels away.
     const wall = raycast(world.map, x, y, c.x, c.y, 6);
     if (wall && Math.hypot(wall.x - x, wall.y - y) > 14) continue;
     const falloff = 1 - d / radius;
-    const still = hasPower(s, 'bubble') || s.busy;   // the bubble, or solving a crate puzzle online, stops the shove
+    const still = hasPower(s, 'bubble') || s.busy;
     const push = still ? 0 : 600 * falloff;
     s.vx += ((c.x - x) / (d || 1)) * push;
     s.vy += ((c.y - y) / (d || 1)) * push - (still ? 0 : 150 * falloff);
@@ -330,7 +296,6 @@ function fire(world, s) {
   const w = WEAPONS[gun.key];
   const sh = shoulder(s);
   const muzzle = { x: sh.x + Math.cos(s.aim) * 36, y: sh.y + Math.sin(s.aim) * 36 };
-  // Do not shoot through a wall the barrel is poking into.
   const start = raycast(world.map, sh.x, sh.y, muzzle.x, muzzle.y) ? sh : muzzle;
 
   for (let i = 0; i < w.pellets; i++) {
@@ -340,7 +305,7 @@ function fire(world, s) {
     else if (w.type === 'flame') world.flames.push({ ...proj, vx: proj.vx + s.vx * 0.5, vy: proj.vy + s.vy * 0.5, life: w.range / w.speed, age: 0, drag: w.drag ?? 1.5, hit: new Set() });
     else world.bullets.push(proj);
   }
-  if (!hasPower(s, 'rapid')) gun.ammo -= 1;   // Rapid Fire uses no ammo
+  if (!hasPower(s, 'rapid')) gun.ammo -= 1;
   s.fireCooldown = w.rate * (hasPower(s, 'rapid') ? POWERS.rapid.fireRate : 1);
   world.emit('weapon:fired', { soldier: s, weapon: gun.key, x: start.x, y: start.y });
   if (gun.ammo <= 0 && gun.spare > 0) startReload(world, s);
@@ -382,7 +347,7 @@ function melee(world, s) {
   const c = center(s);
   world.emit('melee:swing', { soldier: s });
   for (const o of world.soldiers) {
-    if (o === s || !o.alive || o.team === s.team) continue;   // teammates are not in the way
+    if (o === s || !o.alive || o.team === s.team) continue;
     const oc = center(o);
     const ahead = (oc.x - c.x) * s.facing;
     if (ahead > -6 && ahead < SOLDIER.meleeRange + 14 && Math.abs(oc.y - c.y) < 40) {
@@ -446,12 +411,10 @@ function updateSoldier(world, s, dt) {
     s.health = Math.min(SOLDIER.maxHealth, s.health + HEALTH_REGEN.perSecond * dt);
   }
 
-  // Aim at the target point from the shoulder.
   const sh = shoulder(s);
   s.aim = Math.atan2(c.aimY - sh.y, c.aimX - sh.x);
   s.facing = Math.cos(s.aim) >= 0 ? 1 : -1;
 
-  // Horizontal movement.
   const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
   if (s.onGround) {
     const target = dir * PHYSICS.walkSpeed * speed;
@@ -464,11 +427,6 @@ function updateSoldier(world, s, dt) {
     if (Math.abs(s.vx) > PHYSICS.airSpeed * speed && dir === Math.sign(s.vx)) s.vx -= Math.sign(s.vx) * PHYSICS.airAccel * dt;
   }
 
-  // Jetpack and gravity.
-  // A fresh jet press is remembered for a moment (jump buffer), and walking off a
-  // ledge still counts as standing for a moment (coyote time), so a take-off pop
-  // feels reliable. The thrust is strongest while falling (quick lift-off) and eases
-  // off near the top speed, so the climb levels out smoothly instead of snapping.
   const jetPressed = c.jet && !s.jetHeld;
   s.jetHeld = c.jet;
   s.jetBuffer = jetPressed ? PHYSICS.jumpBuffer : Math.max(0, s.jetBuffer - dt);
@@ -490,7 +448,7 @@ function updateSoldier(world, s, dt) {
     if (!(s.fuelBoost > 0)) s.fuel = Math.max(0, s.fuel - PHYSICS.fuelBurn * dt);
     if (s.fuel <= 0 && s.sputterCooldown <= 0) sputter(world, s);
   } else if (jetPressed && s.sputterCooldown <= 0) {
-    sputter(world, s);   // pressing jet on an empty tank
+    sputter(world, s);
   }
   s.vy = Math.min(PHYSICS.maxFall, s.vy + PHYSICS.gravity * dt);
 
@@ -498,7 +456,6 @@ function updateSoldier(world, s, dt) {
   const wasOnGround = s.onGround;
   const hit = moveBox(world.map, s, dt);
   s.onGround = hit.bottom;
-  // Landing: no fall damage, just an event for dust and a thud.
   if (s.onGround && !wasOnGround && fallSpeed >= PHYSICS.landMinSpeed) {
     world.emit('soldier:landed', { soldier: s, speed: Math.round(fallSpeed), x: s.x + s.w / 2, y: s.y + s.h });
   }
@@ -510,10 +467,8 @@ function updateSoldier(world, s, dt) {
     s.groundTime = 0;
   }
 
-  // Weapons.
   if (c.swap) {
     if (s.primary) {
-      // Swapping cancels a reload in progress (the half-loaded gun keeps its old ammo).
       if (s.reloadTimer > 0) world.emit('weapon:reload-cancelled', { soldier: s, weapon: activeGun(s).key });
       s.current = s.current === 'primary' ? 'sidearm' : 'primary';
       s.reloadTimer = 0;
@@ -536,9 +491,6 @@ function updateSoldier(world, s, dt) {
   if (c.grenade) throwGrenade(world, s);
   if (c.melee && s.meleeCooldown <= 0) melee(world, s);
 
-  // Pickups: health is automatic; weapons on the pickup key (bots grab them automatically).
-  // Only the pickups that existed at the start of this step are checked: taking a gun
-  // drops the old one into world.pickups, and it must not be picked straight back up.
   for (let i = 0, n = world.pickups.length; i < n; i++) {
     const p = world.pickups[i];
     if (!p.active || p.gone) continue;
@@ -550,7 +502,7 @@ function updateSoldier(world, s, dt) {
     }
     if (p.kind === 'health' || POWERUP_KINDS.has(p.kind)) takePickup(world, s, p);
     else if (c.pickup || (!s.isPlayer && (!s.primary || s.primary.ammo + s.primary.spare < 4))) {
-      if (takePickup(world, s, p)) c.pickup = false;   // one gun per key press
+      if (takePickup(world, s, p)) c.pickup = false;
     }
     else if (s.isPlayer) world.emit('pickup:available', { weapon: p.weapon, soldier: s });
   }
@@ -558,10 +510,6 @@ function updateSoldier(world, s, dt) {
   c.reload = c.swap = c.grenade = c.melee = c.pickup = false;
 }
 
-// Damage for one bullet hit: distance falloff (shotgun) and the headshot bonus.
-// A hit in the top HEADSHOT_ZONE of the box, or on the head cap above it (hitY above
-// victim.y), is a headshot for any bullet with a `headshot` multiplier. Shotgun pellets
-// are multiplied after falloff. Rockets and flames never come through here.
 export function bulletDamage(b, victim, hitY, dist) {
   let amount = b.damage;
   if (b.falloff && dist > b.falloff.start) {
@@ -679,7 +627,6 @@ function updatePickups(world, dt) {
     p.timer -= dt;
     if (p.timer <= 0) {
       p.active = true;
-      // A crate spot comes back as a weapon, or now and then as a power-up.
       if (p.crateSpot) {
         p.kind = Math.random() < PICKUPS.powerupChance ? pick(PICKUPS.powerups) : 'weapon';
         p.weapon = p.kind === 'weapon' ? pick(CRATE_WEAPONS) : undefined;
@@ -699,7 +646,6 @@ export function updateWorld(world, dt) {
   updateProjectiles(world, dt);
   updatePickups(world, dt);
 
-  // Campaign missions get harder every minute: bots aim better and react faster.
   if (world.mode === 'campaign' && !world.over && world.time >= world.nextRamp) {
     world.nextRamp += RAMP.every;
     world.rampBonus += RAMP.accuracy;

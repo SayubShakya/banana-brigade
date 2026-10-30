@@ -1,6 +1,4 @@
-// Match results, the leaderboards and a player's totals.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { scoreRow, isId, oid } = require('./rows');
 
@@ -14,14 +12,12 @@ function createScoreRepository(m) {
       });
       return String(doc._id);
     },
-    // since: a Date, or null for all time. Survival is ranked by wave, the rest by kills.
     async leaderboard(mode, limit = 20, since = null) {
       const main = mode === 'survival' ? 'wave' : 'kills';
       const rows = await m.Score.aggregate([
         { $match: { mode, ...(since ? { createdAt: { $gte: since } } : {}) } },
         { $sort: { [main]: -1, puzzlesSolved: -1, createdAt: 1 } },
         { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'u' } },
-        // Guests (and accounts that no longer exist) are not on the leaderboard.
         { $match: { 'u.0': { $exists: true }, 'u.guest': { $ne: true } } },
         { $limit: limit },
         { $set: { username: { $first: '$u.username' } } },

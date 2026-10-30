@@ -1,7 +1,4 @@
-// Tests for guest play: a temporary account with no password that can be saved as a
-// full account later without losing its scores.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,8 +35,8 @@ test('saving a guest keeps its id and scores, and it can then log in', async () 
     const saved = await c.post('/api/auth/upgrade', { username: 'kept_it', password: 'banana-keeper-1' });
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.body.user, { id, username: 'kept_it', role: 'player', guest: false });
-    assert.notEqual(c.cookie, before);                        // new session id
-    assert.equal((await s.db.scoresForUser(id)).length, 1);   // the score is still there
+    assert.notEqual(c.cookie, before);
+    assert.equal((await s.db.scoresForUser(id)).length, 1);
     assert.equal((await s.db.models.User.findById(id).lean()).guestExpiresAt, undefined);
 
     assert.equal((await client(s.base).post('/api/auth/login', { username: 'kept_it', password: 'banana-keeper-1' })).status, 200);

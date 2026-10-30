@@ -1,8 +1,4 @@
-// Pop-up notices for unlocked achievements and for errors. They come from the event
-// bus: achievements from an HTTP reply or the WebSocket during an online match,
-// errors from api.js when the server cannot be reached or has a fault.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
@@ -12,7 +8,6 @@ export default function Toasts() {
   const [items, setItems] = useState([]);
   const show = (item, ms) => {
     const key = `${item.id ?? 'err'}-${Date.now()}-${Math.random()}`;
-    // The same error twice in a row (e.g. several calls failing at once) is shown once.
     setItems((list) => (item.error && list.some((x) => x.error && x.text === item.text) ? list : [...list, { ...item, key }]));
     setTimeout(() => setItems((list) => list.filter((x) => x.key !== key)), ms);
   };

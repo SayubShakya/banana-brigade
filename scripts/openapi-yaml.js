@@ -1,10 +1,4 @@
-// Writes docs/openapi.yaml from the OpenAPI description in server/routes/openapi.js,
-// so the API can be read (or imported into tools like Postman) without running the
-// server. There is one source: edit server/routes/openapi.js, then run
-//   npm run openapi
-// tests/integration/openapi.test.js fails if docs/openapi.yaml is out of date.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,8 +6,6 @@ const { spec } = require('../server/routes/openapi');
 
 const OUT = path.join(__dirname, '..', 'docs', 'openapi.yaml');
 
-// A small YAML writer for plain data (objects, arrays, strings, numbers, booleans).
-// Strings are written in JSON quotes, which YAML accepts, so nothing needs escaping rules.
 const plain = /^[A-Za-z_][A-Za-z0-9_.\/-]*$/;
 const key = (k) => (plain.test(k) ? k : JSON.stringify(k));
 const scalar = (v) => (typeof v === 'string' ? JSON.stringify(v) : String(v));

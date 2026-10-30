@@ -1,7 +1,4 @@
-// The React side of Banana Brigade: the controllers (controllers/) hold the state and
-// logic, and App only picks the view (views/) for the current screen.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useNavigation, useStartRoute } from './controllers/useNavigation.js';
 import { useSettings } from './controllers/useSettings.js';
@@ -57,7 +54,6 @@ export default function App() {
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
       {screen === 'settings' && <Settings settings={settings} account={account} onToggle={prefs.toggle} onSet={prefs.setSetting} onControls={() => openFrom('settings', 'controls')} onLogout={player.logout}
         onSignedOut={player.signedOut} onAdmin={() => openFrom('settings', 'admin')} onSave={() => openFrom('settings', 'save')} onPrivacy={() => openFrom('settings', 'privacy')} onBack={back} />}
-      {/* Only offered to admins; the server still checks the role on every admin request. */}
       {screen === 'admin' && account?.role === 'admin' && <Admin account={account} onBack={back} />}
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={(m) => battle.deployFrom('modes', m)} onBack={back} />}

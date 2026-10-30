@@ -1,15 +1,11 @@
-// A tiny publish/subscribe event bus (observer pattern).
-// Game logic emits events such as "answer:correct"; UI parts subscribe to them.
-// The emitter does not need to know who is listening, which keeps parts decoupled.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const listeners = new Map();
 
 export function on(eventName, handler) {
   if (!listeners.has(eventName)) listeners.set(eventName, new Set());
   listeners.get(eventName).add(handler);
-  return () => off(eventName, handler); // call the returned function to unsubscribe
+  return () => off(eventName, handler);
 }
 
 export function off(eventName, handler) {
@@ -21,7 +17,6 @@ export function emit(eventName, payload) {
     try {
       handler(payload);
     } catch (err) {
-      // One broken listener must not stop the others.
       console.error(`Error in "${eventName}" listener`, err);
     }
   }

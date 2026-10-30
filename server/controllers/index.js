@@ -1,6 +1,4 @@
-// Builds every controller from the services.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { createAuthController } = require('./authController');
 const { createAccountController } = require('./accountController');

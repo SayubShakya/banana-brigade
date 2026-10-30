@@ -1,17 +1,12 @@
-// Small pieces shared by several screens.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useRef } from 'react';
 import { drawAvatarPreview, makeAvatar } from '../game/characters.js';
 
-// Position in a leaderboard: medals for the top three, a plain number after that.
 export const Rank = ({ n }) => (n <= 3 ? <span className={`medal m${n}`}>{n}</span> : n);
 
-// Icons are decoration: the button or label next to them carries the words.
 export const Icon = ({ id, className = 'ico' }) => <svg className={className} aria-hidden="true" focusable="false"><use href={`#i-${id}`} /></svg>;
 
-// A still picture of the player's soldier.
 export function AvatarCanvas({ parts, width = 180, height = 240, ...rest }) {
   const ref = useRef(null);
   useEffect(() => { drawAvatarPreview(ref.current, makeAvatar(parts)); }, [parts]);
@@ -53,8 +48,6 @@ export const Sky = () => (
   </>
 );
 
-// Grey shimmering placeholders shown while a screen's data is on its way, so the
-// layout does not jump when it arrives. Screen readers hear "Loading" once.
 export function Skeleton({ rows = 3, height }) {
   return (
     <div className="skeleton" role="status" aria-label="Loading">
@@ -62,7 +55,6 @@ export function Skeleton({ rows = 3, height }) {
     </div>
   );
 }
-// The same inside a table body.
 export const SkeletonRows = ({ cols, rows = 3 }) => Array.from({ length: rows }, (_, i) => (
   <tr key={`sk${i}`} aria-hidden={i > 0}><td colSpan={cols}><div className="skeleton-row" role={i === 0 ? 'status' : undefined} aria-label={i === 0 ? 'Loading' : undefined} /></td></tr>
 ));

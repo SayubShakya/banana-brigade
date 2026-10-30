@@ -1,36 +1,12 @@
-// Keeps Banana API puzzles ready before anyone asks for one.
-//
-// - `ready`: a few fresh puzzles fetched in the background, so the puzzle screen
-//   opens instantly instead of waiting for the API.
-// - `reserve`: recently fetched puzzles kept for emergencies. The Banana API notes
-//   that it "may be discontinued without notice"; if it stops answering, the game
-//   keeps working from the reserve and the menu shows the API as offline. With a
-//   `store`, the reserve is also saved in MongoDB and loaded when the server starts,
-//   so the game still has puzzles after a restart while the API is down.
-// - a deadline on take(): a slow API with retries could keep a player waiting for
-//   two timeouts plus backoff, so after a short wait a reserve puzzle is used instead
-//   (the live puzzle still arrives later and goes into `ready`).
-// - a limit on calls in flight: if many players ask while `ready` is empty, they
-//   queue for the next puzzle instead of each firing a new request at the API.
-// - a circuit breaker: after a few failures in a row the pool stops calling the API
-//   for a cool-down and serves the reserve straight away. That spares a struggling
-//   API from more traffic, and spares players from waiting through timeouts and
-//   retries that are very likely to fail again. After the cool-down one "probe"
-//   call is let through (half-open); if it works, normal calls resume.
-//
-//   closed --K failures in a row--> open --cool-down over--> half-open
-//      ^                                                        |
-//      +---------------- probe succeeds ------------------------+  (probe fails -> open)
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { BananaApiError } = require('./bananaApi');
 
-const WINDOW = 20;   // the status numbers describe the last 20 real calls
+const WINDOW = 20;
 
 function createPuzzlePool({
   fetchPuzzle,
-  apiStats = null,          // optional: () => ({ retriesUsed }) from the Banana API client
+  apiStats = null,
   size = 3,
   reserveSize = 25,
   maxInFlight = 3,
@@ -38,18 +14,17 @@ function createPuzzlePool({
   failureThreshold = 3,
   coolDownMs = 30_000,
   now = () => Date.now(),
-  store = null,             // optional: { load(limit), save(puzzle) } keeps the reserve across restarts
+  store = null,
 }) {
   const ready = [];
   const reserve = [];
-  const waiting = [];       // players queued for the next live puzzle: { resolve, reject }
-  const recent = [];        // { ok, ms } for the last WINDOW real calls
+  const waiting = [];
+  const recent = [];
   let inFlight = 0;
-  let online = null;        // unknown until the first call
-  let lastError = null;     // a short category only (e.g. 'timeout'), safe to show publicly
+  let online = null;
+  let lastError = null;
   let lastSuccess = null;
 
-  // Circuit breaker state.
   let circuit = 'closed';
   let failuresInRow = 0;
   let openedAt = 0;
@@ -58,10 +33,9 @@ function createPuzzlePool({
   function remember(puzzle, { save = true } = {}) {
     reserve.push(puzzle);
     if (reserve.length > reserveSize) reserve.shift();
-    if (save && store) store.save({ image: puzzle.image, solution: puzzle.solution }).catch(() => {});   // best effort
+    if (save && store) store.save({ image: puzzle.image, solution: puzzle.solution }).catch(() => {});
   }
 
-  // Loads the saved reserve (newest first in the store, oldest first here).
   async function loadReserve() {
     if (!store) return 0;
     const saved = await store.load(reserveSize);
@@ -76,7 +50,6 @@ function createPuzzlePool({
 
   const coolingDown = () => circuit === 'open' && now() - openedAt < coolDownMs;
 
-  // Decides whether a real call may go out right now.
   function allowCall() {
     if (circuit === 'closed') return true;
     if (circuit === 'open' && !coolingDown()) circuit = 'half-open';
@@ -110,13 +83,11 @@ function createPuzzlePool({
     }
   }
 
-  // A live call made for one waiting player (not for `ready`).
   function startFetch() {
     inFlight += 1;
     return fetchLive().finally(() => { inFlight -= 1; });
   }
 
-  // A finished background puzzle goes to the first queued player, or into `ready`.
   function deliver(puzzle) {
     if (waiting.length) waiting.shift().resolve(puzzle);
     else ready.push(puzzle);
@@ -124,20 +95,17 @@ function createPuzzlePool({
 
   function refill() {
     while (ready.length + inFlight < size + waiting.length && inFlight < maxInFlight) {
-      if (coolingDown()) break;   // nothing to gain until the cool-down is over
-      // The count only drops once the puzzle is delivered, so two calls finishing
-      // together cannot both think `ready` is short and over-fill it.
+      if (coolingDown()) break;
       inFlight += 1;
       fetchLive().then(
         (p) => { inFlight -= 1; deliver(p); refill(); },
         (err) => {
           inFlight -= 1;
-          // Once the circuit opens no more calls will come, so nobody should keep waiting.
           const give = circuit === 'open' ? waiting.splice(0) : waiting.splice(0, 1);
           for (const w of give) w.reject(err);
         },
       );
-      if (online === false) break; // do not hammer an API that is down
+      if (online === false) break;
     }
   }
 
@@ -149,10 +117,9 @@ function createPuzzlePool({
     const puzzle = ready.shift();
     if (puzzle) { refill(); return { ...puzzle, source: 'live' }; }
 
-    // Either start our own call, or queue for one already running.
     let live;
     let waiter = null;
-    if (coolingDown()) live = fetchLive();             // fails at once: the circuit is open
+    if (coolingDown()) live = fetchLive();
     else if (inFlight < maxInFlight) live = startFetch();
     else live = new Promise((resolve, reject) => { waiter = { resolve, reject }; waiting.push(waiter); refill(); });
 
@@ -163,10 +130,6 @@ function createPuzzlePool({
       if (first !== 'deadline') { refill(); return { ...first, source: 'live' }; }
       const spare = fromReserve();
       if (!spare) { const p = await live; refill(); return { ...p, source: 'live' }; }
-      // Too slow: give the player a reserve puzzle and keep the live one for later.
-      // If this player is still queued, leave the queue (only our own entry: indexOf
-      // is -1 once a puzzle was already handed to us). Otherwise the live puzzle is
-      // ours and arrives later, so it goes to `ready` for the next player.
       const i = waiter ? waiting.indexOf(waiter) : -1;
       if (i >= 0) waiting.splice(i, 1);
       else live.then((p) => ready.push(p), () => {});
@@ -191,14 +154,12 @@ function createPuzzlePool({
       lastLatencyMs: last ? Math.round(last.ms) : null,
       p50LatencyMs: ok.length ? Math.round(ok[Math.floor((ok.length - 1) / 2)]) : null,
       avgLatencyMs: ok.length ? Math.round(ok.reduce((t, ms) => t + ms, 0) / ok.length) : null,
-      successRate: recent.length ? Math.round((ok.length / recent.length) * 100) : null,   // percent
+      successRate: recent.length ? Math.round((ok.length / recent.length) * 100) : null,
       retriesUsed: apiStats?.().retriesUsed ?? 0,
       circuit: { state: coolingDown() || circuit !== 'open' ? circuit : 'half-open', failuresInRow, retryInMs: coolingDown() ? coolDownMs - (now() - openedAt) : 0 },
     };
   }
 
-  // Health over time for the admin screen: a small sample of status() every 30 s
-  // (started by index.js), the last 120 kept (one hour).
   const samples = [];
   function sample() {
     const s = status();
@@ -206,7 +167,7 @@ function createPuzzlePool({
     if (samples.length > 120) samples.shift();
   }
   function startSampling(everyMs = 30_000) {
-    const first = setTimeout(sample, 5000);   // after the warm-up calls have had time to answer
+    const first = setTimeout(sample, 5000);
     const timer = setInterval(sample, everyMs);
     first.unref?.(); timer.unref?.();
     return () => { clearTimeout(first); clearInterval(timer); };
@@ -216,7 +177,6 @@ function createPuzzlePool({
     sample,
     startSampling,
     history: () => [...samples],
-    // Returns { image, solution, source } where source is 'live' or 'reserve'.
     take,
     warmUp: refill,
     loadReserve,

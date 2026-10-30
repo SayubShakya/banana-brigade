@@ -1,12 +1,4 @@
-// One online match, run by the server. It uses the very same engine files as the
-// browser (client/src/game/world.js and bots.js), ticks the world 30 times a second
-// and sends every player a snapshot after each tick.
-//
-// Players only send their controls (keys held, where they aim). Movement, hits,
-// kills and the final scores are all worked out here, so a modified browser cannot
-// give itself kills or a better score: the server is the authority.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const crypto = require('node:crypto');
 const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls, powerChoices } = require('../../client/src/game/world.js');
@@ -16,21 +8,18 @@ const { BOT_NAMES } = require('../../client/src/game/config.js');
 const { randomMapId } = require('../../client/src/game/map.js');
 
 const TICK_HZ = 30;
-const SNAPSHOT_EVERY = 1;                  // a snapshot after every 30 Hz tick, for smooth movement
+const SNAPSHOT_EVERY = 1;
 const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup'];
 const round = (n) => Math.round(n * 10) / 10;
 
-// How a banana crate puzzle is protected online (all in milliseconds, except botGrace).
-// Tests pass shorter times through createMatch({ crateTimings }).
 const CRATE_TIMINGS = {
-  holdMs: 1600,        // after a miss the puzzle window shows the answer ~1.5 s, so stay protected that long
-  extraMs: 6000,       // the server gives up on a crate puzzle this long after its countdown should have ended
-  cooldownMs: 5000,    // the same player can open a banana crate again only after this
-  botGrace: 1,         // seconds bots keep ignoring a player after their exit shield ends
+  holdMs: 1600,
+  extraMs: 6000,
+  cooldownMs: 5000,
+  botGrace: 1,
 };
-const gun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === Infinity ? -1 : g.spare };   // JSON has no Infinity
+const gun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === Infinity ? -1 : g.spare };
 
-// Copies only the fields the browser needs to draw a soldier and the HUD.
 function soldierState(s) {
   return {
     id: s.id, x: round(s.x), y: round(s.y), aim: round(s.aim), facing: s.facing, walkPhase: round(s.walkPhase),
@@ -42,27 +31,17 @@ function soldierState(s) {
   };
 }
 
-/**
- * @param {object} o
- * @param {Array<{userId:string, username:string, parts:object, team:string}>} o.players
- * @param {boolean} o.teamMode
- * @param {'easy'|'medium'|'hard'} [o.difficulty]  how good the bots are (checked by rooms.js)
- * @param {(event:string, payload:object, userId?:string) => void} o.send  to everyone, or to one player
- * @param {(result:object) => void} o.onEnd
- * @param {(killer:string|null, victim:string, weapon:string, headshot:boolean) => void} [o.onKill]  for the live event feed
- * @param {Partial<typeof CRATE_TIMINGS>} [o.crateTimings]  shorter waits for tests
- */
 function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, crateTimings }) {
   const T = { ...CRATE_TIMINGS, ...crateTimings };
   const matchId = crypto.randomUUID();
-  const outbox = [];                          // events for this tick, sent with the snapshot
-  const near = new Set();                     // players standing at a banana crate this tick
-  const crates = new Map();                   // userId -> { pickup, timer } while solving a crate puzzle
-  const holds = new Map();                    // userId -> timer while the puzzle window shows a missed answer
-  const cooldowns = new Map();                // userId -> when (Date.now()) they may open a crate again
-  const offers = new Map();                   // userId -> { choices, timer } while choosing a Banana Power
-  const puzzles = new Map();                  // userId -> { solved, attempted }
-  const pending = new Map();                  // userId -> latest controls (one-shot actions are OR-ed)
+  const outbox = [];
+  const near = new Set();
+  const crates = new Map();
+  const holds = new Map();
+  const cooldowns = new Map();
+  const offers = new Map();
+  const puzzles = new Map();
+  const pending = new Map();
   const startedAt = Date.now();
   let tick = 0;
   let ended = false;
@@ -72,7 +51,6 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     switch (event) {
       case 'soldier:killed':
         outbox.push(['killed', { victim: p.victim.id, killer: p.killer?.id ?? null, weapon: p.weapon, headshot: !!p.headshot }]);
-        // Only kills that involve a real player go to the event feed (bot-on-bot is noise).
         if (p.victim.id.startsWith('u') || p.killer?.id.startsWith('u')) onKill?.(p.killer?.name ?? null, p.victim.name, p.weapon, !!p.headshot);
         break;
       case 'soldier:damaged': outbox.push(['damaged', { victim: p.victim.id, attacker: p.attacker?.id ?? null, amount: round(p.amount), headshot: !!p.headshot }]); break;
@@ -85,8 +63,6 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       case 'weapon:reloading': case 'weapon:reloaded': case 'weapon:empty':
         outbox.push([event.slice(7), { soldier: p.soldier.id, weapon: p.weapon }]); break;
       case 'explosion': outbox.push(['explosion', { x: round(p.x), y: round(p.y), radius: p.radius }]); break;
-      // Small effects (landing dust, ricochets, grenade and melee sounds, shield breaks)
-      // are passed on by name, with the soldier's id instead of the object.
       case 'soldier:landed': case 'bullet:wall': case 'grenade:thrown': case 'grenade:bounce':
       case 'melee:swing': case 'jetpack:sputter': case 'shield:broken':
         outbox.push(['fx', { name: event, soldier: p.soldier?.id ?? null, x: p.x == null ? undefined : round(p.x), y: p.y == null ? undefined : round(p.y), speed: p.speed }]);
@@ -98,8 +74,6 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     }
   };
 
-  // The server picks the battlefield; its id goes out in match:start so every
-  // browser builds the same tile grid from maps.js.
   const mapId = randomMapId();
   const world = createWorld({
     mode: 'online', teamMode, difficulty, emit, map: mapId,
@@ -110,20 +84,14 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
   if (timeLimit) world.timeLeft = timeLimit;
   const byUser = (userId) => world.soldiers.find((s) => s.id === sid(userId));
 
-  // The static part of the match, sent once: names, looks and teams.
   const roster = () => world.soldiers.map((s) => ({ id: s.id, name: s.name, team: s.team, human: s.isPlayer, avatar: s.avatar }));
 
-  // Pressing E at a banana crate. The player is frozen and cannot be hurt until the
-  // puzzle (and the power choice) is over. The puzzle has the room difficulty's time,
-  // and the server closes it itself if no answer ever comes back.
   function offerCrate(soldier, pickup) {
     if (soldier.busy || !pickup.active || ended) return;
     const userId = soldier.id.slice(1);
-    if (Date.now() < (cooldowns.get(userId) ?? 0)) return;   // no crate spamming
-    // One player at a time per crate: a second player cannot open a crate someone is
-    // already solving (before, both got a puzzle and the slower one lost it).
+    if (Date.now() < (cooldowns.get(userId) ?? 0)) return;
     for (const c of crates.values()) if (c.pickup === pickup) return;
-    soldier.busy = true;                    // frozen and protected while solving
+    soldier.busy = true;
     soldier.shieldTimer = 999;
     const seconds = world.difficulty.puzzle.crate;
     const timer = setTimeout(() => expireCrate(userId), seconds * 1000 + T.extraMs);
@@ -131,16 +99,12 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     send('puzzle:offer', { purpose: 'crate', seconds }, userId);
   }
 
-  // No answer in time (a closed tab, a lost message): treat it like "Leave it".
-  // The crate stays for someone else and the browser is told to close its window.
   function expireCrate(userId) {
     if (!crates.delete(userId)) return;
     release(userId);
     send('puzzle:closed', { purpose: 'crate', reason: 'time' }, userId);
   }
 
-  // The end of every crate visit: unfreeze, a spawn-length shield to get your bearings,
-  // bots look away a little longer, and a short wait before the next crate.
   function release(userId) {
     cooldowns.set(userId, Date.now() + T.cooldownMs);
     const s = byUser(userId);
@@ -224,9 +188,8 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       matchId, reason, teamMode, teamKills: { ...teamKills }, durationS: Math.round((Date.now() - startedAt) / 1000),
       ranking: ranking.map((s) => ({ id: s.id, name: s.name, team: s.team, kills: s.kills, deaths: s.deaths, human: s.id.startsWith('u') })),
     };
-    // The world is still inside its update here, so finish on the next turn of the event loop.
     setImmediate(() => {
-      sendSnapshot();                         // one last snapshot so everyone sees the final kill
+      sendSnapshot();
       send('match:end', summary);
       onEnd({ ...summary, results });
     });
@@ -236,7 +199,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     matchId,
     mapId,
     roster,
-    botLevel: world.difficulty.name,          // what the engine actually uses, e.g. 'Hard'
+    botLevel: world.difficulty.name,
     setControls,
     countPuzzle(userId, correct) {
       const p = puzzles.get(userId) ?? { solved: 0, attempted: 0 };
@@ -244,47 +207,38 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       if (correct) p.solved += 1;
       puzzles.set(userId, p);
     },
-    // Which Banana puzzles this player may ask for right now.
     canAsk(userId, purpose) {
       const s = byUser(userId);
       if (!s || ended) return false;
-      if (purpose === 'respawn') return !s.alive && !s.bananaUsed;   // one try per death
+      if (purpose === 'respawn') return !s.alive && !s.bananaUsed;
       if (purpose === 'crate') return crates.has(userId);
       return false;
     },
-    // A puzzle was handed out. A respawn puzzle uses up this death's one try, so
-    // closing the window or asking again cannot fish for an easy one.
     puzzleIssued(userId, purpose) {
       const s = byUser(userId);
-      if (s && purpose === 'respawn') s.bananaUsed = true;   // spawn() clears it
+      if (s && purpose === 'respawn') s.bananaUsed = true;
     },
-    // A Banana puzzle was answered (checked by the server's puzzle store).
     applyPuzzle(userId, purpose, correct) {
       const s = byUser(userId);
       if (!s || ended) return;
       if (purpose === 'respawn' && correct) revive(world, s);
       if (purpose === 'crate') {
         const crate = crates.get(userId);
-        if (!crate) return;                   // already closed by the server's time limit
+        if (!crate) return;
         clearTimeout(crate.timer);
         crates.delete(userId);
         const offer = correct && crate.pickup.active;
         if (crate.pickup.active) closeBananaCrate(crate.pickup);
         if (!offer) {
-          // A miss: the browser shows the right answer for a moment, so stay frozen
-          // and shielded until the window has closed, then let go.
           holds.set(userId, setTimeout(() => { holds.delete(userId); release(userId); }, T.holdMs));
           return;
         }
-        // Solved: the player stays frozen and protected while choosing a Banana Power.
-        // If no choice arrives in time, the server picks a random one.
         const choices = powerChoices();
         const timer = setTimeout(() => api.choosePower(userId, 'random'), (BANANA_CRATE.pickSeconds + 1) * 1000);
         offers.set(userId, { choices, timer });
         send('power:offer', { choices, seconds: BANANA_CRATE.pickSeconds }, userId);
       }
     },
-    // The player's power choice; anything not offered counts as 'random'. Returns the power given.
     choosePower(userId, choice) {
       const offer = offers.get(userId);
       const s = byUser(userId);
@@ -297,15 +251,11 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       onPower?.(userId, power);
       return power;
     },
-    // "Leave it": the crate stays where it is. A player who leaves the match while
-    // choosing a power gets nothing (no power for the bot). A late cancel after the
-    // server already closed the puzzle changes nothing.
     cancelCrate(userId) {
       if (!crates.has(userId) && !offers.has(userId)) return;
       clearTimers(userId);
       release(userId);
     },
-    // A player left: a bot takes over their soldier so the match stays fair for the others.
     leave(userId) {
       const s = byUser(userId);
       if (!s) return;
@@ -327,7 +277,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     end(reason = 'host') { endMatchNow(world, reason); },
     stop() { ended = true; clearInterval(timer); clearAllTimers(); },
     get over() { return ended; },
-    get world() { return world; },            // for tests: the live world on the server
+    get world() { return world; },
   };
   return api;
 }

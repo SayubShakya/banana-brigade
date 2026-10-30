@@ -1,7 +1,4 @@
-// Tests for the settings (server/config/index.js): production refuses to start without
-// a session secret or the site address used in password reset links.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,5 +13,5 @@ test('production needs SESSION_SECRET and APP_URL; development has safe defaults
   const dev = loadConfig({});
   assert.equal(dev.port, 3100);
   assert.equal(dev.appUrl, null);
-  assert.equal(dev.sessionSecret.length, 64);   // a random one
+  assert.equal(dev.sessionSecret.length, 64);
 });

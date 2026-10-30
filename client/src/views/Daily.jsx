@@ -1,8 +1,4 @@
-// The Daily Banana Challenge: 5 puzzles shared by everyone today, 20 seconds each,
-// one attempt. Points double for every correct answer in a row. The server keeps the
-// solutions, the timer and the score; this screen only shows them.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
@@ -14,7 +10,7 @@ const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 export default function Daily({ me, onBack }) {
   const [info, setInfo] = useState(null);
   const [board, setBoard] = useState([]);
-  const [run, setRun] = useState(null);          // { index, total, image, score, solved, bonus }
+  const [run, setRun] = useState(null);
   const [left, setLeft] = useState(20);
   const [msg, setMsg] = useState({ text: '', kind: '' });
   const [busy, setBusy] = useState(false);
@@ -33,7 +29,7 @@ export default function Daily({ me, onBack }) {
     setError('');
     setBusy(true);
     try {
-      if (info?.running) {                       // the page was reloaded during a run
+      if (info?.running) {
         const r = await api.dailyCurrent();
         setRun({ total: r.total, score: r.score, solved: r.solved, bonus: r.bonus, finished: false });
         showPuzzle({ index: r.index, image: r.image }, r.seconds);
@@ -62,7 +58,6 @@ export default function Daily({ me, onBack }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }, [run, busy, info, refresh]);
 
-  // Countdown and keyboard while a puzzle is showing.
   useEffect(() => {
     if (!run || run.finished) return undefined;
     const id = setInterval(() => {

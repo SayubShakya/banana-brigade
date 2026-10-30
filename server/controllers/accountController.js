@@ -1,6 +1,4 @@
-// HTTP side of the account tools under /api/auth: signed-in devices and data export.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 function createAccountController({ accountService }) {
   return {

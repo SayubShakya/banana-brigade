@@ -1,7 +1,4 @@
-// Tests for "where you're signed in" (each session's device and last use, signing
-// out one of them) and "download my data".
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,16 +30,15 @@ test('the list shows each device, marks this one, and one other device can be si
     assert.equal(here.device, 'Chrome on macOS');
     assert.equal(there.device, 'Safari on iOS');
     assert.match(there.handle, /^[0-9a-f]{16}$/);
-    assert.ok(!laptop.cookie.includes(there.handle) && !phone.cookie.includes(there.handle));   // never the real id
+    assert.ok(!laptop.cookie.includes(there.handle) && !phone.cookie.includes(there.handle));
     assert.ok(here.lastSeen && here.createdAt);
 
-    assert.equal((await laptop.del(`/api/auth/sessions/${here.handle}`)).status, 400);         // not this one
+    assert.equal((await laptop.del(`/api/auth/sessions/${here.handle}`)).status, 400);
     assert.equal((await laptop.del(`/api/auth/sessions/${there.handle}`)).status, 200);
-    assert.equal((await phone.get('/api/auth/me')).body.user, null);                           // the phone is out
-    assert.equal((await laptop.get('/api/auth/me')).body.user.username, 'two_devices');        // the laptop is not
+    assert.equal((await phone.get('/api/auth/me')).body.user, null);
+    assert.equal((await laptop.get('/api/auth/me')).body.user.username, 'two_devices');
     assert.equal((await laptop.del(`/api/auth/sessions/${there.handle}`)).status, 404);
 
-    // Another player cannot end my sessions with my handle.
     const other = client(s.base);
     await other.post('/api/auth/register', { username: 'stranger', password: 'bananas123' });
     assert.equal((await other.del(`/api/auth/sessions/${here.handle}`)).status, 404);

@@ -1,9 +1,4 @@
-// Gameplay tests that run the real game engine (client/src/game/world.js and bots.js)
-// in Node, with no browser: headshots for every bullet gun, the Shield / Jet Fuel / Ammo power-ups,
-// a whole 120-second bot match, and easy bots being weaker than hard ones.
-// Math.random is swapped for a seeded generator so every run plays the same match.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +8,6 @@ const { WEAPONS, PICKUPS, PHYSICS, SOLDIER, HEADSHOT_ZONE } = require('../../cli
 
 const STEP = 1 / 60;
 
-// Runs fn with Math.random replaced by a small seeded generator (mulberry32).
 function seeded(seed, fn) {
   const real = Math.random;
   let a = seed >>> 0;
@@ -37,7 +31,6 @@ function makeWorld(opts = {}) {
   return { world, events };
 }
 
-// Only the player and one bot, both standing still in open air, unshielded.
 function duel() {
   const { world, events } = makeWorld();
   const [shooter, victim] = world.soldiers;
@@ -48,8 +41,6 @@ function duel() {
   return { world, events, shooter, victim };
 }
 
-// Fires one bullet of the given gun flat (left to right) at height hitY, 10 px left of the
-// victim, so even the slowest bullet reaches the head within one 1/60 s step.
 function fireAt(world, shooter, victim, key, hitY, extra = {}) {
   const w = WEAPONS[key];
   world.bullets.push({ owner: shooter, x: victim.x - 10, y: hitY, vx: w.speed, vy: 0, damage: w.damage, travelled: 0, range: w.range, color: w.color, weapon: w.name, falloff: w.falloff, headshot: w.headshot, ...extra });
@@ -60,7 +51,7 @@ const hitsOf = (events) => events.filter((e) => e.name === 'soldier:damaged').ma
 
 test('gameplay: a sniper headshot does 2x damage, kills in one shot and is flagged', () => {
   const { world, events, shooter, victim } = duel();
-  fireSniperAt(world, shooter, victim, victim.y + victim.h * 0.8);   // body shot
+  fireSniperAt(world, shooter, victim, victim.y + victim.h * 0.8);
   const body = events.find((e) => e.name === 'soldier:damaged');
   assert.equal(body.payload.amount, WEAPONS.sniper.damage);
   assert.equal(body.payload.headshot, false);
@@ -68,7 +59,7 @@ test('gameplay: a sniper headshot does 2x damage, kills in one shot and is flagg
 
   victim.health = SOLDIER.maxHealth;
   events.length = 0;
-  fireSniperAt(world, shooter, victim, victim.y + victim.h * 0.1);   // inside the head zone
+  fireSniperAt(world, shooter, victim, victim.y + victim.h * 0.1);
   const head = events.find((e) => e.name === 'soldier:damaged');
   assert.equal(head.payload.amount, WEAPONS.sniper.damage * 2.0);
   assert.equal(head.payload.headshot, true);
@@ -91,9 +82,9 @@ test('gameplay: rifle and SMG headshots use their own multipliers', () => {
 test('gameplay: a shotgun pellet in the head gets 1.25x, after falloff', () => {
   const { world, events, shooter, victim } = duel();
   const w = WEAPONS.shotgun;
-  fireAt(world, shooter, victim, 'shotgun', victim.y + 5);                       // point blank
-  fireAt(world, shooter, victim, 'shotgun', victim.y + 40, { travelled: 380 });  // far, body
-  fireAt(world, shooter, victim, 'shotgun', victim.y + 5, { travelled: 380 });   // far, head
+  fireAt(world, shooter, victim, 'shotgun', victim.y + 5);
+  fireAt(world, shooter, victim, 'shotgun', victim.y + 40, { travelled: 380 });
+  fireAt(world, shooter, victim, 'shotgun', victim.y + 5, { travelled: 380 });
   const [near, farBody, farHead] = hitsOf(events);
   assert.deepEqual([near.amount, near.headshot], [w.damage * 1.25, true]);
   assert.equal(farBody.headshot, false);
@@ -104,8 +95,8 @@ test('gameplay: a shotgun pellet in the head gets 1.25x, after falloff', () => {
 test('gameplay: the head zone is the top 45% of the box', () => {
   assert.equal(HEADSHOT_ZONE, 0.45);
   const { world, events, shooter, victim } = duel();
-  fireAt(world, shooter, victim, 'rifle', victim.y + victim.h * HEADSHOT_ZONE - 1.5);   // just inside
-  fireAt(world, shooter, victim, 'rifle', victim.y + victim.h * HEADSHOT_ZONE + 1.5);   // just below
+  fireAt(world, shooter, victim, 'rifle', victim.y + victim.h * HEADSHOT_ZONE - 1.5);
+  fireAt(world, shooter, victim, 'rifle', victim.y + victim.h * HEADSHOT_ZONE + 1.5);
   const [inside, below] = hitsOf(events);
   assert.equal(inside.headshot, true);
   assert.equal(below.headshot, false);
@@ -162,7 +153,6 @@ test('gameplay: shotgun pellets do less damage far away', () => {
   assert.ok(hits[1] < w.damage * 0.5, `far pellet did ${hits[1]}`);
 });
 
-// Puts a power-up on the soldier and lets the world run one step so it is picked up.
 function grab(world, events, s, kind) {
   world.pickups.push({ kind, x: s.x + s.w / 2, y: s.y + s.h / 2, active: true, timer: 0 });
   updateWorld(world, STEP);
@@ -205,11 +195,10 @@ test('gameplay: the Ammo box refills spare ammo', () => {
   assert.equal(activeGun(shooter).key, 'rifle');
 });
 
-// Plays a bot match for `seconds`, tracking how long each bot stays in one place.
 function simulate({ seconds, difficulty, seed }) {
   return seeded(seed, () => {
     const { world, events } = makeWorld({ difficulty });
-    const still = new Map();   // bot -> { x, y, time }
+    const still = new Map();
     let longestStill = 0;
     for (let t = 0; t < seconds && !world.over; t += STEP) {
       updateBots(world, STEP);
@@ -254,6 +243,5 @@ test('one press of E swaps to the crate gun and does not pick the old gun straig
   p.controls.pickup = true;
   updateWorld(world, 1 / 60);
   assert.equal(activeGun(p).key, 'sniper');
-  assert.ok(world.pickups.some((k) => k.kind === 'weapon' && k.weapon === 'rifle' && k.dropped));   // the rifle is on the floor
+  assert.ok(world.pickups.some((k) => k.kind === 'weapon' && k.weapon === 'rifle' && k.dropped));
 });
-

@@ -1,17 +1,7 @@
-// The server's live event feed for the admin screen. Anything worth watching
-// (logins, guests, puzzles solved, scores, achievements, online kills, admin actions)
-// is recorded here as a small event. A Node EventEmitter passes each one on as it
-// happens (the Socket.io server forwards it to admins who are watching), and the
-// last 100 are kept so a new viewer sees what just happened.
-//
-// This is the observer pattern on the server: the code that logs a player in does
-// not know who is watching; it only says "auth:login happened".
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { EventEmitter } = require('node:events');
 
-// Turns the achievement engine's events into feed lines (userId -> name is looked up).
 const FROM_ACHIEVEMENTS = {
   'puzzle:answered': (d) => ['puzzle', `${d.correct ? 'solved' : 'missed'} a ${d.purpose ?? 'Banana'} puzzle`],
   'score:saved': (d) => ['score', `finished ${d.mode === 'online' ? 'an online match' : `a ${d.mode} game`} with ${d.kills} kills${d.won ? ' and won' : ''}`],
@@ -26,7 +16,6 @@ function createEventLog({ size = 100, now = () => Date.now() } = {}) {
   const recent = [];
   let seq = 0;
 
-  // kind groups events for the viewer's filter (auth, puzzle, score, kill, admin, ...).
   function record(kind, user, text) {
     const event = { id: ++seq, kind, at: new Date(now()).toISOString(), user: user ?? null, text };
     recent.push(event);
@@ -35,7 +24,6 @@ function createEventLog({ size = 100, now = () => Date.now() } = {}) {
     return event;
   }
 
-  // Listens to the achievement engine, which already hears every puzzle, score and so on.
   function watchAchievements(events, db) {
     for (const [name, describe] of Object.entries(FROM_ACHIEVEMENTS)) {
       events.on(name, (userId, data) => {

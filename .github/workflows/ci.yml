@@ -1,9 +1,4 @@
-# Continuous integration for Banana Brigade.
-# On every push and pull request: install the exact packages from package-lock.json,
-# run the automated tests (they start a throw-away MongoDB with mongodb-memory-server,
-# which downloads a MongoDB binary on the runner) and build the React app with Vite.
-#
-# Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+# Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 name: CI
 
@@ -16,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Download MongoDB into the cached folder (by default it goes under node_modules,
-      # which npm ci deletes, so the cache would never be used).
       MONGOMS_DOWNLOAD_DIR: /home/runner/.cache/mongodb-binaries
     steps:
       - name: Check out the code
@@ -29,8 +22,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      # mongodb-memory-server downloads a MongoDB binary into this folder on the
-      # first run; caching it makes later runs faster and less dependent on the download.
       - name: Cache the MongoDB binary for the tests
         uses: actions/cache@v4
         with:
@@ -48,8 +39,6 @@ jobs:
       - name: Build the React app
         run: npx vite build
 
-  # End-to-end: a real browser (Chromium) registers, logs in, starts Quick Play and
-  # solves a puzzle against the app with an in-memory MongoDB and a fake Banana API.
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15

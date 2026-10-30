@@ -1,6 +1,4 @@
-// Tests for the puzzle API, using a fake Banana API so they run without the network.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +10,6 @@ const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 
 const { startServer, client, fakeApi, IMAGE: IMG } = require('./helpers');
 
-// Starts the app and returns a client that is already logged in.
 async function withPlayer(bananaApi, fn) {
   const s = await startServer({ bananaApi });
   try {
@@ -40,7 +37,7 @@ test('a correct answer is accepted and the puzzle cannot be reused', async () =>
     const first = await c.post('/api/puzzle/answer', { puzzleId, answer: 7 });
     const { unlocked, ...answer } = first.body;
     assert.deepEqual(answer, { correct: true, solution: 7, purpose: 'deploy' });
-    assert.deepEqual(unlocked.map((a) => a.id), ['speed_demon']);   // answered in under 3 s
+    assert.deepEqual(unlocked.map((a) => a.id), ['speed_demon']);
     assert.equal((await c.post('/api/puzzle/answer', { puzzleId, answer: 7 })).status, 404);
   });
 });
@@ -112,13 +109,13 @@ test('when the Banana API goes down the pool serves reserve puzzles', async () =
     fetchPuzzle: async () => { if (!up) throw new BananaApiError('Banana API is unreachable', { kind: 'network' }); return { image: IMAGE, solution: 4 }; },
     size: 0,
   });
-  await pool.take();          // one live puzzle goes into the reserve
+  await pool.take();
   up = false;
   const p = await pool.take();
   assert.equal(p.source, 'reserve');
   assert.equal(p.solution, 4);
   assert.equal(pool.status().online, false);
-  assert.equal(pool.status().lastError, 'network');   // a category, never the raw message
+  assert.equal(pool.status().lastError, 'network');
 });
 
 test('with no reserve, an outage is reported as an error', async () => {
@@ -156,7 +153,7 @@ test('the saved puzzle reserve keeps only the newest 25 in MongoDB', async () =>
     const rows = await s.db.loadReservePuzzles(25);
     assert.equal(rows.length, 25);
     assert.equal(await s.db.models.ReservePuzzle.countDocuments(), 25);
-    assert.equal(rows[0].image, 'img-29');   // newest first
+    assert.equal(rows[0].image, 'img-29');
     assert.ok(!rows.some((r) => r.image === 'img-0'));
   } finally { await s.close(); }
 });

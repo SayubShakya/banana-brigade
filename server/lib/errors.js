@@ -1,8 +1,4 @@
-// An error a service throws to refuse a request (bad input, not allowed, not found,
-// conflict, too many tries). It carries the HTTP status and the JSON body, so the
-// services do not need to know about Express; middleware/errorHandler.js sends it.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 class AppError extends Error {
   constructor(status, message, extra = {}) {

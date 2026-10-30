@@ -1,25 +1,10 @@
-// Shooting feel for the renderer: muzzle flashes, recoil, sniper beams, wall sparks,
-// shell casings, hit markers, floating damage numbers, the damage-direction arrow,
-// the KILL pop and screen shake; plus the battle animations: ragdoll corpses, headshot
-// pops, the respawn ring, jetpack smoke, explosions (fireball, shockwave, smoke,
-// debris, scorch marks), soldier poses (melee, throw, reload, swap, landing, flinch,
-// lean), the low-health vignette and the DOUBLE KILL / TRIPLE KILL / RAMPAGE! banners.
-// Nothing here changes the game: it only listens to the events the world publishes on
-// the event bus (weapon:fired, soldier:damaged, soldier:killed, explosion, ...) and
-// reads soldier state, so it works the same in local and online games.
-// Reduced motion (the OS setting or the in-game calm option) turns off the shake,
-// pulsing and big flashes, and makes the rest gentler.
-// Every effect lives in a small fixed-size pool (a ring buffer), so a busy fight
-// never allocates new objects each frame and the counts stay capped.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../services/eventBus.js';
 import { VIEW, WEAPONS, TILE } from './config.js';
 import { raycast, isSolid } from './map.js';
 import { drawSoldier } from './characters.js';
 
-// Visual recoil of the gun (px) and how much it kicks the camera, per weapon.
 const KICK = { magnum: 5, smg: 2.5, rifle: 3.5, shotgun: 9, sniper: 12, rocket: 10, flamer: 0 };
 const CAM_KICK = { magnum: 2, smg: 1, rifle: 1.5, shotgun: 5, sniper: 7, rocket: 6, flamer: 0 };
 const FLASH_LIFE = { magnum: 0.06, smg: 0.04, rifle: 0.05, shotgun: 0.08, sniper: 0.1, rocket: 0.09 };
@@ -27,12 +12,10 @@ const GRAVITY = 1400;
 const BANANA = '#ffe135';
 const GOLD = '#ffc300';
 
-// How long each pose lasts (seconds).
 const POSE = { melee: 0.32, throw: 0.4, swap: 0.35, land: 0.28, flinch: 0.18 };
 const CORPSE_LIFE = 2.2;
-const NO_MAG = new Set(['rocket', 'flamer']);   // no magazine falls out of these
+const NO_MAG = new Set(['rocket', 'flamer']);
 
-// A ring buffer of reusable objects: spawn() hands out the next slot, overwriting the oldest.
 function makePool(size, make) {
   const items = Array.from({ length: size }, () => ({ ...make(), active: false }));
   let next = 0;
@@ -45,7 +28,6 @@ function makePool(size, make) {
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
-// Liang-Barsky segment vs box test; returns the hit fraction or null (same maths as the world).
 function segmentHitsBox(x0, y0, x1, y1, b) {
   let t0 = 0, t1 = 1;
   const dx = x1 - x0, dy = y1 - y0;
@@ -61,7 +43,6 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
   return t0;
 }
 
-// view: { toViewFromWorld(x, y), onScreen(x, y) } from the renderer.
 export function createEffects(view) {
   let world = null;
 
@@ -79,8 +60,8 @@ export function createEffects(view) {
   const shockwaves = makePool(6, () => ({ x: 0, y: 0, radius: 60, age: 0, life: 0.35 }));
   const debris = makePool(40, () => ({ x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, size: 4, color: '#555', age: 0, life: 1.4 }));
   const scorches = makePool(8, () => ({ x: 0, y: 0, r: 40, age: 0, life: 8 }));
-  const recoil = new Map();   // soldier -> current gun offset in px
-  const anims = new Map();    // soldier -> pose timers, lean and jet smoke timer (see animOf)
+  const recoil = new Map();
+  const anims = new Map();
   const marker = { age: 9, life: 0.25, kill: false, headshot: false };
   const killPop = { age: 9, life: 0.9, streak: 0 };
   const headPop = { age: 9, life: 0.8, kill: false };
@@ -88,11 +69,11 @@ export function createEffects(view) {
   const kick = { x: 0, y: 0 };
   let shake = 0;
   let streak = 0;
-  let quickKills = 0;          // the player's kills less than 4 s apart
+  let quickKills = 0;
   let lastKillAt = -99;
   let clock = 0;
   let banners = true;
-  let vignette = null;         // the red low-health gradient, made once
+  let vignette = null;
   const offset = { x: 0, y: 0 };
 
   const reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -108,7 +89,6 @@ export function createEffects(view) {
     lastKillAt = -99;
   }
 
-  // Per-soldier animation state; ages start "long ago" so no pose is playing.
   function animOf(s) {
     let a = anims.get(s);
     if (!a) {
@@ -127,7 +107,6 @@ export function createEffects(view) {
 
   function addShake(amount) { if (!calm()) shake = Math.min(14, Math.max(shake, amount)); }
 
-  // Where a bullet fired along `angle` will stop: a wall (spark there) or a soldier (no spark).
   function traceImpact(shooter, x, y, angle, w) {
     const ex = x + Math.cos(angle) * w.range;
     const ey = y + Math.sin(angle) * w.range;
@@ -146,7 +125,6 @@ export function createEffects(view) {
   on('melee:swing', ({ soldier }) => { if (soldier) animOf(soldier).melee = 0; });
   on('grenade:thrown', ({ soldier }) => { if (soldier) animOf(soldier).throwT = 0; });
 
-  // A spent magazine drops out of the gun when a reload starts.
   on('weapon:reloading', ({ soldier, weapon }) => {
     if (!world || !soldier || NO_MAG.has(weapon)) return;
     const m = shells.spawn();
@@ -156,7 +134,6 @@ export function createEffects(view) {
     m.w = 4; m.h = 8; m.color = '#2b2b2b';
   });
 
-  // Respawn: a banana-yellow ring of light and sparkles where the soldier pops in.
   on('soldier:respawned', ({ soldier }) => {
     if (!world || !soldier) return;
     const r = spawnRings.spawn();
@@ -187,7 +164,6 @@ export function createEffects(view) {
     }
     if (w.type !== 'bullet') return;
 
-    // Wall sparks where the bullets will land (a few pellets of a shotgun blast is enough).
     const traces = Math.min(w.pellets, 3);
     for (let i = 0; i < traces; i++) {
       const hit = traceImpact(soldier, x, y, soldier.aim + rand(-w.spread, w.spread), w);
@@ -201,7 +177,6 @@ export function createEffects(view) {
       }
     }
 
-    // A shell casing flies out of the gun, away from the aim side.
     const sh = shells.spawn();
     const back = Math.cos(soldier.aim) >= 0 ? -1 : 1;
     sh.x = soldier.x + soldier.w / 2; sh.y = soldier.y + 24;
@@ -214,11 +189,9 @@ export function createEffects(view) {
   on('soldier:damaged', ({ victim, attacker, amount, headshot }) => {
     if (!world || !victim) return;
     if (amount > 0) {
-      // A small flinch away from whoever hit them.
       const a = animOf(victim);
       a.flinch = 0;
       a.flinchDir = attacker && attacker !== victim ? Math.sign(attacker.x - victim.x) || 1 : 0;
-      // Pellets landing together add up into one number.
       let n = null;
       for (const it of numbers.items) if (it.active && it.victim === victim && it.age < 0.15) { n = it; break; }
       if (n) n.value += amount;
@@ -252,7 +225,6 @@ export function createEffects(view) {
       marker.age = 0; marker.life = 0.45; marker.kill = true; marker.headshot = !!headshot;
       killPop.age = 0; killPop.streak = streak;
       if (headshot) { headPop.age = 0; headPop.kill = true; }
-      // Multi-kill banners: kills less than 4 s apart, or every fifth kill of a streak.
       quickKills = clock - lastKillAt < 4 ? quickKills + 1 : 1;
       lastKillAt = clock;
       const text = quickKills >= 4 || streak % 5 === 0 ? 'RAMPAGE!' : quickKills === 3 ? 'TRIPLE KILL' : quickKills === 2 ? 'DOUBLE KILL' : '';
@@ -260,11 +232,9 @@ export function createEffects(view) {
     }
   });
 
-  // Ragdoll: a copy of the dead soldier is flung away from the killer, spins, bounces
-  // once or twice on the ground and fades out. The real soldier is hidden as before.
   function spawnCorpse(victim, killer, headshot) {
     const c = corpses.spawn();
-    c.x = victim.x + victim.w / 2; c.y = victim.y + victim.h / 2;   // centre of the body
+    c.x = victim.x + victim.w / 2; c.y = victim.y + victim.h / 2;
     c.w = victim.w; c.h = victim.h;
     c.avatar = victim.avatar; c.facing = victim.facing || 1; c.aim = victim.aim ?? 0;
     c.weapon = (victim.current === 'primary' ? victim.primary?.key : victim.sidearm?.key) ?? 'magnum';
@@ -282,12 +252,11 @@ export function createEffects(view) {
     c.rot = 0; c.bounces = 0; c.resting = false;
   }
 
-  // Half the height of the spinning body, so it rests on the ground instead of sinking in.
   const halfHeight = (c) => Math.abs(Math.cos(c.rot)) * c.h / 2 + Math.abs(Math.sin(c.rot)) * c.w / 2;
 
   function updateCorpse(c, dt) {
     if ((c.age += dt) > CORPSE_LIFE) { c.active = false; return; }
-    if (c.resting) {   // settle flat on the ground, on whichever side it landed
+    if (c.resting) {
       const flat = (Math.sign(c.rot) || 1) * Math.PI / 2;
       c.rot += (flat - c.rot) * Math.min(1, dt * 10);
       c.y = c.floor - halfHeight(c);
@@ -298,7 +267,7 @@ export function createEffects(view) {
     c.rot += c.vr * dt;
     const half = halfHeight(c);
     const nx = c.x + c.vx * dt;
-    if (isSolid(map, nx + Math.sign(c.vx) * 13, c.y)) c.vx = -c.vx * 0.3;   // hit a wall
+    if (isSolid(map, nx + Math.sign(c.vx) * 13, c.y)) c.vx = -c.vx * 0.3;
     else c.x = nx;
     const ny = c.y + c.vy * dt;
     if (c.vy > 0 && isSolid(map, c.x, ny + half)) {
@@ -307,7 +276,7 @@ export function createEffects(view) {
       c.bounces += 1;
       if (c.bounces >= 3 || c.vy < 160) {
         c.resting = true; c.vx = c.vy = c.vr = 0;
-        c.rot = Math.atan2(Math.sin(c.rot), Math.cos(c.rot));   // back into -pi..pi
+        c.rot = Math.atan2(Math.sin(c.rot), Math.cos(c.rot));
         return;
       }
       c.vy = -c.vy * 0.38; c.vx *= 0.55; c.vr *= 0.5;
@@ -316,7 +285,6 @@ export function createEffects(view) {
     } else c.y = ny;
   }
 
-  // Dust puffs when a soldier lands hard; bigger falls kick up more. The soldier squashes too.
   on('soldier:landed', ({ soldier, speed, x, y }) => {
     if (soldier && speed > 200) {
       const a = animOf(soldier);
@@ -332,8 +300,6 @@ export function createEffects(view) {
     }
   });
 
-  // Explosions: a fireball, a shockwave ring, smoke clouds, bouncing debris and a
-  // scorch mark left on the ground below.
   on('explosion', ({ x, y, radius }) => {
     if (!world) return;
     const quiet = calm();
@@ -354,7 +320,6 @@ export function createEffects(view) {
       d.rot = rand(0, 6); d.vr = rand(-12, 12); d.size = rand(3, 7); d.life = rand(1.0, 1.6);
       d.color = i % 3 ? ground : '#2b2118';
     }
-    // The scorch goes on the first solid tile below the blast, if it is close enough.
     for (let py = y; py < y + radius; py += 4) {
       if (!isSolid(world.map, x, py)) continue;
       const sc = scorches.spawn();
@@ -368,7 +333,6 @@ export function createEffects(view) {
     if (d < reach) addShake(12 * (1 - d / reach) + 2);
   });
 
-  // Called once per frame by the renderer.
   function update(w, dt) {
     if (w !== world) { world = w; reset(); }
     clock += dt;
@@ -382,7 +346,7 @@ export function createEffects(view) {
       if (!p.active) continue;
       if ((p.age += dt) > p.life) { p.active = false; continue; }
       p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.grow * dt;
-      p.vx *= 1 - Math.min(1, dt * 2); p.vy -= 30 * dt;   // smoke slows down and drifts up
+      p.vx *= 1 - Math.min(1, dt * 2); p.vy -= 30 * dt;
     }
     for (const d of debris.items) {
       if (!d.active) continue;
@@ -390,8 +354,8 @@ export function createEffects(view) {
       d.vy += GRAVITY * dt; d.rot += d.vr * dt;
       const nx = d.x + d.vx * dt, ny = d.y + d.vy * dt;
       if (!isSolid(world.map, nx, ny)) { d.x = nx; d.y = ny; continue; }
-      if (isSolid(world.map, nx, d.y)) d.vx = -d.vx * 0.4;          // bounced off a wall
-      else { d.vy = -d.vy * 0.4; d.vx *= 0.7; d.vr *= 0.6; }        // bounced off the floor
+      if (isSolid(world.map, nx, d.y)) d.vx = -d.vx * 0.4;
+      else { d.vy = -d.vy * 0.4; d.vx *= 0.7; d.vr *= 0.6; }
     }
     headPop.age += dt;
     banner.age += dt;
@@ -405,7 +369,7 @@ export function createEffects(view) {
         s.x = im.x; s.y = im.y; s.vx = rand(-160, 160); s.vy = rand(-260, -40);
         s.life = i < 3 ? rand(0.15, 0.3) : rand(0.35, 0.55);
         s.size = i < 3 ? 2 : 4;
-        s.color = i < 3 ? '#fff3b0' : 'rgba(160,130,100,0.7)';   // bright sparks, then dust
+        s.color = i < 3 ? '#fff3b0' : 'rgba(160,130,100,0.7)';
       }
     }
     for (const s of sparks.items) {
@@ -424,7 +388,6 @@ export function createEffects(view) {
     marker.age += dt;
     killPop.age += dt;
 
-    // Camera kick springs back; shake decays quickly.
     const k = Math.min(1, dt * 12);
     kick.x -= kick.x * k; kick.y -= kick.y * k;
     shake = Math.max(0, shake - shake * Math.min(1, dt * 7) - dt * 2);
@@ -432,8 +395,6 @@ export function createEffects(view) {
     offset.y = kick.y + (shake ? rand(-shake, shake) : 0);
   }
 
-  // Pose timers, weapon swaps (spotted by `current` changing, which also works online),
-  // body lean from how fast the soldier moves, and jetpack smoke puffs.
   function updateSoldiers(dt) {
     for (const s of world.soldiers) {
       const a = animOf(s);
@@ -454,7 +415,6 @@ export function createEffects(view) {
     }
   }
 
-  // Fills the optional pose fields of the view object passed to drawSoldier.
   function applyPose(s, v) {
     const a = anims.get(s);
     v.lean = 0; v.squash = 0; v.gunTilt = 0; v.swing = 0; v.throwArm = 0;
@@ -467,13 +427,12 @@ export function createEffects(view) {
     const len = WEAPONS[v.weapon]?.reload;
     if (s.reloadTimer > 0 && len) {
       const p = Math.max(0, Math.min(1, 1 - s.reloadTimer / len));
-      v.gunTilt = 0.7 * Math.min(1, Math.sin(p * Math.PI) * 2.5);   // down quickly, hold, back up
+      v.gunTilt = 0.7 * Math.min(1, Math.sin(p * Math.PI) * 2.5);
     }
     if (a.swap < POSE.swap) v.gunTilt = Math.max(v.gunTilt, 1.1 * Math.sin((a.swap / POSE.swap) * Math.PI));
     return v;
   }
 
-  // Muzzle flash shapes, drawn in world space at the end of the barrel (pointing along +x).
   function drawFlash(ctx, kind) {
     ctx.beginPath();
     if (kind === 'shotgun') {
@@ -493,7 +452,6 @@ export function createEffects(view) {
     ctx.beginPath(); ctx.arc(2, 0, kind === 'smg' ? 3 : kind === 'shotgun' ? 7 : 5, 0, Math.PI * 2); ctx.fill();
   }
 
-  // World-space layer: drawn with the world transform, after projectiles.
   function drawWorld(ctx, cam) {
     ctx.lineCap = 'round';
     for (const b of beams.items) {
@@ -552,7 +510,6 @@ export function createEffects(view) {
       ctx.fillStyle = p.color;
       ctx.beginPath(); ctx.arc(p.x - cam.x, p.y - cam.y, p.r, 0, Math.PI * 2); ctx.fill();
     }
-    // Fireball: orange, yellow and white discs that swell and fade; a white shockwave ring.
     for (const f of fireballs.items) {
       if (!f.active) continue;
       const t = f.age / f.life;
@@ -575,7 +532,6 @@ export function createEffects(view) {
       ctx.lineWidth = 6 * (1 - t) + 1;
       ctx.beginPath(); ctx.arc(sw.x - cam.x, sw.y - cam.y, sw.radius * (0.2 + 0.8 * t), 0, Math.PI * 2); ctx.stroke();
     }
-    // Respawn: a banana-yellow ring that opens around the soldier and a column of light.
     for (const r of spawnRings.items) {
       if (!r.active || !r.soldier) continue;
       const t = r.age / r.life;
@@ -593,10 +549,8 @@ export function createEffects(view) {
     ctx.globalAlpha = 1;
   }
 
-  // One reused view object for drawing corpses (no allocation per frame).
   const corpseView = { x: 0, y: 0, w: 28, h: 50, facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false, weapon: 'magnum', hurtFlash: 0, shielded: false, recoil: 0 };
 
-  // Under the soldiers (after the terrain): scorch marks on the ground and ragdoll corpses.
   function drawUnder(ctx, cam, time) {
     for (const sc of scorches.items) {
       if (!sc.active) continue;
@@ -619,7 +573,6 @@ export function createEffects(view) {
     }
   }
 
-  // Screen-space layer under the scope: floating damage numbers.
   function drawScreen(ctx) {
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
@@ -639,11 +592,9 @@ export function createEffects(view) {
     ctx.globalAlpha = 1;
   }
 
-  // Top layer (over the scope): damage-direction arrows, hit marker and the KILL pop.
   function drawHud(ctx, mouse) {
     ctx.textAlign = 'center';
     const p = world?.player;
-    // Low health: a red glow round the screen edge that pulses (steady when calm).
     if (p && p.alive && p.health < 30) {
       if (!vignette) {
         vignette = ctx.createRadialGradient(VIEW.width / 2, VIEW.height / 2, VIEW.height * 0.42, VIEW.width / 2, VIEW.height / 2, VIEW.width * 0.56);
@@ -706,7 +657,6 @@ export function createEffects(view) {
       ctx.globalAlpha = 1;
     }
 
-    // HEADSHOT! in gold over the crosshair; bigger when the headshot was the kill.
     if (headPop.age < headPop.life) {
       const t = headPop.age / headPop.life;
       const base = headPop.kill ? 26 : 17;
@@ -722,7 +672,6 @@ export function createEffects(view) {
       ctx.globalAlpha = 1;
     }
 
-    // Multi-kill banner across the top of the screen, scaling in (no scale when calm).
     if (banner.age < banner.life && banners) {
       const t = banner.age / banner.life;
       const grow = calm() || t > 0.1 ? 1 : 1.7 - 0.7 * (t / 0.1);

@@ -1,7 +1,4 @@
-// Profile: rank, XP and the service record, all worked out from games saved on the
-// server, so the record follows the account rather than the browser.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';

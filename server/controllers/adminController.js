@@ -1,6 +1,4 @@
-// HTTP side of /api/admin. req.user is the admin, loaded by requireAdmin.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 function createAdminController({ adminService }) {
   return {

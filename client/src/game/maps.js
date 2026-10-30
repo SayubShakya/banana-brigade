@@ -1,19 +1,9 @@
-// The four battlefields as plain data: the ground line, floating platforms, solid
-// blocks (pillars, bunkers, crate stacks), where soldiers spawn and where pickups sit,
-// plus a colour theme for the renderer. map.js turns one of these into a tile grid.
-// Both the browser and the server load this file, so it holds data only (no DOM).
-//
-// Coordinates are in tiles: [col, row] for points, [col, row, width, height] for boxes.
-// A spawn or pickup point is the empty tile a soldier's feet stand in, so the tile
-// below it is solid. tests/unit/maps.test.js checks every map is fair and fully reachable.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const bump = (c, from, to, height) =>
   (c >= from && c <= to ? Math.round(height * Math.sin(((c - from) / (to - from)) * Math.PI)) : 0);
 
 export const MAPS = {
-  // The original battlefield: two grassy hills and a trench, with jungle on top.
   jungle: {
     id: 'jungle',
     name: 'Jungle Ridge',
@@ -44,14 +34,13 @@ export const MAPS = {
     },
   },
 
-  // Sand dunes between two rock mesas, with concrete bunkers to duck under.
   desert: {
     id: 'desert',
     name: 'Desert Outpost',
     ground: (c) => {
-      if (c <= 9) return 27;                         // west mesa
-      if (c >= 80) return 27;                        // east mesa
-      if (c >= 41 && c <= 48) return 34;             // dry riverbed
+      if (c <= 9) return 27;
+      if (c >= 80) return 27;
+      if (c >= 41 && c <= 48) return 34;
       return 31 + Math.round(1.5 * Math.sin(c / 6)) - bump(c, 52, 66, 2);
     },
     platforms: [
@@ -59,10 +48,10 @@ export const MAPS = {
       [18, 11, 8, 1], [62, 11, 8, 1], [37, 27, 3, 1], [50, 27, 3, 1], [3, 19, 5, 1], [82, 19, 5, 1],
     ],
     blocks: [
-      [22, 25, 8, 1], [22, 26, 1, 1], [29, 26, 1, 1],    // west bunker roof and lintels
-      [32, 24, 1, 2],                                      // sandbag wall on the dune
-      [45, 8, 1, 6],                                       // radio mast above the centre ledge
-      [58, 23, 8, 1], [58, 24, 1, 1], [65, 24, 1, 1],    // east bunker
+      [22, 25, 8, 1], [22, 26, 1, 1], [29, 26, 1, 1],
+      [32, 24, 1, 2],
+      [45, 8, 1, 6],
+      [58, 23, 8, 1], [58, 24, 1, 1], [65, 24, 1, 1],
       [74, 28, 2, 1],
     ],
     spawns: [[4, 26], [14, 21], [25, 24], [31, 17], [44, 13], [60, 17], [72, 21], [85, 26], [20, 10], [65, 10], [5, 18], [84, 18]],
@@ -85,17 +74,16 @@ export const MAPS = {
     },
   },
 
-  // A snowy mountain with a tunnel through its heart and slippery-looking ice ledges.
   snow: {
     id: 'snow',
     name: 'Snow Peak',
     ground: (c) => {
-      if (c >= 8 && c <= 20) return 33;              // frozen lake
+      if (c >= 8 && c <= 20) return 33;
       if (c >= 70 && c <= 82) return 33;
       if (c >= 30 && c <= 60) return 31 - Math.round(10 * (1 - Math.abs(c - 45) / 15));
       return 31;
     },
-    carve: [[35, 27, 21, 3]],                        // the tunnel under the summit
+    carve: [[35, 27, 21, 3]],
     platforms: [
       [5, 25, 6, 1], [15, 20, 8, 1], [25, 15, 8, 1], [41, 10, 9, 1], [57, 15, 8, 1],
       [67, 20, 8, 1], [79, 25, 6, 1], [6, 11, 6, 1], [78, 11, 6, 1], [12, 28, 4, 1], [74, 28, 4, 1],
@@ -122,7 +110,6 @@ export const MAPS = {
     },
   },
 
-  // A floodlit military base at night: steel decks, crate stacks and lamp posts.
   night: {
     id: 'night',
     name: 'Night Base',
@@ -133,8 +120,8 @@ export const MAPS = {
       [21, 25, 4, 1], [65, 25, 4, 1],
     ],
     blocks: [
-      [28, 27, 1, 5], [61, 27, 1, 5],                      // deck supports
-      [10, 30, 2, 2], [12, 31, 1, 1], [77, 30, 2, 2], [76, 31, 1, 1],   // crate stacks
+      [28, 27, 1, 5], [61, 27, 1, 5],
+      [10, 30, 2, 2], [12, 31, 1, 1], [77, 30, 2, 2], [76, 31, 1, 1],
       [38, 17, 1, 3], [51, 17, 1, 3], [44, 9, 1, 4],
     ],
     spawns: [[3, 31], [7, 21], [17, 14], [31, 25], [36, 19], [53, 19], [58, 25], [72, 14], [82, 21], [86, 31], [5, 8], [83, 8]],

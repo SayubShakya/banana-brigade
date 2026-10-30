@@ -1,10 +1,4 @@
-// Admin tools: every account (reset scores, promote or demote, suspend or restore),
-// the audit log of admin actions, the Banana API's health over time, and the live
-// event feed. This screen is only shown to admins, but that is just convenience: the
-// server checks the role in the database on every admin request and answers 403.
-// Every action asks for a reason, which the server writes to the audit log.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api.js';
@@ -18,7 +12,7 @@ const stamp = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric',
 function Players({ account }) {
   const [users, setUsers] = useState(null);
   const [msg, setMsg] = useState('');
-  const [asking, setAsking] = useState(null);   // { id, label, run(reason), done }
+  const [asking, setAsking] = useState(null);
   const [reason, setReason] = useState('');
 
   const load = () => api.adminUsers().then(({ users: list }) => setUsers(list)).catch((e) => setMsg(e.message));
@@ -56,7 +50,6 @@ function Players({ account }) {
                 <td>{when(u.created_at)}</td><td>{u.games}</td><td>{u.kills}</td><td>{u.puzzles_solved}</td>
                 <td className="admin-actions">
                   <button className="toggle" disabled={!u.games} title={u.games ? '' : 'No games to reset'} onClick={() => ask(u.id, `Reset ${u.username}'s scores`, (r) => api.resetScores(u.id, r), `Scores reset for ${u.username}.`)}>Reset scores</button>
-                  {/* The server refuses self-demotion too; disabling it here just avoids the error. */}
                   <button className="toggle" disabled={me || u.guest} title={me ? 'You cannot demote yourself' : u.guest ? 'Guests must save their account first' : ''} onClick={() => ask(u.id, `${next === 'admin' ? 'Promote' : 'Demote'} ${u.username}`, (r) => api.setRole(u.id, next, r), `${u.username} is now ${next}.`)}>
                     {next === 'admin' ? 'Promote' : 'Demote'}
                   </button>
@@ -92,7 +85,6 @@ function Audit() {
   );
 }
 
-// A small line chart (inline SVG) of one value over the samples.
 function Sparkline({ values, max, label, unit }) {
   const pts = values.map((v, i) => [values.length < 2 ? 0 : (i / (values.length - 1)) * 100, v == null ? null : 30 - (Math.min(v, max) / max) * 28]);
   const line = pts.filter(([, y]) => y != null).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
@@ -149,7 +141,6 @@ export default function Admin({ account, onBack }) {
       {tab === 'players' && <Players account={account} />}
       {tab === 'audit' && <Audit />}
       {tab === 'health' && <Health />}
-      {/* Kept mounted (only hidden) so the feed keeps its list, Clear and Pause between tabs. */}
       <div hidden={tab !== 'events'}><LiveEvents /></div>
     </Panel>
   );

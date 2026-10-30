@@ -1,9 +1,4 @@
-// Builds the React screens and the game engine from client/ into client/dist,
-// which the Express server sends to the browser. During development,
-// `npm run dev:client` serves client/ with hot reload and forwards /api and the
-// WebSocket to the game server on port 3100.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';

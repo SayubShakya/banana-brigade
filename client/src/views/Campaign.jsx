@@ -1,8 +1,4 @@
-// The campaign map: 3 chapters of 3 missions on a path. Each node shows its stars;
-// locked missions show what they need. Picking a mission opens its briefing.
-// Unlocking is checked again by the server when a result is saved.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
@@ -25,7 +21,6 @@ export default function Campaign({ onPlay, onBack }) {
   useEffect(() => {
     api.campaign().then((r) => {
       setProgress(r.progress);
-      // Start with the first mission that still has stars to earn.
       setPicked(MISSIONS.find((m) => isUnlocked(m, r.progress) && (r.progress[m.id]?.stars ?? 0) < 3) ?? MISSIONS[0]);
     }).catch((e) => setError(e.message));
   }, []);
