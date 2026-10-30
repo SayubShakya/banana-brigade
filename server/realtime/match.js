@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls, powerChoices } = require('../../client/src/game/world.js');
 const { BANANA_CRATE, SOLDIER } = require('../../client/src/game/config.js');
+const { crateChoiceCount } = require('../../client/src/game/meter.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
 const { randomMapId } = require('../../client/src/game/map.js');
@@ -218,10 +219,10 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       const s = byUser(userId);
       if (s && purpose === 'respawn') s.bananaUsed = true;
     },
-    applyPuzzle(userId, purpose, correct) {
+    applyPuzzle(userId, purpose, correct, grade = null) {
       const s = byUser(userId);
       if (!s || ended) return;
-      if (purpose === 'respawn' && correct) revive(world, s);
+      if (purpose === 'respawn' && correct) revive(world, s, grade);
       if (purpose === 'crate') {
         const crate = crates.get(userId);
         if (!crate) return;
@@ -233,7 +234,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
           holds.set(userId, setTimeout(() => { holds.delete(userId); release(userId); }, T.holdMs));
           return;
         }
-        const choices = powerChoices();
+        const choices = powerChoices(crateChoiceCount(grade));
         const timer = setTimeout(() => api.choosePower(userId, 'random'), (BANANA_CRATE.pickSeconds + 1) * 1000);
         offers.set(userId, { choices, timer });
         send('power:offer', { choices, seconds: BANANA_CRATE.pickSeconds }, userId);

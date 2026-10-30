@@ -1,9 +1,10 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit as busEmit } from '../services/eventBus.js';
-import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, HEAD_CAP_ABOVE, HEAD_CAP_HALF_WIDTH, POWERS } from './config.js';
+import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, HEAD_CAP_ABOVE, HEAD_CAP_HALF_WIDTH, POWERS, BANANA_METER } from './config.js';
 import { createMap, moveBox, raycast, isSolid, MAPS, randomMapId } from './map.js';
 import { RAMP } from './campaign.js';
+import { applyAnswer, spawnShieldFor } from './meter.js';
 
 const POWERUP_KINDS = new Set(PICKUPS.powerups);
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -28,6 +29,7 @@ function createSoldier(id, name, avatar, isPlayer, team = id) {
     sidearm: newGun(SIDEARM), primary: null, current: 'primary', lastHurt: 0,
     fireCooldown: 0, reloadTimer: 0, meleeCooldown: 0, grenades: SOLDIER.grenades,
     kills: 0, deaths: 0, streak: 0, lastAttacker: null,
+    meter: 0, bananaStreak: 0, drops: 0,
     controls: emptyControls(),
   };
 }
@@ -211,9 +213,44 @@ export function damage(world, victim, amount, attacker, weaponName, info = {}) {
   if (world.teamMode && Math.max(world.teamKills.blue, world.teamKills.red) >= world.cfg.killLimit) endMatch(world, 'kill limit');
 }
 
-export function revive(world, s) {
+export function revive(world, s, grade = null) {
   if (s.alive || world.over) return;
   spawn(world, s);
+  const shield = spawnShieldFor(grade);
+  if (shield) s.shieldTimer = shield;
+}
+
+export function bananaAnswered(world, s, { correct, grade = null }) {
+  const next = applyAnswer({ value: s.meter, streak: s.bananaStreak }, { correct, grade });
+  s.meter = next.value;
+  s.bananaStreak = next.streak;
+  world.emit('banana:meter', { soldier: s, value: s.meter, streak: s.bananaStreak, gained: next.gained, grade, full: next.full });
+  return next;
+}
+
+export function fillBananaMeter(world, s) {
+  s.meter = BANANA_METER.max;
+  world.emit('banana:meter', { soldier: s, value: s.meter, streak: s.bananaStreak, gained: 0, grade: 'gold', full: true });
+}
+
+export const meterFull = (s) => s.meter >= BANANA_METER.max;
+
+export function callSupplyDrop(world, s) {
+  if (!s.alive || world.over || !meterFull(s)) return null;
+  const c = center(s);
+  const side = isSolid(world.map, c.x + s.facing * BANANA_METER.dropOffset, c.y) ? 0 : s.facing * BANANA_METER.dropOffset;
+  const crate = { kind: 'banana', supply: true, x: c.x + side, y: s.y + s.h - 14, active: true, timer: 0, dropped: BANANA_METER.dropLife };
+  world.pickups.push(crate);
+  s.meter = 0;
+  s.drops += 1;
+  world.emit('banana:drop', { soldier: s, x: crate.x, y: crate.y, pickup: crate });
+  world.emit('banana:meter', { soldier: s, value: 0, streak: s.bananaStreak, gained: 0, grade: null, full: false });
+  return crate;
+}
+
+export function openSupplyCrate(pickup) {
+  pickup.active = false;
+  pickup.gone = true;
 }
 
 export function continueMission(world) {
@@ -228,7 +265,7 @@ export const hasPower = (s, id) => s.power?.id === id;
 const POWER_IDS = Object.keys(POWERS);
 
 export function powerChoices(n = BANANA_CRATE.choices) {
-  return [...POWER_IDS].sort(() => Math.random() - 0.5).slice(0, n);
+  return [...POWER_IDS].sort(() => Math.random() - 0.5).slice(0, Math.max(1, Math.min(POWER_IDS.length, n)));
 }
 
 export function rewardBananaCrate(world, s, choice = 'random') {
@@ -496,8 +533,8 @@ function updateSoldier(world, s, dt) {
     if (!p.active || p.gone) continue;
     if (Math.abs(p.x - (s.x + s.w / 2)) > 26 || Math.abs(p.y - (s.y + s.h / 2)) > 36) continue;
     if (p.kind === 'banana') {
-      if (s.isPlayer && c.pickup) world.emit('banana:crate', { pickup: p, soldier: s });
-      else if (s.isPlayer) world.emit('pickup:available', { banana: true, soldier: s });
+      if (s.isPlayer && c.pickup) world.emit('banana:crate', { pickup: p, soldier: s, supply: !!p.supply });
+      else if (s.isPlayer) world.emit('pickup:available', { banana: true, supply: !!p.supply, soldier: s });
       continue;
     }
     if (p.kind === 'health' || POWERUP_KINDS.has(p.kind)) takePickup(world, s, p);
