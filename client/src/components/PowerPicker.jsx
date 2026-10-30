@@ -32,7 +32,7 @@ export default function PowerPicker() {
     }, 100);
     const onKey = (e) => {
       if (e.repeat || performance.now() - opened.current < 300) return;
-      const n = /^(Digit|Numpad)([1-3])$/.exec(e.code);
+      const n = /^(Digit|Numpad)([1-9])$/.exec(e.code);
       if (n && req.choices[Number(n[2]) - 1]) choose(req.choices[Number(n[2]) - 1]);
       else if (e.code === 'KeyR') choose('random');
       else return;
@@ -51,7 +51,7 @@ export default function PowerPicker() {
           <div>
             <span className="mode-chip">Banana crate opened</span>
             <h2 id="power-title">Choose your Banana Power</h2>
-            <p id="puzzle-sub">Tap a card (or press 1, 2, 3, or R for Random with +{BANANA_CRATE.randomBonus} s). Random is picked when time runs out.</p>
+            <p id="puzzle-sub">{req.choices.length} powers on offer (a faster solve earns more cards). Tap a card (or press {req.choices.map((_, i) => i + 1).join(', ')}, or R for Random with +{BANANA_CRATE.randomBonus} s). Random is picked when time runs out.</p>
           </div>
           <div className="timer-ring" aria-label="Seconds left">
             <svg viewBox="0 0 60 60">

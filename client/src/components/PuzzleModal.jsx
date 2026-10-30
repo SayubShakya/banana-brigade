@@ -1,14 +1,17 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { emit } from '../services/eventBus.js';
+import { emit, on } from '../services/eventBus.js';
 import { api } from '../services/api.js';
-import { PUZZLE_RULES } from '../game/config.js';
+import { PUZZLE_RULES, PUZZLE_GRADES } from '../game/config.js';
 import { registerPuzzleOpener } from '../services/puzzleBridge.js';
 import { puzzleStats } from '../services/storage.js';
+import '../styles/banana-meter.css';
 
 const RING = 2 * Math.PI * 26;
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+
+const clientGrade = (ms) => Object.entries(PUZZLE_GRADES).find(([, g]) => ms < g.under * 1000)?.[0] ?? 'bronze';
 
 const CORRECT = {
   deploy: 'Correct! Deploying…',
@@ -26,7 +29,13 @@ export default function PuzzleModal() {
   const [picked, setPicked] = useState(null);
   const [flash, setFlash] = useState('');
   const [showRetry, setShowRetry] = useState('');
+  const [reward, setReward] = useState(null);
   const deadline = useRef(0);
+  const shownAt = useRef(0);
+
+  useEffect(() => on('banana:meter', ({ soldier, gained }) => {
+    if (soldier?.isPlayer && gained > 0) setReward((r) => (r && r.gain === null ? { ...r, gain: gained } : r));
+  }), []);
   const live = useRef(null);
 
   const closeRef = useRef(null);
@@ -48,6 +57,7 @@ export default function PuzzleModal() {
     setPuzzle(null);
     setFlash('');
     setPicked(null);
+    setReward(null);
     r.resolve(result);
   }, []);
   closeRef.current = () => finish('closed');
@@ -56,6 +66,7 @@ export default function PuzzleModal() {
     setPuzzle(null);
     setPicked(null);
     setShowRetry('');
+    setReward(null);
     setPhase('loading');
     setLeft(secondsFor(r));
     setStatus({ text: 'Fetching a puzzle from the Banana API…', kind: '' });
@@ -71,8 +82,9 @@ export default function PuzzleModal() {
       if (live.current !== r) return;
       setPuzzle(p);
       setPhase('ready');
-      setStatus({ text: 'Enter the missing digit hidden by the banana.', kind: '' });
+      setStatus({ text: 'Find the hidden digit in the sum: type 0–9 or click a number.', kind: '' });
       deadline.current = performance.now() + secondsFor(r) * 1000;
+      shownAt.current = performance.now();
       emit('banana:loaded', { purpose: r.purpose });
     } catch (err) {
       if (live.current !== r) return;
@@ -95,13 +107,18 @@ export default function PuzzleModal() {
     setPhase('answering');
     setPicked(n);
     try {
+      const clientMs = Math.round(performance.now() - shownAt.current);
       const result = await (r.options.source?.answer ?? api.answer)(puzzle.puzzleId, n);
-      emit('banana:answered', { purpose: r.purpose, correct: result.correct, timedOut });
+      const ms = Number.isFinite(result.ms) ? result.ms : clientMs;
+      const grade = result.correct ? (result.grade ?? clientGrade(ms)) : null;
       setFlash('');
-      requestAnimationFrame(() => setFlash(result.correct ? 'good' : 'bad'));
+      if (result.correct) setReward({ grade, secs: (ms / 1000).toFixed(1), streak: puzzleStats.streak + 1, gain: null });
+      emit('banana:answered', { purpose: r.purpose, correct: result.correct, timedOut, grade, ms, source: puzzle.source });
+      requestAnimationFrame(() => setFlash(result.correct ? 'good' : 'bad soft-shake'));
       if (result.correct) {
-        setStatus({ text: CORRECT[r.purpose] ?? 'Correct!', kind: 'good' });
-        setTimeout(() => finish('solved'), 900);
+        const label = PUZZLE_GRADES[grade]?.label ?? '';
+        setStatus({ text: `${CORRECT[r.purpose] ?? 'Correct!'} ${label} · ${(ms / 1000).toFixed(1)} s.`, kind: 'good' });
+        setTimeout(() => finish('solved'), 1300);
         return;
       }
       const why = timedOut ? 'Time is up' : 'Not quite';
@@ -160,9 +177,11 @@ export default function PuzzleModal() {
           <div>
             {options.modeLabel && <span className="mode-chip">{options.modeLabel}</span>}
             <span className="rule-chip">{rules.rule} · {total} s</span>
+            <span className="rule-chip how">Type 0–9 or click</span>
             {puzzle?.source === 'reserve' && <span className="rule-chip offline">Banana API offline · reserve puzzle</span>}
             <h2 id="puzzle-title">{options.title}</h2>
             <p id="puzzle-sub">{options.subtitle}</p>
+            <p className="puzzle-instruction">The picture is a sum with one digit hidden. Find the hidden digit.</p>
           </div>
           <div className="timer-ring" role="timer" aria-label="Seconds left" data-level={urgency}>
             <svg viewBox="0 0 60 60" aria-hidden="true">
@@ -175,12 +194,14 @@ export default function PuzzleModal() {
         </header>
         <div className="puzzle-body">
           <div className="puzzle-img-wrap" data-state={imgState}>
-            {puzzle && <img id="puzzle-img" src={puzzle.image} alt="Banana API puzzle: equations with one number hidden under a banana" />}
+            {puzzle && <img id="puzzle-img" src={puzzle.image} alt="Banana API puzzle: a sum with one digit hidden" />}
+            {reward && <div className="puzzle-burst" aria-hidden="true"><span className="streak-pop">+1 streak · {reward.streak}{reward.gain ? ` · +${reward.gain} meter` : ''}</span></div>}
             <span className="img-msg loading-msg">Loading puzzle…</span>
             <span className="img-msg error-msg">No puzzle right now</span>
           </div>
           <div className="puzzle-side">
-            <p id="puzzle-status" role="status" data-kind={status.kind}>{status.text}</p>
+            <p id="puzzle-status" role="status" aria-live="polite" data-kind={status.kind}>{status.text}</p>
+            {reward && <span className="grade-badge" data-grade={reward.grade}>{PUZZLE_GRADES[reward.grade]?.label} · {reward.secs} s</span>}
             <div className="keypad">
               {DIGITS.map((d) => (
                 <button key={d} className={`${d === 0 ? 'zero ' : ''}${picked === d ? 'picked' : ''}`} disabled={phase !== 'ready'} onClick={() => answer(d)}>{d}</button>
@@ -196,7 +217,7 @@ export default function PuzzleModal() {
             </div>
           </div>
         </div>
-        <p className="puzzle-credit">Type <kbd>0</kbd>–<kbd>9</kbd> or tap a number · Puzzles by the <a href="https://marcconrad.com/uob/banana/" target="_blank" rel="noopener noreferrer">Banana API</a></p>
+        <p className="puzzle-credit">Find the hidden digit in the sum · Type <kbd>0</kbd>–<kbd>9</kbd> or click a number · Under 5 s is GOLD, under 10 s SILVER · Puzzles by the <a href="https://marcconrad.com/uob/banana/" target="_blank" rel="noopener noreferrer">Banana API</a></p>
       </div>
     </div>
   );
