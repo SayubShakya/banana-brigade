@@ -1,7 +1,7 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on, emit } from '../services/eventBus.js';
-import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY, BANANA_METER } from './config.js';
+import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY, BANANA_METER, matchRules } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices, bananaAnswered, fillBananaMeter, callSupplyDrop, openSupplyCrate } from './world.js';
 import { crateChoiceCount } from './meter.js';
@@ -55,6 +55,7 @@ export function createGameSession() {
   let level = DIFFICULTY.medium;
   let levelKey = 'medium';
   let mission = null;
+  let rules = null;
 
   const setState = (next) => { state = next; emit('game:state', { state }); };
 
@@ -181,21 +182,24 @@ export function createGameSession() {
     get state() { return state; },
     get mode() { return mode; },
 
-    prepare(nextMode, difficulty = 'medium', nextMission = null) {
+    prepare(nextMode, difficulty = 'medium', nextMission = null, length = undefined) {
       mode = nextMode;
       mission = nextMission;
+      rules = nextMission ? null : matchRules(nextMode, length);
       levelKey = DIFFICULTY[difficulty] ? difficulty : 'medium';
       level = DIFFICULTY[levelKey];
       stats = newStats();
       unlockAudio();
     },
     get difficulty() { return levelKey; },
+    get rules() { return rules; },
 
     start({ playerName, parts }) {
       stats ??= newStats();
       stats.started = performance.now();
       world = createWorld({
         mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey, mission,
+        timeLimit: rules?.timeLimit, killLimit: rules?.killLimit,
       });
       if (stats.deployGrade === 'gold') {
         world.player.bananaStreak = stats.deployStreak;

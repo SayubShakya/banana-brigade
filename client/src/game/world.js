@@ -66,10 +66,10 @@ function bulletHitsSoldier(x0, y0, x1, y1, s) {
   return Math.min(body, head);
 }
 
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null, map: mapId = null }) {
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null, map: mapId = null, timeLimit = null, killLimit = null }) {
   const cfg = mode === 'campaign'
     ? { name: mission.name, bots: mission.bots, killLimit: mission.target, timeLimit: mission.timeLimit, respawn: 5, lives: mission.lives }
-    : MODES[mode];
+    : { ...MODES[mode], ...(timeLimit > 0 && { timeLimit }), ...(killLimit > 0 && { killLimit }) };
   const map = createMap(MAPS[mapId] ? mapId : mission?.map ?? randomMapId());
   const online = mode === 'online';
   const player = online ? null : createSoldier('p0', playerName, playerAvatar, true, mode === 'team' ? 'blue' : 'p0');
@@ -84,6 +84,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
     pickups: [],
     time: 0,
     timeLeft: cfg.timeLimit ?? Infinity,
+    countdown: null,
     wave: 0, waveBreak: 0,
     teamKills: { blue: 0, red: 0 },
     over: false,
@@ -677,6 +678,8 @@ export function updateWorld(world, dt) {
   world.time += dt;
   if (!world.over && !world.training) {
     world.timeLeft -= dt;
+    const seconds = Math.ceil(world.timeLeft);
+    if (seconds <= 10 && seconds > 0 && seconds !== world.countdown) { world.countdown = seconds; world.emit('match:countdown', { seconds }); }
     if (world.timeLeft <= 0) { world.timeLeft = 0; endMatch(world, 'time'); }
   }
   for (const s of world.soldiers) updateSoldier(world, s, dt);
