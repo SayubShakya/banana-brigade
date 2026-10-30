@@ -74,7 +74,7 @@ export default function Home({ onPlay, onGuest, onOpen }) {
         <section className="home-block">
           <h2>How the Banana puzzles work</h2>
           <p>Each puzzle is a picture from the <a href="https://marcconrad.com/uob/banana/doc.php" target="_blank" rel="noreferrer">Banana API</a> with
-            a sum where one digit is hidden: work out the hidden digit and type it (0–9) or click it. Our server fetches the puzzle, keeps the answer and times you,
+            sums where every banana hides the same digit: work out that digit and type it (0–9) or click it. Our server fetches the puzzle, keeps the answer and times you,
             so it cannot be read from the page. Under 5 s is GOLD, under 10 s SILVER, slower BRONZE: solving is where all your power comes from.</p>
           <ul className="home-puzzles">
             {PUZZLES.map(([name, text]) => <li key={name}><Icon id="banana" /><b>{name}</b><span>{text}</span></li>)}

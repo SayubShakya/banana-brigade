@@ -18,7 +18,7 @@ export const STEPS = [
   { id: 'shoot', title: 'Aim and shoot', text: 'Point the mouse at a dummy and click to shoot it.', keys: ['Mouse', 'Click'] },
   { id: 'gun', title: 'Grab a gun', text: 'Stand on a weapon crate and press E to swap guns.', keys: ['E'] },
   { id: 'crate', title: 'Banana crate', text: 'Find the yellow banana crate and press E to open it.', keys: ['E'] },
-  { id: 'puzzle', title: 'Solve the Banana puzzle', text: 'Find the hidden digit in the sum. Type it or tap the keypad.', keys: ['0', '9'] },
+  { id: 'puzzle', title: 'Solve the Banana puzzle', text: 'Every banana hides the same digit. Find it in any sum and type it or tap the keypad.', keys: ['0', '9'] },
   { id: 'power', title: 'Choose a power', text: 'Pick one Banana Power. It lasts a few seconds.' },
   { id: 'done', title: 'Boot Camp complete!', text: 'You are ready for battle. Try Campaign mission 1 next.' },
 ];

@@ -181,7 +181,7 @@ export default function PuzzleModal() {
             {puzzle?.source === 'reserve' && <span className="rule-chip offline">Banana API offline · reserve puzzle</span>}
             <h2 id="puzzle-title">{options.title}</h2>
             <p id="puzzle-sub">{options.subtitle}</p>
-            <p className="puzzle-instruction">The picture is a sum with one digit hidden. Find the hidden digit.</p>
+            <p className="puzzle-instruction">Every banana hides the <b>same digit</b>. Work it out from any line where only one banana appears.</p>
           </div>
           <div className="timer-ring" role="timer" aria-label="Seconds left" data-level={urgency}>
             <svg viewBox="0 0 60 60" aria-hidden="true">
@@ -194,7 +194,7 @@ export default function PuzzleModal() {
         </header>
         <div className="puzzle-body">
           <div className="puzzle-img-wrap" data-state={imgState}>
-            {puzzle && <img id="puzzle-img" src={puzzle.image} alt="Banana API puzzle: a sum with one digit hidden" />}
+            {puzzle && <img id="puzzle-img" src={puzzle.image} alt="Banana API puzzle: sums where every banana hides the same digit" />}
             {reward && <div className="puzzle-burst" aria-hidden="true"><span className="streak-pop">+1 streak · {reward.streak}{reward.gain ? ` · +${reward.gain} meter` : ''}</span></div>}
             <span className="img-msg loading-msg">Loading puzzle…</span>
             <span className="img-msg error-msg">No puzzle right now</span>
