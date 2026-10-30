@@ -17,6 +17,7 @@ import { drawSoldier, drawWeaponPickup } from './characters.js';
 import { activeGun } from './world.js';
 import { raycast, KIND } from './map.js';
 import { createEffects } from './effects.js';
+import { createMinimap } from './minimap.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -72,6 +73,7 @@ export function createRenderer(canvas) {
   const toViewFromWorld = (wx, wy) => ({ x: (wx - cam.x) * scale, y: (wy - cam.y) * scale });
   const onScreen = (wx, wy) => wx >= cam.x && wx <= cam.x + vw() && wy >= cam.y && wy <= cam.y + vh();
   const effects = createEffects({ toViewFromWorld, onScreen });
+  const minimap = createMinimap({ calm: () => effects.calm(), canvas });
   let scopeT = 0;
   let scoped = false;
   let look = LOOK.normal;
@@ -742,6 +744,7 @@ export function createRenderer(canvas) {
     cam.x -= offset.x;
     cam.y -= offset.y;
     drawScope(mouse);
+    minimap.draw(ctx, world, { x: cam.x, y: cam.y, w: vw(), h: vh() }, dt);
     drawCrosshair(mouse, world);
     effects.drawHud(ctx, mouse);
   }
@@ -750,6 +753,7 @@ export function createRenderer(canvas) {
     render, toView, toWorld, toViewFromWorld,
     get scoped() { return scoped; },
     get zoomLabel() { return scoped ? 'SCOPE' : scale < 0.95 ? 'FAR' : '1x'; },
+    toggleMinimap: () => minimap.toggle(),
     setLaser: (on) => { laser = on; },
     setBanners: (on) => effects.setBanners(on),
   };
