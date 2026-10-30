@@ -24,8 +24,10 @@ function loadConfig(env = process.env) {
   const bananaApiUrl = env.BANANA_API_URL || DEFAULT_BASE_URL;
   if (bananaApiUrl !== DEFAULT_BASE_URL) warnings.push(`Using Banana API at ${bananaApiUrl}`);
 
+  // Password reset links must point at our own site. In production the address comes
+  // only from APP_URL (the request's Host header can be faked by an attacker).
   const appUrl = env.APP_URL || null;
-  if (production && !appUrl) warnings.push('APP_URL is not set: password reset links will use the Host header of the request.');
+  if (production && !appUrl) throw new Error('APP_URL must be set in production (the address used in password reset links).');
 
   return {
     port: Number(env.PORT) || 3100,
