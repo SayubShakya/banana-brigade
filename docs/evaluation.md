@@ -48,7 +48,7 @@ for online play.
 | Custom bus (23 lines) | DOM `CustomEvent` on `window`; a library such as mitt or RxJS | Works in Node too (the engine runs on the server); no dependency; errors in one listener are caught |
 | Engine emits, others listen | Engine calls `hud.addKill()`, `sound.play()` directly | The engine has no screen code, so the same `world.js` runs on the server with a different `emit` |
 | React for screens, canvas loop for the battle | Everything in React state; or everything in canvas | React re-rendering 60 times a second would be slow; menus in canvas would be hard to build and not accessible |
-| Two events (`game:state`, `game:over`) as the engine↔React contract | React polls the engine | Local and online games emit the same events, so `App.jsx` has one code path |
+| Two events (`game:state`, `game:over`) as the engine↔React contract | React polls the engine | Local and online games emit the same events, so `useBattle.js` has one code path |
 | Achievement rules subscribed by event name | `if` checks inside each route | Routes do not know badges exist; adding a badge is one rule |
 | Fixed 1/60 s steps in `requestAnimationFrame` | Variable time step | Same behaviour at 60 Hz and 120 Hz; no slow motion when a frame is late |
 | Socket.io events with acks | Plain WebSocket messages | Acks give request/reply with a timeout (`request()` in `net/socket.js`) |
@@ -129,7 +129,7 @@ on Easy and never online, so it helps beginners without giving an advantage over
 ## 4. Virtual identity
 
 **Chosen:** username and password; bcrypt hashes (cost 10); a server-side session in MongoDB identified by an
-HttpOnly, SameSite=Lax cookie; session regeneration at login; login limits per IP address (5 tries for one name
+HttpOnly, SameSite=Lax cookie; session regeneration at login; login limits per name+IP and per IP (5 tries for one name
 from one IP, 20 tries from one IP across all names, per 10 minutes, counted atomically); a dummy
 hash compare so timing does not reveal usernames; roles (`player`, `admin`) checked by middleware, which loads the user from the
 database on every request so a deleted or demoted account loses access at once; the same session authenticates
@@ -235,7 +235,7 @@ warning is logged (fail open).
 | Single use, marked used in the same atomic step that checks it | The same link sent twice at once still works once | Check then update (racy) |
 | 30-minute expiry, MongoDB TTL index deletes it | Short window if a link leaks (e.g. from history) | A signed JWT link: no storage, but cannot be made single-use without storing something anyway |
 | Same reply for known and unknown names, 5 requests per IP every 15 min | Cannot be used to find accounts or to flood the log | Saying "no such user" (user enumeration) |
-| All sessions ended and the lockout cleared after a reset | Whoever had the old password is thrown out | Keep sessions (an attacker stays logged in) |
+| All sessions ended and the login counters cleared after a reset | Whoever had the old password is thrown out | Keep sessions (an attacker stays logged in) |
 | Link address from `APP_URL` in production | The Host header can be faked to send links to an attacker's site | Use the Host header (host header injection) |
 | The token is removed from the address bar after it is read | Not left in browser history or a screen recording | Leave it (it is single-use, but still) |
 

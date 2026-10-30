@@ -189,7 +189,7 @@ not yet used. See `docs/evaluation.md` section 2.
   `db.sessions.find({'session.userId': '<id>'})` shows one document per device.
 - Log in in two windows, press "Log out everywhere" in one: the other is logged out on its next click, and the
   session documents are gone in `mongosh`.
-- Six wrong passwords → the lockout message; `db.ratelimits.find()` shows the per-name+IP and per-IP counters.
+- Six wrong passwords for one name → the "Too many failed attempts" message (this name from this IP only); `db.ratelimits.find()` shows the per-name+IP and per-IP counters.
 - Log in as a player and open `/api/admin/users` → 403; as an admin → the Admin screen. Demote an admin in one
   window and refresh the other: access is gone at once.
 
