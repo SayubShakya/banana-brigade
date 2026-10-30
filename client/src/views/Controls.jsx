@@ -5,7 +5,7 @@ import '../styles/bootcamp.css';
 
 const KEYS = [
   [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim (auto-fires on enemies)'], [['Click'], 'Shoot'],
-  [['Q'], 'Switch weapon'], [['R'], 'Reload'], [['G'], 'Grenade'], [['F'], 'Melee'], [['Z'], 'Zoom'],
+  [['Q'], 'Switch weapon'], [['R'], 'Reload'], [['G'], 'Grenade'], [['F'], 'Melee'], [['Z'], 'Zoom / scope (or hold right mouse)'], [['M'], 'Minimap'],
   [['E'], 'Banana crate: solve, then pick a power', true], [['B'], 'Banana respawn', true], [['0', '9'], 'Answer a puzzle', true],
   [['Tab'], 'Scoreboard'], [['H'], 'Show or hide this help in battle'], [['Esc'], 'Pause'],
 ];
