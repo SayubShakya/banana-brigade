@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/map-picker`)
+- Choose the map (Random or one of the four) on the Difficulty screen and when creating an online room; the server
+  checks the choice and the room shows it. The choice is saved like the match length.
+
 ### Added (`feature/real-gun-sounds`)
 - Real recorded shots for the magnum, SMG, rifle, shotgun and sniper (CC-licensed, credited in the README), each
   with a slight random pitch so repeated shots don't sound identical; the old Web Audio sounds stay as a fallback.

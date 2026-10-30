@@ -53,6 +53,8 @@ only shows pictures and sends controls and answers.
   with a single-use reset link (30 minutes), and roles.
 - **Open API:** `/api/v1` with an OpenAPI 3 file and Swagger UI at `/api/docs`, plus a public read-only
   leaderboard (`/api/v1/public/leaderboard`, CORS) that other websites can use.
+- **Map choice:** pick Random, Jungle Ridge, Desert Outpost, Snow Peak or Night Base before Quick Play, Team Battle,
+  Survival, Training or an online room (campaign missions keep their own map).
 - **Match length and live score:** pick 30 s, 1, 2, 3 or 5 minutes before Quick Play, Team Battle or an online
   room (the kill target scales: a 30 s game is first to 4). A live top-5 board stays on screen, and the timer pulses
   red in the last 10 seconds.
