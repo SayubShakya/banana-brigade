@@ -47,3 +47,10 @@ test('aim error grows more at long range', () => {
   assert.ok(aimSpread(acc, 1400) > (1.2 - acc) * 300);
   assert.ok(aimSpread(acc, 1400) > aimSpread(acc, 800));
 });
+
+test('easy bots hold fire for at most a fifth of a short match', () => {
+  const { hesitationFor } = require('../../client/src/game/bots.js');
+  assert.equal(hesitationFor(30), 6);
+  assert.equal(hesitationFor(300), 30);
+  assert.equal(hesitationFor(Infinity), 30);
+});
