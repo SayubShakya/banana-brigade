@@ -1,6 +1,13 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS, POWERS } from './config.js';
+
+const LEAD = { distance: 60, rate: 4 };
+const SNIPER_ZOOM_OUT = 0.9;
+const TRACER_SPEED = 1500;
+const REACH = { x: 26, y: 36 };
+const NEEDS_KEY = new Set(['banana', 'weapon']);
+const LOW_FUEL = 20;
 import { drawSoldier, drawWeaponPickup } from './characters.js';
 import { activeGun } from './world.js';
 import { raycast, KIND } from './map.js';
@@ -9,6 +16,7 @@ import { createEffects } from './effects.js';
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   const cam = { x: 0, y: 0 };
+  const lead = { x: 0, y: 0 };
   let dpr = 1;
   let scale = 1;
   let laser = true;
@@ -39,8 +47,13 @@ export function createRenderer(canvas) {
     const py = p.y + p.h / 2;
     const lookX = ((mouse.x - VIEW.width / 2) / scale) * 0.35;
     const lookY = ((mouse.y - VIEW.height / 2) / scale) * 0.35;
-    const tx = Math.max(0, Math.min(world.map.width - vw(), px - vw() / 2 + lookX));
-    const ty = Math.max(0, Math.min(world.map.height - vh(), py - vh() / 2 + lookY));
+    const k0 = Math.min(1, dt * LEAD.rate);
+    const leadX = p.alive ? Math.cos(p.aim ?? 0) * LEAD.distance : 0;
+    const leadY = p.alive ? Math.sin(p.aim ?? 0) * LEAD.distance * 0.6 : 0;
+    lead.x += (leadX - lead.x) * k0;
+    lead.y += (leadY - lead.y) * k0;
+    const tx = Math.max(0, Math.min(world.map.width - vw(), px - vw() / 2 + lookX + lead.x));
+    const ty = Math.max(0, Math.min(world.map.height - vh(), py - vh() / 2 + lookY + lead.y));
     const k = Math.min(1, dt * (8 - 5 * scopeT));
     cam.x += (tx - cam.x) * k;
     cam.y += (ty - cam.y) * k;
@@ -328,7 +341,42 @@ export function createRenderer(canvas) {
     }
   }
 
+  function inReach(pl, p) {
+    return pl.alive && Math.abs(p.x - (pl.x + pl.w / 2)) <= REACH.x && Math.abs(p.y - (pl.y + pl.h / 2)) <= REACH.y;
+  }
+
+  function drawReach(p, x, y, time) {
+    const pulse = effects.calm() ? 0.75 : 0.6 + 0.4 * Math.sin(time * 7);
+    const glow = ctx.createRadialGradient(x, y, 4, x, y, 46);
+    glow.addColorStop(0, `rgba(255,236,140,${0.55 * pulse})`);
+    glow.addColorStop(1, 'rgba(255,236,140,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(x, y, 46, 0, Math.PI * 2); ctx.fill();
+    if (NEEDS_KEY.has(p.kind)) badges.push(x + 32, y - 34);
+  }
+
+  const badges = [];
+  function drawKeyBadges() {
+    for (let i = 0; i < badges.length; i += 2) drawKeyBadge(badges[i], badges[i + 1]);
+    badges.length = 0;
+  }
+
+  function drawKeyBadge(bx, by) {
+    ctx.fillStyle = 'rgba(20,20,24,0.85)';
+    ctx.strokeStyle = '#ffe135';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(bx - 10, by - 10, 20, 20, 4); ctx.fill(); ctx.stroke();
+    ctx.font = 'bold 13px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffe135';
+    ctx.fillText('E', bx, by + 1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
   function drawPickups(world, time) {
+    const me = world.player;
+    badges.length = 0;
     for (const p of world.pickups) {
       if (!p.active && p.kind === 'banana' && p.timer > 0) {
         const x = p.x - cam.x;
@@ -348,6 +396,8 @@ export function createRenderer(canvas) {
       const bob = Math.sin(time * 3 + p.x) * 3;
       const x = p.x - cam.x;
       const y = p.y - cam.y + bob;
+      const near = me && inReach(me, p);
+      if (near) drawReach(p, x, y, time);
       if (p.kind === 'health') {
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#333';
@@ -497,6 +547,16 @@ export function createRenderer(canvas) {
         ctx.lineTo(x - ux * tail * (1 - (i + 1) / 3), y - uy * tail * (1 - (i + 1) / 3));
         ctx.stroke();
       }
+      const speed = Math.hypot(b.vx ?? 0, b.vy ?? 0);
+      if (speed >= TRACER_SPEED) {
+        const tl = Math.min(speed * 0.022, 64);
+        const tx = (b.vx / speed) * tl;
+        const ty = (b.vy / speed) * tl;
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = '#fffbe6';
+        ctx.lineWidth = sniper ? 1.6 : 1.1;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - tx, y - ty); ctx.stroke();
+      }
       ctx.globalAlpha = 1;
     }
     for (const r of world.rockets) {
@@ -547,6 +607,21 @@ export function createRenderer(canvas) {
     ctx.moveTo(from.x, from.y);
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
+  }
+
+  function drawFuelWarning(world, time) {
+    const p = world.player;
+    if (!p.alive || p.fuel >= LOW_FUEL || p.busy) return;
+    const calm = effects.calm();
+    if (!calm && Math.floor(time * 5) % 2) return;
+    const x = p.x + p.w / 2 - cam.x;
+    const y = p.y + p.h + 18 - cam.y;
+    const empty = p.fuel <= 1;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath(); ctx.roundRect(x - 24, y - 10, 48, 16, 4); ctx.fill();
+    label(empty ? 'NO FUEL' : 'FUEL', x, y + 3, 11, empty ? '#ff5a5a' : '#ffb347');
+    ctx.fillStyle = '#ffb347';
+    ctx.fillRect(x - 20, y + 8, 40 * Math.max(0, p.fuel) / LOW_FUEL, 2);
   }
 
   let lensTint = null;
@@ -615,11 +690,13 @@ export function createRenderer(canvas) {
   }
 
   function render(world, mouse, dt, zoomTarget = 1) {
-    scale += (zoomTarget - scale) * Math.min(1, dt * 6 || 1);
     const p = world.player;
-    const scoped = p.alive && activeGun(p).key === 'sniper' && zoomTarget <= ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+    const sniperHeld = p.alive && activeGun(p).key === 'sniper';
+    const scoped = sniperHeld && zoomTarget <= ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+    const wantScale = sniperHeld && !scoped ? zoomTarget * SNIPER_ZOOM_OUT : zoomTarget;
+    if (!effects.frozen) scale += (wantScale - scale) * Math.min(1, dt * 6 || 1);
     scopeT += ((scoped ? 1 : 0) - scopeT) * Math.min(1, dt * 7);
-    updateCamera(world, mouse, dt);
+    if (!effects.frozen) updateCamera(world, mouse, dt);
     effects.update(world, dt);
     const { offset } = effects;
     cam.x += offset.x;
@@ -631,9 +708,11 @@ export function createRenderer(canvas) {
     effects.drawUnder(ctx, cam, world.time);
     drawPickups(world, world.time);
     drawSoldiers(world, world.time);
+    drawKeyBadges();
     drawProjectiles(world);
     drawParticles(world);
     effects.drawWorld(ctx, cam);
+    drawFuelWarning(world, world.time);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (!world.player.alive) {
       ctx.fillStyle = 'rgba(80,0,0,0.25)';
