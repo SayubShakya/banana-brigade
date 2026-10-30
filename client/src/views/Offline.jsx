@@ -6,7 +6,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../services/api.js';
 import { Panel } from '../components/common.jsx';
 
 const EVERY_MS = 5000;

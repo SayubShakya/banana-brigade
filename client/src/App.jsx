@@ -6,11 +6,11 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from './lib/api.js';
+import { api } from './services/api.js';
 import { useBus } from './hooks/useBus.js';
-import { emit } from './lib/eventBus.js';
-import { askPuzzle } from './lib/puzzleBridge.js';
-import { readJson, store } from './lib/storage.js';
+import { emit } from './services/eventBus.js';
+import { askPuzzle } from './services/puzzleBridge.js';
+import { readJson, store } from './services/storage.js';
 import { MODES } from './game/config.js';
 import { DEFAULT_AVATAR } from './game/characters.js';
 import { createGameSession } from './game/GameSession.js';
@@ -28,7 +28,7 @@ import Pause from './views/Pause.jsx';
 import Results from './views/Results.jsx';
 import PuzzleModal from './components/PuzzleModal.jsx';
 import PowerPicker from './components/PowerPicker.jsx';
-import { askPower } from './lib/powerBridge.js';
+import { askPower } from './services/powerBridge.js';
 import { powerChoices } from './game/world.js';
 import Lobby from './views/Lobby.jsx';
 import Modes from './views/Modes.jsx';

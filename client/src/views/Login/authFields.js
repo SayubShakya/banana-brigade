@@ -4,7 +4,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api.js';
+import { api } from '../../services/api.js';
 
 // Rough strength hint while typing (the server enforces the minimum length).
 export function strength(pw) {

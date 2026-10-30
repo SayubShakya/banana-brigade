@@ -4,7 +4,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { io } from 'socket.io-client';
-import { emit } from '../lib/eventBus.js';
+import { emit } from '../services/eventBus.js';
 
 let socket = null;
 

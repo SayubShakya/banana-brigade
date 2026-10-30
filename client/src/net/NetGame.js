@@ -11,15 +11,15 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on, emit } from '../lib/eventBus.js';
+import { on, emit } from '../services/eventBus.js';
 import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS, DIFFICULTY } from '../game/config.js';
 import { BOT_AVATARS, makeAvatar } from '../game/characters.js';
 import { createMap, isSolid } from '../game/map.js';
 import { emptyControls, activeGun } from '../game/world.js';
 import { getStage } from '../game/stage.js';
 import { setListener, updateSound } from '../game/sound.js';
-import { askPuzzle, closePuzzle, isPuzzleOpen } from '../lib/puzzleBridge.js';
-import { askPower, isPowerOpen, closePower } from '../lib/powerBridge.js';
+import { askPuzzle, closePuzzle, isPuzzleOpen } from '../services/puzzleBridge.js';
+import { askPower, isPowerOpen, closePower } from '../services/powerBridge.js';
 import { getSocket, request } from './socket.js';
 
 const DELAY_MS = 60;             // how far in the past soldiers are shown (about two snapshots)

@@ -6,7 +6,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../services/api.js';
 import { MODES } from '../game/config.js';
 import { Panel, Icon } from '../components/common.jsx';
 import { Stars } from './Campaign.jsx';

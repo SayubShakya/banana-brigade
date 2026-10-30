@@ -6,7 +6,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on } from '../lib/eventBus.js';
+import { on } from '../services/eventBus.js';
 import { audioContext, unlockAudio } from './sound.js';
 
 const LOOKAHEAD = 0.12;   // seconds of notes scheduled in advance

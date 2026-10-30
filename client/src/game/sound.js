@@ -13,7 +13,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on } from '../lib/eventBus.js';
+import { on } from '../services/eventBus.js';
 
 let ctx = null;
 let effects = null;     // gain node every effect plays through

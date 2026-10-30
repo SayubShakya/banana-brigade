@@ -7,7 +7,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api.js';
+import { api } from '../../services/api.js';
 import { Panel, Skeleton, SkeletonRows } from '../../components/common.jsx';
 import LiveEvents from './LiveEvents.jsx';
 

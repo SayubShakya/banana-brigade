@@ -15,7 +15,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { emit } from '../lib/eventBus.js';
+import { emit } from '../services/eventBus.js';
 import { isAimedAtEnemy } from './autoFire.js';
 
 const MOVE_KEYS = {

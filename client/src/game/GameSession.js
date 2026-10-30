@@ -12,16 +12,16 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on, emit } from '../lib/eventBus.js';
+import { on, emit } from '../services/eventBus.js';
 import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices } from './world.js';
-import { askPower, closePower } from '../lib/powerBridge.js';
+import { askPower, closePower } from '../services/powerBridge.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
 import { setEffectsVolume, setListener, setMuted, unlockAudio, updateSound } from './sound.js';
 import { setMusicMuted, setMusicVolume } from './music.js';
-import { askPuzzle, isPuzzleOpen } from '../lib/puzzleBridge.js';
+import { askPuzzle, isPuzzleOpen } from '../services/puzzleBridge.js';
 
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 

@@ -14,7 +14,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on } from '../lib/eventBus.js';
+import { on } from '../services/eventBus.js';
 import { VIEW, WEAPONS, TILE } from './config.js';
 import { raycast, isSolid } from './map.js';
 import { drawSoldier } from './characters.js';
