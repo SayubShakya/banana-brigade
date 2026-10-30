@@ -101,7 +101,13 @@ function createAchievements({ db }) {
     return unlocked;
   }
 
-  return { emit, events, list: ACHIEVEMENTS };
+  // Every achievement, and which ones this player has (with the date unlocked).
+  async function forPlayer(userId) {
+    const user = await db.findUserById(userId);
+    return { all: ACHIEVEMENTS, mine: user?.achievements ?? [] };
+  }
+
+  return { emit, events, list: ACHIEVEMENTS, forPlayer };
 }
 
 module.exports = { createAchievements, ACHIEVEMENTS, cleanPowers };

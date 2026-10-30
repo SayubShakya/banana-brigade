@@ -10,7 +10,7 @@ const { createApp } = require('./app');
 const { createPwnedCheck } = require('./services/pwned');
 const { attachRealtime } = require('./realtime/socket');
 const { createPuzzlePool } = require('./services/pool');
-const { openDatabase } = require('./models/db');
+const { openDatabase } = require('./repositories');
 const { createBananaApi } = require('./services/bananaApi');
 
 let config;
