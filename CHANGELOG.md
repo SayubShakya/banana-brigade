@@ -6,6 +6,15 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/match-length`, `feature/minimap-scope`, `feature/logo-bots`, `fix/zoom-labels`)
+- Match length 30 s / 1 / 2 / 3 / 5 min (also for online rooms, checked by the server) with scaled kill targets; a
+  live mini leaderboard with sliding rows; a red final-10-seconds timer and `match:countdown` events.
+- Minimap (line-of-sight enemies, crates, view box, death pings, M to toggle); a hold/toggle sniper scope that zooms
+  in, keeps the player visible and keeps the crosshair; the camera keeps the player in a safe area.
+- New logo (banana soldier with helmet, goggles, jetpack and "+ ?" puzzle tiles) with a floating shine, new favicon
+  and app icons.
+- Bots about 25–35 % weaker on every difficulty; Hard fires in short bursts; gentler campaign ramp.
+
 ### Added (`feature/banana-meter`, `feature/boot-camp`, `feature/feel-and-cutscenes`, `feature/wire-story-clips`)
 - Server-timed puzzle grades (gold/silver/bronze), the Banana Meter with streaks, Supply Drops (X), grade-based
   deploy/respawn/crate rewards (also online), a Banana report on Results, correct hidden-digit instructions.

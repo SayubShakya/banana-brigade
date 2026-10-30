@@ -51,6 +51,12 @@ only shows pictures and sends controls and answers.
   single-use reset link (30 minutes), and roles.
 - **Open API:** `/api/v1` with an OpenAPI 3 file and Swagger UI at `/api/docs`, plus a public read-only
   leaderboard (`/api/v1/public/leaderboard`, CORS) that other websites can use.
+- **Match length and live score:** pick 30 s, 1, 2, 3 or 5 minutes before Quick Play, Team Battle or an online
+  room (the kill target scales: a 30 s game is first to 4). A live top-5 board stays on screen, and the timer pulses
+  red in the last 10 seconds.
+- **Minimap and easy scope:** a radar under the player bars (you, teammates, enemies you can see, crates; M hides
+  it). The sniper scope zooms in by holding the right mouse button or toggling Z, keeps you on screen and only lightly
+  darkens the edges; the camera never pushes you under the HUD.
 - **Banana puzzles power the game:** the server times every answer and grades it gold (<5 s), silver (<10 s) or
   bronze. Grades fill the **Banana Meter** (with a streak multiplier; a miss halves the streak); a full meter calls a
   **Supply Drop** (X) with a free Banana Power. Gold deploys start with a full meter, gold respawns get a longer

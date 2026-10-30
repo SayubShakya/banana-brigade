@@ -21,6 +21,9 @@ control 2:00–3:45, events 3:45–5:30, identity 5:30–7:15, evaluation 7:15�
 
 ## Demo (facts to show)
 
+For a short live demo, pick **30 s** on the Difficulty screen (first to 4): the whole match fits in half a minute,
+with the live score board and minimap visible.
+
 A 1-minute path: Menu → **Boot Camp** (move, jetpack, shoot, crate, puzzle, power) → Quick Play deploy puzzle
 (show the GOLD/SILVER badge and seconds: timed by the server in `server/services/puzzles.js`) → the Banana Meter
 filling → X for a Supply Drop → Results **Banana report** (live vs reserve puzzles).
