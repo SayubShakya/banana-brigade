@@ -122,7 +122,7 @@ function aimSetup(difficulty, mode = 'quick') {
   w.soldiers.slice(2).forEach((s) => { s.alive = false; });
   const spot = w.map.spawns[0];
   Object.assign(p, { x: spot.x - p.w / 2, y: spot.y - 400 });
-  Object.assign(enemy, { x: p.x + 400, y: p.y });
+  Object.assign(enemy, { x: p.x + 250, y: p.y });
   w.map = { ...w.map, grid: w.map.grid.map((row) => row.map(() => 0)) };
   const sy = p.y + 25;
   const sx = p.x + p.w / 2;
@@ -130,7 +130,7 @@ function aimSetup(difficulty, mode = 'quick') {
   const ex = enemy.x + enemy.w / 2;
   const enemyAngle = Math.atan2(ey - sy, ex - sx);
   const aimAngle = enemyAngle - (2 * Math.PI) / 180;
-  const aim = { x: sx + Math.cos(aimAngle) * 400, y: sy + Math.sin(aimAngle) * 400 };
+  const aim = { x: sx + Math.cos(aimAngle) * 250, y: sy + Math.sin(aimAngle) * 250 };
   return { w, p, aim, sx, sy, enemyAngle, aimAngle };
 }
 
