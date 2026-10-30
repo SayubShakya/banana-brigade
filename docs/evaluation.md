@@ -112,6 +112,14 @@ server ends a puzzle left open (crate time + 6 s), adds a 5 s cooldown and lets 
 | Pause the whole match | Same as single player | One player would stop everyone else's game |
 | Solve while moving (puzzle in a corner of the screen) | No freeze | Hard to read on phones; still unfair while typing the answer |
 
+**Banana Meter grades: timed on the server** (`feature/banana-meter`)
+
+The speed grade (gold under 5 s, silver under 10 s) uses the time between the server handing out the puzzle and
+receiving the answer (`server/services/puzzles.js`). Timing in the browser would be simpler and ignore network
+delay, but a player could change it in developer tools. The server time includes the image download and network
+lag, so slow connections are slightly penalised; the thresholds are generous for that reason. Aim assist is only
+on Easy and never online, so it helps beginners without giving an advantage over other players.
+
 ## 4. Virtual identity
 
 **Chosen:** username and password; bcrypt hashes (cost 10); a server-side session in MongoDB identified by an

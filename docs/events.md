@@ -190,3 +190,16 @@ so they also work online, where `NetGame.js` re-emits the server's events.
 | `explosion` | fireball, shockwave ring, smoke, debris, scorch mark |
 | `melee:swing`, `grenade:thrown`, `weapon:reloading`, `soldier:landed` | melee swing, throw arm, reload tilt and falling magazine, landing squash (dust from 260 px/s) |
 | (snapshot state) `jetting`, `current`, `busy`, `health` | jetpack smoke; weapon-swap lower/raise when `current` changes; banana bubble for crate solvers; low-health vignette |
+
+
+## Banana Meter, Boot Camp and story clips
+
+| Event | Emitted by | Heard by |
+|---|---|---|
+| `banana:answered` {purpose, correct, grade, ms, source} | `client/src/components/PuzzleModal.jsx` | `client/src/game/GameSession.js` (meter, stats), `client/src/game/tutorial.js` |
+| `banana:meter` {value, streak, gained, grade, full} | `client/src/game/world.js` | `client/src/game/hud.js` (meter bar, DROP button) |
+| `input:supply` | X key / HUD button (`GameSession.js`) | `GameSession.js` → `callSupplyDrop` |
+| `banana:drop` {x, y} | `client/src/game/world.js` | `hud.js` (toast) |
+| `tutorial:step`, `tutorial:done`, `tutorial:skip` | `client/src/game/tutorial.js` | `client/src/components/BootCampCoach.jsx`, `client/src/controllers/useBattle.js` |
+| `tip:show`, `input:help`, `input:move`, `input:jet` | `useBattle.js`, `client/src/game/input.js` | `BootCampCoach.jsx`, `tutorial.js` |
+| `cutscene:started`, `cutscene:ended` | `client/src/services/cutsceneBridge.js` | (available to listeners) |

@@ -20,6 +20,10 @@ control 2:00–3:45, events 3:45–5:30, identity 5:30–7:15, evaluation 7:15�
 - A terminal with `mongosh banana_brigade` ready, and one with the git log.
 
 ## Demo (facts to show)
+
+A 1-minute path: Menu → **Boot Camp** (move, jetpack, shoot, crate, puzzle, power) → Quick Play deploy puzzle
+(show the GOLD/SILVER badge and seconds: timed by the server in `server/services/puzzles.js`) → the Banana Meter
+filling → X for a Supply Drop → Results **Banana report** (live vs reserve puzzles).
 - Log in (tick "remember me") → menu with rank card → Campaign map (stars, locks) → Difficulty cards → deploy
   puzzle (timer ring turns orange, then red) → battle (battle music fades in).
 - In battle: get killed, press B for a respawn puzzle; press E at a banana crate and choose a Banana Power.

@@ -6,6 +6,14 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/banana-meter`, `feature/boot-camp`, `feature/feel-and-cutscenes`, `feature/wire-story-clips`)
+- Server-timed puzzle grades (gold/silver/bronze), the Banana Meter with streaks, Supply Drops (X), grade-based
+  deploy/respawn/crate rewards (also online), a Banana report on Results, correct hidden-digit instructions.
+- Boot Camp guided tutorial, How to play card, H key help, one-time tips, Easy default with aim assist and 30 s
+  bot hold-fire, Training without a deploy puzzle.
+- Trauma shake, hit-stop, aim-leading camera, tracers, pickup badges, low-fuel warning; eight short story clips
+  played once each (intro, crate, chapters 1–3, victory, daily; rank-up clip ready) with a Settings switch.
+
 ### Changed (`refactor/server-mvc`, `refactor/client-mvc`, `chore/strip-comments`, `docs/after-mvc`)
 - **Server in layers (MVC, SOLID):** routes only wire URLs → controllers handle HTTP → services hold the rules (no
   req/res, dependencies passed in) → repositories do the queries (one per aggregate) → models are the schemas (one

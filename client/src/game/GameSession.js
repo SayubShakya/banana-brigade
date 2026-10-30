@@ -6,6 +6,7 @@ import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices, bananaAnswered, fillBananaMeter, callSupplyDrop, openSupplyCrate } from './world.js';
 import { crateChoiceCount } from './meter.js';
 import { askPower, closePower } from '../services/powerBridge.js';
+import { playCutscene } from '../services/cutsceneBridge.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
 import { setEffectsVolume, setListener, setMuted, unlockAudio, updateSound } from './sound.js';
@@ -132,6 +133,8 @@ export function createGameSession() {
   async function pickPower(count) {
     setState('puzzle');
     input.setEnabled(false);
+    await playCutscene('crate');
+    if (!world || world.over) return;
     const choice = await askPower(powerChoices(count));
     if (!world || world.over) return;
     const power = rewardBananaCrate(world, world.player, choice);

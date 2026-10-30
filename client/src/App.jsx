@@ -26,6 +26,8 @@ import { NotFound, Privacy, Terms } from './views/Legal.jsx';
 import PuzzleModal from './components/PuzzleModal.jsx';
 import PowerPicker from './components/PowerPicker.jsx';
 import Toasts from './components/Toasts.jsx';
+import Cutscene from './components/Cutscene.jsx';
+import BootCampCoach from './components/BootCampCoach.jsx';
 
 export default function App() {
   const nav = useNavigation();
@@ -65,8 +67,10 @@ export default function App() {
         onToggleSound={() => prefs.toggle('muted')} onEnd={battle.endNow} onQuit={battle.toMenu} />}
       {screen === 'results' && battle.over && <Results game={battle.over} me={account.username} onMenu={battle.toMenu} onMission={battle.playMission} onMap={battle.toMap}
         onAgain={battle.playAgain} />}
+      <BootCampCoach />
       <PuzzleModal />
       <PowerPicker />
+      <Cutscene />
       <Toasts />
     </>
   );
