@@ -846,3 +846,13 @@ body.touch .power-card kbd { display: none; }
 .auth-for { display: block; margin-top: 0.4cqh; font: 600 1.9cqh 'Rubik', sans-serif; color: var(--khaki); }
 
 .feed-row .headshot-tag { display: inline-block; margin-left: 0.4cqh; padding: 0 0.7cqh; border-radius: 0.6cqh; background: linear-gradient(180deg, #ffe066, #f4b400); color: #3a2a00; font-weight: 800; font-size: 0.8em; letter-spacing: 0.05em; vertical-align: middle; box-shadow: 0 0 0.6cqh rgba(255, 209, 102, 0.6); }
+
+.cutscene { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: #050703; overflow: hidden; animation: cutscene-in 0.25s ease-out; }
+.cutscene-media { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cutscene.still .cutscene-media { object-fit: cover; }
+.cutscene-caption { position: absolute; left: 0; right: 0; bottom: 3cqh; margin: 0; padding: 1cqh 4cqh; text-align: center; font: 700 3cqh 'Rubik', sans-serif; color: #fff; text-shadow: 0 0.3cqh 0.6cqh rgba(0, 0, 0, 0.85); pointer-events: none; }
+.cutscene-skip { position: absolute; top: 2.4cqh; right: 2.4cqh; padding: 1cqh 2.2cqh; border-radius: 1.2cqh; border: 0.3cqh solid var(--banana); background: rgba(10, 12, 6, 0.7); color: var(--banana); font: 700 2.4cqh 'Rubik', sans-serif; cursor: pointer; }
+.cutscene-skip:hover, .cutscene-skip:focus-visible { background: var(--banana); color: #2a2200; outline: 0.3cqh solid #fff; outline-offset: 0.3cqh; }
+@keyframes cutscene-in { from { opacity: 0; } to { opacity: 1; } }
+body.a11y-calm .cutscene { animation: none; }
+@media (prefers-reduced-motion: reduce) { .cutscene { animation: none; } }
