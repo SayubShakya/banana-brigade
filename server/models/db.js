@@ -196,6 +196,16 @@ async function openDatabase(uri) {
       delete t._id;
       return { ...zero, ...t };
     },
+    // ----- the saved puzzle reserve (see services/pool.js) -----
+    async saveReservePuzzle({ image, solution }, keep = 25) {
+      await m.ReservePuzzle.create({ image, solution });
+      // Keep only the newest `keep`.
+      const newest = await m.ReservePuzzle.find({}, { _id: 1 }).sort({ at: -1, _id: -1 }).limit(keep).lean();
+      await m.ReservePuzzle.deleteMany({ _id: { $nin: newest.map((p) => p._id) } });
+    },
+    loadReservePuzzles: async (limit = 25) => (await m.ReservePuzzle.find().sort({ at: -1, _id: -1 }).limit(limit).lean())
+      .map((p) => ({ image: p.image, solution: p.solution })),
+
     // ----- suspensions and the admin audit log -----
     suspendUser: (id, reason, by) => m.User.updateOne({ _id: oid(id) }, { suspended: { at: new Date(), reason, by } }),
     restoreUser: (id) => m.User.updateOne({ _id: oid(id) }, { $unset: { suspended: 1 } }),

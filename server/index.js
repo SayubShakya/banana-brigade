@@ -38,7 +38,13 @@ async function main() {
     client: db.connection.getClient(), collectionName: 'sessions', ttl: config.sessionTtlSeconds, stringify: false,
   });
   const bananaApi = createBananaApi({ baseUrl: config.bananaApiUrl, timeoutMs: config.bananaApiTimeoutMs });
-  const pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats });
+  // The reserve is kept in MongoDB, so a restart while the Banana API is down still has puzzles.
+  const pool = createPuzzlePool({
+    fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats,
+    store: { load: (n) => db.loadReservePuzzles(n), save: (p) => db.saveReservePuzzle(p) },
+  });
+  const loaded = await pool.loadReserve().catch(() => 0);
+  if (loaded) console.log(`Loaded ${loaded} saved Banana puzzles as a reserve.`);
   const app = createApp({
     db, bananaApi, pool, sessionStore,
     sessionSecret: config.sessionSecret, production: config.production, appUrl: config.appUrl,
@@ -48,6 +54,12 @@ async function main() {
   // One HTTP server for the web pages, the JSON API and the WebSocket (Socket.io).
   const server = http.createServer(app);
   attachRealtime(server, app);
+  // A clear message instead of a stack trace when the port is taken.
+  server.on('error', (err) => {
+    if (err.code !== 'EADDRINUSE') throw err;
+    console.error(`Port ${config.port} is already in use. Stop the other program, run ./run.sh (it stops an older Banana Brigade), or set PORT, e.g. PORT=3105 npm start.`);
+    process.exit(1);
+  });
   server.listen(config.port, () => {
     console.log(`Banana Brigade running at http://localhost:${config.port} (MongoDB connected, WebSocket ready)`);
     pool.warmUp(); // have puzzles ready before the first player asks

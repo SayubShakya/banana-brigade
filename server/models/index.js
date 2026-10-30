@@ -93,6 +93,14 @@ const passwordResetSchema = new Schema({
   expiresAt: { type: Date, required: true, expires: 0 },
 });
 
+// The puzzle pool's reserve, saved so the game still has puzzles after a restart
+// while the Banana API is down (services/pool.js). Only the newest few are kept.
+const reservePuzzleSchema = new Schema({
+  image: { type: String, required: true },
+  solution: { type: Number, required: true, min: 0, max: 9 },
+}, { timestamps: { createdAt: 'at', updatedAt: false } });
+reservePuzzleSchema.index({ at: -1 });
+
 const dailySchema = new Schema({
   date: { type: String, required: true, unique: true },   // 'YYYY-MM-DD' (UTC)
   puzzles: [{ _id: false, image: String, solution: Number }],
@@ -121,6 +129,7 @@ function registerModels(conn) {
     PasswordReset: conn.model('PasswordReset', passwordResetSchema),
     AuditLog: conn.model('AuditLog', auditLogSchema),
     Daily: conn.model('Daily', dailySchema),
+    ReservePuzzle: conn.model('ReservePuzzle', reservePuzzleSchema),
     DailyResult: conn.model('DailyResult', dailyResultSchema),
   };
 }

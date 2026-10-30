@@ -180,3 +180,18 @@ test('status reports latency, success rate and retries', async () => {
   assert.equal(st.retriesUsed, 2);
   assert.equal(st.circuit.state, 'closed');
 });
+
+test('the reserve is saved in a store and loaded again after a restart', async () => {
+  const saved = [];
+  const store = { load: async (n) => saved.slice(-n).reverse(), save: async (p) => { saved.push(p); } };
+  const first = createPuzzlePool({ fetchPuzzle: async () => ({ image: 'img', solution: 4 }), size: 1, store });
+  await first.take();
+  assert.ok(saved.length >= 1);
+  // A new server while the Banana API is down: the saved reserve still gives a puzzle.
+  const down = Object.assign(new Error('down'), { code: 'http-5xx' });
+  const second = createPuzzlePool({ fetchPuzzle: async () => { throw down; }, size: 0, store, takeDeadlineMs: 50 });
+  assert.equal(await second.loadReserve(), Math.min(saved.length, 25));
+  const p = await second.take();
+  assert.equal(p.source, 'reserve');
+  assert.equal(p.solution, 4);
+});
