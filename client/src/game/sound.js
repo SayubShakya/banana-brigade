@@ -130,27 +130,62 @@ function tone(v, freq, dur, { volume = 0.15, type = 'square', slideTo, delay = 0
 
 const ui = (length, volume = 1) => voice(undefined, undefined, volume, length, { priority: true });
 
+const SAMPLE_GUNS = ['magnum', 'smg', 'rifle', 'shotgun', 'sniper'];
+const samples = new Map();
+let samplesLoading = false;
+
+function loadSamples() {
+  if (samplesLoading || typeof fetch !== 'function') return;
+  samplesLoading = true;
+  const a = audio();
+  for (const name of SAMPLE_GUNS) {
+    fetch(`/media/sfx/${name}.mp3`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+      .then((data) => a.decodeAudioData(data))
+      .then((buffer) => samples.set(name, buffer))
+      .catch(() => {});
+  }
+}
+
+function playSample(v, name, volume) {
+  const buffer = samples.get(name);
+  if (!v || !buffer) return false;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.playbackRate.value = 0.94 + Math.random() * 0.12;
+  const g = ctx.createGain();
+  g.gain.value = volume;
+  src.connect(g).connect(v.out);
+  src.start(v.t);
+  return true;
+}
+
 const GUNS = {
   magnum: { length: 0.3, play(v) {
+    if (playSample(v, 'magnum', 0.75)) return;
     noise(v, { dur: 0.05, volume: 0.5, type: 'highpass', freq: 2200 });
     noise(v, { dur: 0.2, volume: 0.45, type: 'bandpass', freq: 900, q: 0.9 });
     tone(v, 170, 0.14, { volume: 0.25, type: 'sine', slideTo: 55 });
   } },
   smg: { length: 0.1, gap: 45, play(v) {
+    if (playSample(v, 'smg', 0.5)) return;
     noise(v, { dur: 0.045, volume: 0.35, type: 'bandpass', freq: 2600, q: 1.2 });
     tone(v, 240, 0.05, { volume: 0.12, type: 'square', slideTo: 90 });
   } },
   rifle: { length: 0.18, gap: 60, play(v) {
+    if (playSample(v, 'rifle', 0.6)) return;
     noise(v, { dur: 0.03, volume: 0.4, type: 'highpass', freq: 3000 });
     noise(v, { dur: 0.11, volume: 0.4, type: 'lowpass', freq: 2800 });
     tone(v, 130, 0.12, { volume: 0.28, type: 'sine', slideTo: 48 });
   } },
   shotgun: { length: 0.5, play(v) {
+    if (playSample(v, 'shotgun', 0.85)) return;
     noise(v, { dur: 0.35, volume: 0.6, type: 'lowpass', freq: 1600, freqTo: 400 });
     noise(v, { dur: 0.18, volume: 0.35, type: 'bandpass', freq: 650, q: 1 });
     tone(v, 85, 0.3, { volume: 0.5, type: 'sine', slideTo: 32 });
   } },
   sniper: { length: 1.2, play(v) {
+    if (playSample(v, 'sniper', 0.9)) return;
     noise(v, { dur: 0.03, volume: 0.7, type: 'highpass', freq: 3500 });
     noise(v, { dur: 0.25, volume: 0.5, type: 'lowpass', freq: 2200, freqTo: 600 });
     tone(v, 110, 0.25, { volume: 0.4, type: 'sine', slideTo: 38 });
@@ -174,7 +209,7 @@ export function setEffectsVolume(value) {
   effectsVolume = Math.min(1, Math.max(0, value));
   if (effects) effects.gain.setTargetAtTime(effectsVolume, ctx.currentTime, 0.05);
 }
-export const unlockAudio = () => audio();
+export const unlockAudio = () => { const a = audio(); loadSamples(); return a; };
 export const audioContext = () => ctx;
 
 function chime() {
