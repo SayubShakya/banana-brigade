@@ -1,10 +1,12 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { WEAPONS, SOLDIER, TILE, GRENADE, BOT_TACTICS } from './config.js';
+import { WEAPONS, SOLDIER, TILE, GRENADE, BOT_TACTICS, DIFFICULTY } from './config.js';
 import { hasLineOfSight, isSolid } from './map.js';
 import { center, activeGun } from './world.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
+export const EASY_HESITATION = 30;
+export const hesitating = (world) => world.difficulty?.name === DIFFICULTY.easy.name && world.time < EASY_HESITATION;
 const leaveAlone = (world, s) => s.shieldTimer > 0 || s.busy || world.time < (s.graceUntil ?? 0);
 
 function brainFor(bot, level) {
@@ -214,5 +216,6 @@ export function updateBots(world, dt) {
       c.aimX = me.x + (dir || bot.facing) * 200;
       c.aimY = me.y;
     }
+    if (hesitating(world)) c.fire = c.grenade = c.melee = false;
   }
 }
