@@ -22,6 +22,25 @@ if ! grep -q '^MONGODB_URI=mongodb+srv' .env 2>/dev/null && command -v mongosh >
     echo "Starting MongoDB…"; brew services start mongodb-community >/dev/null 2>&1 || true; sleep 2
   fi
 fi
+# Restart: if the port is taken by an older Banana Brigade server, stop it first.
+# Anything else on the port is left alone (it could be another app), with a message.
+port=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+port=${port:-3100}
+if [ "${1:-}" != "--test" ] && command -v lsof >/dev/null 2>&1; then
+  for pid in $(lsof -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
+    cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+    cmd=$(ps -o command= -p "$pid" 2>/dev/null || true)
+    if [ "$cwd" = "$PWD" ] && [[ "$cmd" == *server/index.js* ]]; then
+      echo "Port $port is used by an older Banana Brigade server (pid $pid): stopping it…"
+      kill "$pid" 2>/dev/null || true
+      for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || break; sleep 0.3; done
+      kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    else
+      echo "Port $port is used by another program (pid $pid: ${cmd:-unknown}). Stop it, or set PORT in .env." >&2
+      exit 1
+    fi
+  done
+fi
 case "${1:-}" in
   --dev)  exec npm run dev ;;
   --test) exec npm test ;;
