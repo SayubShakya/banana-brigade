@@ -41,6 +41,10 @@
             <div id="buffs" class="buffs" aria-live="polite"></div>
             <div class="bar health" title="Health"><div id="hp-fill" class="fill good"></div><span id="hp-text">100</span></div>
             <div class="bar fuel" title="Jetpack fuel"><div id="fuel-fill" class="fill"></div><span>JET</span></div>
+            <div class="banana-meter-row">
+              <div id="banana-meter" class="bar banana-meter" role="meter" aria-label="Banana Meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" title="Banana Meter: solve Banana puzzles to fill it; when full press X for a supply drop"><div id="meter-fill" class="fill"></div><span id="meter-text">BANANA 0%</span></div>
+              <button id="supply-btn" class="hud-btn supply-btn" title="Call a Banana supply drop (X)" hidden>DROP <kbd>X</kbd></button>
+            </div>
           </div>
         </div>
 
@@ -81,7 +85,7 @@
         <div id="hud-toast" role="status"></div>
         <div id="hud-help" class="hud-help" hidden>
           <span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> / <kbd>Space</kbd> jetpack</span><span><kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot</span>
-          <span class="banana"><kbd>E</kbd> banana crate = super power</span><span class="banana"><kbd>B</kbd> Banana respawn</span><span><kbd>Esc</kbd> pause</span>
+          <span class="banana"><kbd>E</kbd> banana crate = super power</span><span class="banana"><kbd>B</kbd> Banana respawn</span><span class="banana"><kbd>X</kbd> supply drop (full Banana Meter)</span><span><kbd>Esc</kbd> pause</span>
         </div>
         <div id="fps" class="fps" hidden></div>
         <div id="hit-flash"></div>
