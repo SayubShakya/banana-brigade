@@ -25,6 +25,8 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   const lastMode = useRef('quick');
   const [pendingMode, setPendingMode] = useState('quick');
   const bootCamp = useRef(false);
+  const lengthRef = useRef(settings.matchLength);
+  lengthRef.current = settings.matchLength;
   const tipsShown = useRef(new Set());
 
   const tip = (key) => {
@@ -78,14 +80,15 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   }, []);
   const deployFrom = (from, mode) => { setParent(from); deploy(mode); };
 
-  const deployWith = useCallback(async (mode, difficulty) => {
+  const deployWith = useCallback(async (mode, difficulty, length = lengthRef.current) => {
     setSetting('difficulty', difficulty);
-    game().prepare(mode, difficulty);
+    if (length !== undefined && length !== lengthRef.current) setSetting('matchLength', length);
+    game().prepare(mode, difficulty, null, length);
     if (NO_DEPLOY_PUZZLE.includes(mode)) { startBattle(mode); return; }
     setScreen('menu');
     await playCutscene('intro');
     const result = await askPuzzle('deploy', {
-      modeLabel: `${MODES[mode].name} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
+      modeLabel: `${MODES[mode].name} · ${DIFFICULTY[difficulty].name}${game().rules ? ` · ${game().rules.label}` : ''}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
       title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.',
     });
     if (result === 'solved') startBattle(mode);
