@@ -5,8 +5,8 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../lib/api.js';
-import { emit } from '../lib/eventBus.js';
+import { api } from '../services/api.js';
+import { emit } from '../services/eventBus.js';
 import { Panel, Rank, Icon, Skeleton } from '../components/common.jsx';
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];

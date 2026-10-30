@@ -6,7 +6,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../services/api.js';
 import { Panel } from '../components/common.jsx';
 import { useNameHint, strength, LEVELS } from './Login/authFields.js';
 

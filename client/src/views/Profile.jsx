@@ -4,8 +4,8 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
-import { rankFor, xpFor, MODE_NAMES } from '../lib/rank.js';
+import { api } from '../services/api.js';
+import { rankFor, xpFor, MODE_NAMES } from '../services/rank.js';
 import { Panel, AvatarCanvas, RankCard, Icon, Skeleton, SkeletonRows } from '../components/common.jsx';
 
 const playTime = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`);

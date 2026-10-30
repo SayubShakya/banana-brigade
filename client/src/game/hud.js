@@ -5,7 +5,7 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-import { on } from '../lib/eventBus.js';
+import { on } from '../services/eventBus.js';
 import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS } from './config.js';
 import { activeGun } from './world.js';
 import { drawAvatarPreview } from './characters.js';

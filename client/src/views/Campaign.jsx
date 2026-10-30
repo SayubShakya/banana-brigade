@@ -5,7 +5,7 @@
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../services/api.js';
 import { CHAPTERS, MISSIONS, isUnlocked, totalStars } from '../game/campaign.js';
 import { DIFFICULTY } from '../game/config.js';
 import { mapName } from '../game/maps.js';
