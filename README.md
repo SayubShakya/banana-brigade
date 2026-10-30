@@ -416,13 +416,16 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
 ## Credits
 
 - **Banana API** by Marc Conrad, University of Bedfordshire: https://marcconrad.com/uob/banana/doc.php
+- **Gun sounds:** pistol, rifle, SMG, shotgun and sniper shots are cut from "Gunshot Sounds" by Vincent Sevedge
+  (Tabasco) on OpenGameArt.org (https://opengameart.org/content/gunshot-sounds), listed as CC0 and marked CC-BY 3.0
+  in the download (credited here either way). Rocket, flamethrower and all other sounds are made in code with Web Audio.
 - **Fonts:** Black Ops One and Rubik from Google Fonts (SIL Open Font License).
 - **Libraries:** Express, express-session, connect-mongo, Mongoose and the MongoDB driver, bcryptjs, Socket.io
   and socket.io-client, React and React DOM, Vite and @vitejs/plugin-react, mongodb-memory-server, Playwright
   (end-to-end tests) and Swagger UI (the `/api/docs` page, loaded from a CDN).
 - Gameplay and screen layout are inspired by Mini Militia Classic. The in-game art, sounds and names are original
-  (drawn in code and made with Web Audio); the only exceptions are the home-page trailer, its poster and the story
-clips cut from it (below).
+  (drawn in code and made with Web Audio); the only exceptions are the gun shot recordings (above) and the home-page
+  trailer, its poster and the story clips cut from it (below).
 - Ideas such as room codes, XP ranks and the daily challenge were compared with other students' Banana API games
   (see `docs/evaluation.md`); no code was copied from them.
 - The home page trailer (`client/public/media/trailer.mp4`, 20 s, compressed for the web) and its poster were

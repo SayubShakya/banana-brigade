@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/real-gun-sounds`)
+- Real recorded shots for the magnum, SMG, rifle, shotgun and sniper (CC-licensed, credited in the README), each
+  with a slight random pitch so repeated shots don't sound identical; the old Web Audio sounds stay as a fallback.
+
 ### Added (`feature/match-length`, `feature/minimap-scope`, `feature/logo-bots`, `fix/zoom-labels`)
 - Match length 30 s / 1 / 2 / 3 / 5 min (also for online rooms, checked by the server) with scaled kill targets; a
   live mini leaderboard with sliding rows; a red final-10-seconds timer and `match:countdown` events.
