@@ -1,19 +1,10 @@
-// The Daily Banana Challenge: the same 5 Banana API puzzles for every player on a
-// given day (UTC), 20 seconds each, one attempt per account per day. Each correct
-// answer in a row doubles the points (100, 200, 400 …); a miss resets the bonus.
-// Finishing on consecutive days builds a streak shown on the profile.
-//
-// The day's puzzles are fetched once and stored in MongoDB with their solutions;
-// the browser only ever gets the pictures. Timing, scoring and the "one attempt"
-// rule (a unique index on user + date) are all enforced here, not in the browser.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { AppError, badRequest, notFound, conflict } = require('../lib/errors');
 
 const TOTAL = 5;
 const SECONDS = 20;
-const GRACE_MS = 2000;                    // network delay allowance
+const GRACE_MS = 2000;
 const today = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
 const dayBefore = (date) => new Date(Date.parse(`${date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 
@@ -41,8 +32,6 @@ function createDailyService({ db, pool, achievements, now = () => Date.now() }) 
     };
   }
 
-  // Gets today's puzzles before using up the attempt, so an API outage does not
-  // cost the player their one go for the day.
   async function start(userId) {
     const date = today(now());
     let daily;
@@ -55,7 +44,6 @@ function createDailyService({ db, pool, achievements, now = () => Date.now() }) 
     return { index: 0, total: TOTAL, seconds: SECONDS, image: daily.puzzles[0].image };
   }
 
-  // Finished: update the day streak.
   async function finish(userId, date, run, unlocked) {
     const user = await db.findUserById(userId);
     const streak = user.daily.lastDate === dayBefore(date) ? user.daily.streak + 1 : 1;
@@ -89,7 +77,6 @@ function createDailyService({ db, pool, achievements, now = () => Date.now() }) 
     return { correct, solution, score: run.score, solved: run.solved, finished: true, streak, unlocked };
   }
 
-  // Resume a run after a page reload: the current puzzle and the time already used.
   async function current(userId) {
     const date = today(now());
     const run = await db.dailyResult(userId, date);

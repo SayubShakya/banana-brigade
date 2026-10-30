@@ -1,7 +1,4 @@
-// Tests for the live event feed (server/services/eventLog.js): events are recorded as they
-// happen and pushed over Socket.io to admins who are watching; players cannot watch.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -54,7 +51,6 @@ test('an admin watching gets recent events and new ones live; a player is refuse
     assert.equal(event.user, 'grunt');
     assert.equal(event.text, 'logged in');
 
-    // Events from the achievement engine (here a saved score) arrive too.
     const scoreEvent = new Promise((resolve) => admin.socket.on('server:event', (e) => e.kind === 'score' && resolve(e)));
     await player.c.post('/api/scores', { mode: 'quick', kills: 4, deaths: 2, durationS: 60 });
     assert.match((await scoreEvent).text, /finished a quick game with 4 kills/);

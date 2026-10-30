@@ -1,7 +1,4 @@
-// Avatar customiser: headgear, uniform, skin, goggles and face (stubble, beard, moustache), with a live preview
-// that cycles through the weapons and the jetpack.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useRef } from 'react';
 import { PARTS, DEFAULT_AVATAR, makeAvatar, drawSoldier } from '../game/characters.js';
@@ -29,13 +26,12 @@ function Swatches({ values, current, onPick, label }) {
   );
 }
 
-// Animated preview drawn on a canvas each frame.
 function Preview({ parts, weaponLabel }) {
   const ref = useRef(null);
   useEffect(() => {
     let raf = 0;
     let t = 0;
-    let last = null;   // the first frame's time (frame times can be earlier than performance.now())
+    let last = null;
     const avatar = makeAvatar(parts);
     const draw = (now) => {
       t += last === null ? 0 : Math.max(0, Math.min(0.05, (now - last) / 1000));

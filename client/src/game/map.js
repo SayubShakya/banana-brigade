@@ -1,7 +1,4 @@
-// The battlefield: builds a tile grid from one of the maps in maps.js, plus the
-// collision and line-of-sight helpers that soldiers, bullets and bots use.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { TILE } from './config.js';
 import { MAPS } from './maps.js';
@@ -11,8 +8,6 @@ export { MAPS, MAP_IDS, mapName, randomMapId } from './maps.js';
 const COLS = 90;
 const ROWS = 36;
 
-// Tile kinds. The grid only says solid (1) or empty (0), which is all the physics
-// needs; `kinds` remembers what each solid tile is, so the renderer can draw it.
 export const KIND = { ground: 1, platform: 2, block: 3 };
 
 function buildGrid(def) {
@@ -29,15 +24,14 @@ function buildGrid(def) {
   def.platforms.forEach(([c, r, w, h]) => fill(c, r, w, h, KIND.platform));
   def.blocks.forEach(([c, r, w, h]) => fill(c, r, w, h, KIND.block));
 
-  fill(0, 0, COLS, 1, KIND.ground);            // ceiling
-  fill(0, 0, 1, ROWS, KIND.ground);            // left wall
-  fill(COLS - 1, 0, 1, ROWS, KIND.ground);     // right wall
+  fill(0, 0, COLS, 1, KIND.ground);
+  fill(0, 0, 1, ROWS, KIND.ground);
+  fill(COLS - 1, 0, 1, ROWS, KIND.ground);
   return { grid, kinds };
 }
 
 const tileCenter = ([c, r]) => ({ x: c * TILE + TILE / 2, y: r * TILE + TILE / 2 });
 
-// id: 'jungle' | 'desert' | 'snow' | 'night' (see maps.js). Unknown ids get Jungle Ridge.
 export function createMap(id = 'jungle') {
   const def = MAPS[id] ?? MAPS.jungle;
   const { grid, kinds } = buildGrid(def);
@@ -76,8 +70,6 @@ function boxHitsSolid(map, x, y, w, h) {
   return false;
 }
 
-// Moves a box {x, y, w, h, vx, vy} by its velocity, stopping at walls.
-// Resolves the x axis first, then y, and reports which sides were hit.
 export function moveBox(map, b, dt) {
   const hit = { left: false, right: false, top: false, bottom: false };
 
@@ -99,7 +91,6 @@ export function moveBox(map, b, dt) {
   return hit;
 }
 
-// Walks along a line in small steps; returns the first solid point, or null if the line is clear.
 export function raycast(map, x0, y0, x1, y1, step = 6) {
   const dx = x1 - x0;
   const dy = y1 - y0;

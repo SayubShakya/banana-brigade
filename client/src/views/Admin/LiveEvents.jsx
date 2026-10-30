@@ -1,10 +1,4 @@
-// Admin: the server's events as they happen (logins, guests, puzzles, scores,
-// achievements, online kills, admin actions). The server pushes each one over the
-// WebSocket ("server:event"); this screen only listens. Pause holds new events
-// back (they are kept and counted) until Resume. The Admin screen keeps this
-// mounted while other tabs show, so Clear and Pause survive a tab switch.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useRef, useState } from 'react';
 import { getSocket, request } from '../../net/socket.js';
@@ -18,7 +12,7 @@ export default function LiveEvents() {
   const [kind, setKind] = useState('all');
   const [paused, setPaused] = useState(false);
   const [status, setStatus] = useState('Connecting…');
-  const [held, setHeld] = useState([]);            // events that arrived while paused
+  const [held, setHeld] = useState([]);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
 
@@ -28,7 +22,6 @@ export default function LiveEvents() {
       if (pausedRef.current) setHeld((list) => [e, ...list].slice(0, MAX));
       else setEvents((list) => [e, ...list].slice(0, MAX));
     };
-    // (Re)joins the admins' room; after a reconnect the server has forgotten us.
     const watch = () => request('events:watch')
       .then(({ recent }) => { setEvents((list) => (list.length ? list : recent.reverse())); setStatus('Live'); })
       .catch((err) => setStatus(err.message));

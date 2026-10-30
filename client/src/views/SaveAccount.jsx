@@ -1,9 +1,4 @@
-// Saves a guest as a full account: the player picks a name and a password, and keeps
-// every score, achievement and campaign star earned as a guest (the server keeps the
-// same record and only adds the name and the bcrypt hash). The fields work like
-// "Create account": a live name check and a strength meter.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useState } from 'react';
 import { api } from '../services/api.js';

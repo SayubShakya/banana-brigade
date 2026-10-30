@@ -1,8 +1,4 @@
-// Banana puzzles for the browser. The server takes a puzzle from the pool (fetched
-// from the Banana API), keeps the solution in the puzzle store and only hands out
-// the picture, so the answer cannot be read in the browser's developer tools.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { AppError, badRequest, notFound } = require('../lib/errors');
 
@@ -21,8 +17,6 @@ function createPuzzleService({ pool, puzzleStore, achievements }) {
     }
   }
 
-  // Each puzzle can be answered once. tally: the session's puzzle record
-  // (lib/httpSession.js), kept on the server so it cannot be faked from the browser.
   async function answer(userId, { puzzleId, answer: given }, tally) {
     if (typeof puzzleId !== 'string' || !Number.isInteger(given)) throw badRequest('Send { puzzleId, answer } with a whole-number answer');
     const result = puzzleStore.answer(puzzleId, given);
@@ -32,7 +26,6 @@ function createPuzzleService({ pool, puzzleStore, achievements }) {
     return { correct: result.correct, solution: result.solution, purpose: result.purpose, unlocked };
   }
 
-  // Banana API health: puzzles ready, latency, success rate and the circuit breaker.
   const status = () => pool.status();
 
   return { issue, answer, status };

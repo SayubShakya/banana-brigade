@@ -1,7 +1,4 @@
-// Tests for Banana Powers: what each power does, how long it lasts, the random
-// bonus, crate respawns, and that every map has five banana crates.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,8 +1,4 @@
-// 404 answers. Unknown /api paths get JSON. Any other address gets the React page
-// with status 404 when a browser asks (it shows the "page not found" screen), and
-// plain text otherwise.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const fs = require('node:fs');
 

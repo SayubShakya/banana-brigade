@@ -1,9 +1,4 @@
-// /api/auth: register, log in, log out and "who am I", guest play, plus the account
-// tools (log out of all devices, change password, delete account, username check,
-// forgot/reset password, signed-in devices, data export). Wiring only: the work is
-// in controllers/authController.js, controllers/accountController.js and the services.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');

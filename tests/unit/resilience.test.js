@@ -1,8 +1,4 @@
-// Tests for how the server copes with a slow, broken or down Banana API:
-// timeouts, retries with backoff, and the circuit breaker in the puzzle pool.
-// The network is faked, so these run offline and without real waiting.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +9,6 @@ const PNG = 'iVBORw0KGgo' + 'A'.repeat(120);
 const good = (solution = 5) => ({ ok: true, status: 200, text: async () => JSON.stringify({ question: PNG, solution }) });
 const http = (status) => ({ ok: false, status, text: async () => '' });
 
-// A fake fetch that answers from a list, one entry per call, and remembers what it was asked.
 function fakeFetch(answers) {
   const calls = [];
   const fetchImpl = async (url, opts) => {
@@ -34,7 +29,7 @@ test('a transient failure is retried and the puzzle still arrives', async () => 
   assert.equal(p.solution, 4);
   assert.match(p.image, /^data:image\/png;base64,/);
   assert.equal(calls.length, 3);
-  assert.deepEqual(waits, [300, 900]);                         // exponential backoff
+  assert.deepEqual(waits, [300, 900]);
   assert.equal(api.stats().retriesUsed, 2);
   assert.equal(api.stats().successRate, 1);
 });
@@ -65,13 +60,12 @@ test('a 4xx answer is not retried, but 429 (too many requests) is', async () => 
 });
 
 test('a hung request is aborted by the timeout', async () => {
-  // Never answers on its own; only the abort signal ends it.
   const hang = (opts) => new Promise((_, reject) => opts.signal.addEventListener('abort', () => reject(new Error('aborted'))));
   const { fetchImpl, calls } = fakeFetch([hang, hang]);
   const api = createBananaApi({ fetchImpl, timeoutMs: 30, retries: 1, ...noWait });
   const started = Date.now();
   await assert.rejects(api.fetchPuzzle(), (err) => err.kind === 'timeout' && /30 ms/.test(err.message));
-  assert.equal(calls.length, 2);                               // a timeout is worth one more try
+  assert.equal(calls.length, 2);
   assert.ok(Date.now() - started < 1000);
   assert.ok(calls[0].opts.signal.aborted);
 });
@@ -82,8 +76,6 @@ test('small format differences are normalised', async () => {
   const p = await createBananaApi({ fetchImpl, ...noWait }).fetchPuzzle();
   assert.deepEqual(p, { image: `data:image/png;base64,${PNG}`, solution: 3 });
 });
-
-// ----- the puzzle pool: circuit breaker, deadline, in-flight limit, status -----
 
 const PUZZLE = { image: 'data:image/png;base64,xyz', solution: 6 };
 const down = () => new BananaApiError('Banana API is unreachable', { kind: 'network' });
@@ -96,18 +88,16 @@ test('the circuit opens after K failures in a row, serves the reserve, then prob
     fetchPuzzle: async () => { calls += 1; clock += 40; if (!up) throw down(); return PUZZLE; },
     size: 0, failureThreshold: 3, coolDownMs: 30_000, now: () => clock,
   });
-  await pool.take();                                  // fills the reserve
+  await pool.take();
   up = false;
   for (let i = 0; i < 3; i++) assert.equal((await pool.take()).source, 'reserve');
   assert.equal(pool.status().circuit.state, 'open');
   assert.equal(calls, 4);
 
-  // While open, the API is not called at all and players still get puzzles.
   assert.equal((await pool.take()).source, 'reserve');
   assert.equal(calls, 4);
-  assert.equal(pool.status().lastError, 'network');       // still the real cause, not the pause
+  assert.equal(pool.status().lastError, 'network');
 
-  // After the cool-down one probe goes out; it works, so the circuit closes.
   clock += 30_000;
   up = true;
   assert.equal((await pool.take()).source, 'live');
@@ -123,7 +113,7 @@ test('a failed probe opens the circuit again', async () => {
   assert.equal(pool.status().circuit.state, 'open');
   clock += 1000;
   assert.equal(pool.status().circuit.state, 'half-open');
-  await assert.rejects(pool.take(), (err) => err.kind === 'network');   // the probe really called the API
+  await assert.rejects(pool.take(), (err) => err.kind === 'network');
   assert.equal(pool.status().circuit.state, 'open');
   assert.equal(pool.status().circuit.retryInMs, 1000);
 });
@@ -140,7 +130,7 @@ test('a slow API does not keep the player waiting when there is a reserve', asyn
   assert.equal((await pool.take()).source, 'reserve');
   assert.ok(Date.now() - started < 150);
   await new Promise((r) => setTimeout(r, 250));
-  assert.equal(pool.status().ready, 1);               // the late live puzzle was kept, not wasted
+  assert.equal(pool.status().ready, 1);
 });
 
 test('many players at once do not flood the API', async () => {
@@ -187,7 +177,6 @@ test('the reserve is saved in a store and loaded again after a restart', async (
   const first = createPuzzlePool({ fetchPuzzle: async () => ({ image: 'img', solution: 4 }), size: 1, store });
   await first.take();
   assert.ok(saved.length >= 1);
-  // A new server while the Banana API is down: the saved reserve still gives a puzzle.
   const down = Object.assign(new Error('down'), { code: 'http-5xx' });
   const second = createPuzzlePool({ fetchPuzzle: async () => { throw down; }, size: 0, store, takeDeadlineMs: 50 });
   assert.equal(await second.loadReserve(), Math.min(saved.length, 25));

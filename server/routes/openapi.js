@@ -1,13 +1,7 @@
-// OpenAPI 3 description of the game's own REST API (the one the browser uses), served
-// as JSON at /api/v1/openapi.json and shown with Swagger UI at /api/docs. A test
-// (tests/integration/openapi.test.js) checks that every route the server mounts is listed here,
-// so the document cannot quietly fall behind the code.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { version } = require('../../package.json');
 
-// Small builders so each route below stays one readable line.
 const json = (schema, description = 'OK') => ({ description, content: { 'application/json': { schema } } });
 const obj = (properties, required) => ({ type: 'object', properties, ...(required ? { required } : {}) });
 const str = { type: 'string' };

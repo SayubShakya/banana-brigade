@@ -1,7 +1,4 @@
-// Privacy and Terms pages, readable without an account. Privacy says exactly what
-// the session cookie (brigade.sid) and the server store, and for how long.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { Panel } from '../components/common.jsx';
 

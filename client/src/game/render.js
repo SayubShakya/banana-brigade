@@ -1,11 +1,4 @@
-// Banana Brigade renderer. Draws the world onto the canvas: the map's themed sky and
-// scenery, the terrain, pickups, soldiers, bullets and effects, then the crosshair.
-// The camera follows the player and leans towards where they are aiming, so you can
-// see further in that direction.
-// Shooting effects (flashes, sparks, hit markers, shake) come from effects.js; the
-// sniper scope overlay is drawn here when the sniper is at full zoom.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS, POWERS } from './config.js';
 import { drawSoldier, drawWeaponPickup } from './characters.js';
@@ -17,8 +10,8 @@ export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   const cam = { x: 0, y: 0 };
   let dpr = 1;
-  let scale = 1;          // world zoom: 1 = normal, smaller = see further
-  let laser = true;       // sight laser from the gun to the crosshair (Settings)
+  let scale = 1;
+  let laser = true;
   const vw = () => VIEW.width / scale;
   const vh = () => VIEW.height / scale;
 
@@ -30,7 +23,6 @@ export function createRenderer(canvas) {
   resize();
   window.addEventListener('resize', resize);
 
-  // Mouse position on the page -> position in the 1280x720 view.
   function toView(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
     return { x: ((clientX - r.left) / r.width) * VIEW.width, y: ((clientY - r.top) / r.height) * VIEW.height };
@@ -39,7 +31,7 @@ export function createRenderer(canvas) {
   const toViewFromWorld = (wx, wy) => ({ x: (wx - cam.x) * scale, y: (wy - cam.y) * scale });
   const onScreen = (wx, wy) => wx >= cam.x && wx <= cam.x + vw() && wy >= cam.y && wy <= cam.y + vh();
   const effects = createEffects({ toViewFromWorld, onScreen });
-  let scopeT = 0;         // 0 = no scope, 1 = sniper scope fully in
+  let scopeT = 0;
 
   function updateCamera(world, mouse, dt) {
     const p = world.player;
@@ -49,22 +41,18 @@ export function createRenderer(canvas) {
     const lookY = ((mouse.y - VIEW.height / 2) / scale) * 0.35;
     const tx = Math.max(0, Math.min(world.map.width - vw(), px - vw() / 2 + lookX));
     const ty = Math.max(0, Math.min(world.map.height - vh(), py - vh() / 2 + lookY));
-    // Through the scope the camera follows more slowly, so the aim feels steadier.
     const k = Math.min(1, dt * (8 - 5 * scopeT));
     cam.x += (tx - cam.x) * k;
     cam.y += (ty - cam.y) * k;
   }
 
-  // ---------- The battlefield, themed per map (see theme in maps.js) ----------
-  // A fixed hash per tile or building, so the scenery never flickers between frames.
   const hash = (a, b = 0) => {
     let h = Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663);
     h = Math.imul(h ^ (h >>> 13), 1274126177);
     return (h ^ (h >>> 16)) >>> 0;
   };
-  const tri = (t) => 1 - 2 * Math.abs(t - Math.floor(t) - 0.5);   // 0..1..0 sawtooth peaks
+  const tri = (t) => 1 - 2 * Math.abs(t - Math.floor(t) - 0.5);
 
-  // One far layer of scenery. Slower layers (small `speed`) look further away.
   function drawLayer(layer) {
     const { kind, speed, base, amp, color } = layer;
     const ox = cam.x * speed;
@@ -81,7 +69,7 @@ export function createRenderer(canvas) {
         const x = i * bw - ox;
         ctx.fillStyle = color;
         ctx.fillRect(x, y0 - height, w, VIEW.height);
-        if (h % 3 === 0) ctx.fillRect(x + w / 2 - 1, y0 - height - 26, 2, 26);   // rooftop aerial
+        if (h % 3 === 0) ctx.fillRect(x + w / 2 - 1, y0 - height - 26, 2, 26);
         if (!layer.windows) continue;
         ctx.fillStyle = layer.windows;
         for (let k = 0, wy = y0 - height + 10; wy < y0 + 30; k++, wy += 16) {
@@ -96,7 +84,7 @@ export function createRenderer(canvas) {
     const heightAt = (wx) => {
       if (kind === 'mountains') return amp * (0.65 * tri(wx / 300) + 0.35 * tri(wx / 117 + 0.4));
       if (kind === 'dunes') return amp * (0.6 + 0.5 * Math.sin(wx / 320) + 0.25 * Math.sin(wx / 133 + 1));
-      return Math.sin(wx / 230) * amp + Math.sin(wx / 97) * amp * 0.35;   // hills and pine slopes
+      return Math.sin(wx / 230) * amp + Math.sin(wx / 97) * amp * 0.35;
     };
     ctx.beginPath();
     ctx.moveTo(0, VIEW.height);
@@ -106,7 +94,6 @@ export function createRenderer(canvas) {
     ctx.fill();
 
     if (layer.caps) {
-      // Snow caps: paint the top of the same outline only.
       ctx.save();
       ctx.clip();
       ctx.fillStyle = layer.caps;
@@ -119,7 +106,6 @@ export function createRenderer(canvas) {
     }
 
     if (kind === 'pines') {
-      // A row of pine trees on the slope.
       const gap = 26;
       const first = Math.floor(ox / gap);
       ctx.beginPath();
@@ -173,7 +159,6 @@ export function createRenderer(canvas) {
       }
     }
 
-    // Clouds drift slowly.
     ctx.fillStyle = theme.clouds;
     for (let i = 0; i < 6; i++) {
       const x = ((i * 380 + time * 12 - cam.x * 0.1) % (VIEW.width + 300)) - 150;
@@ -197,7 +182,6 @@ export function createRenderer(canvas) {
     }
   }
 
-  // Small props on top of the ground: drawn with their foot at (x, y).
   function drawDecor(kind, x, y, h, lamps) {
     switch (kind) {
       case 'bush':
@@ -279,7 +263,7 @@ export function createRenderer(canvas) {
     const c0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
     const c1 = Math.min(map.cols - 1, Math.floor((cam.x + vw()) / TILE) + 1);
     const r0 = Math.max(0, Math.floor(cam.y / TILE));
-    const r1 = Math.min(map.rows - 1, Math.floor((cam.y + vh()) / TILE) + 2);   // props stick up from below the view
+    const r1 = Math.min(map.rows - 1, Math.floor((cam.y + vh()) / TILE) + 2);
     const lamps = [];
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
@@ -304,7 +288,6 @@ export function createRenderer(canvas) {
           ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
           ctx.beginPath(); ctx.moveTo(x + 4, y + 4); ctx.lineTo(x + TILE - 4, y + TILE - 4); ctx.stroke();
         } else {
-          // Speckles from the fixed per-tile hash.
           ctx.fillStyle = 'rgba(0,0,0,0.18)';
           ctx.fillRect(x + (h & 15) + 6, y + ((h >> 4) & 15) + 8, 6, 4);
           ctx.fillStyle = 'rgba(255,255,255,0.08)';
@@ -316,14 +299,12 @@ export function createRenderer(canvas) {
           ctx.fillRect(x, y, TILE + 0.5, 9);
           ctx.fillStyle = look.topEdge;
           if (look.metal) {
-            // Yellow hazard stripes along the edge of a steel deck.
             for (let i = 0; i < TILE; i += 10) ctx.fillRect(x + i, y + 7, 5, 3);
           } else {
             ctx.fillRect(x, y + 7, TILE + 0.5, 3);
-            ctx.fillStyle = look.top;        // grass tufts, snow drips, sand ripples
+            ctx.fillStyle = look.top;
             ctx.fillRect(x + (h % 30), y + 9, 5, 3 + (h >> 5) % 4);
           }
-          // A prop on roughly one ground tile in four, where there is room above.
           const decor = theme.decor[(h >> 7) % theme.decor.length];
           if (decor && kind === KIND.ground && (h >> 3) % 4 === 0 && r > 2 && map.grid[r - 2][c] === 0) {
             drawDecor(decor, x + TILE / 2, y + 2, h, lamps);
@@ -334,7 +315,6 @@ export function createRenderer(canvas) {
       }
     }
 
-    // Lamp light at night: soft warm pools added on top of the terrain.
     if (lamps.length) {
       ctx.globalCompositeOperation = 'lighter';
       for (const [lx, ly] of lamps) {
@@ -350,8 +330,6 @@ export function createRenderer(canvas) {
 
   function drawPickups(world, time) {
     for (const p of world.pickups) {
-      // A taken banana crate shows as a faint ghost with its countdown, so players
-      // learn where crates are and when they come back.
       if (!p.active && p.kind === 'banana' && p.timer > 0) {
         const x = p.x - cam.x;
         const y = p.y - cam.y;
@@ -382,7 +360,6 @@ export function createRenderer(canvas) {
         ctx.strokeStyle = '#8a6d00';
         ctx.lineWidth = 2.5;
         ctx.fillRect(x - 18, y - 18, 36, 28); ctx.strokeRect(x - 18, y - 18, 36, 28);
-        // a banana on the lid
         ctx.strokeStyle = '#6b4f00';
         ctx.lineWidth = 5;
         ctx.lineCap = 'round';
@@ -392,7 +369,6 @@ export function createRenderer(canvas) {
         ctx.beginPath(); ctx.arc(x, y - 16, 12, 0.3 * Math.PI, 0.7 * Math.PI); ctx.stroke();
         label('BANANA CRATE', x, y - 26, 11, '#ffe135');
       } else if (p.kind === 'shield') {
-        // a blue shield badge
         ctx.fillStyle = '#4cc9f0';
         ctx.strokeStyle = '#0b3d5c';
         ctx.lineWidth = 2;
@@ -403,7 +379,6 @@ export function createRenderer(canvas) {
         ctx.fillRect(x - 2, y - 9, 4, 13);
         label('SHIELD', x, y - 22, 11, '#4cc9f0');
       } else if (p.kind === 'fuel') {
-        // a green jerry can
         ctx.fillStyle = '#2a9d8f';
         ctx.strokeStyle = '#123f3a';
         ctx.lineWidth = 2;
@@ -412,7 +387,6 @@ export function createRenderer(canvas) {
         ctx.beginPath(); ctx.moveTo(x - 7, y - 10); ctx.lineTo(x + 7, y + 6); ctx.moveTo(x + 7, y - 10); ctx.lineTo(x - 7, y + 6); ctx.stroke();
         label('JET FUEL', x, y - 25, 11, '#7be0c3');
       } else if (p.kind === 'ammo') {
-        // an olive ammo box with bullets on top
         ctx.fillStyle = '#6b705c';
         ctx.strokeStyle = '#2f3127';
         ctx.lineWidth = 2;
@@ -421,19 +395,16 @@ export function createRenderer(canvas) {
         for (let i = -1; i <= 1; i++) ctx.fillRect(x + i * 8 - 2, y - 15, 4, 7);
         label('AMMO', x, y - 22, 11, '#e9c46a');
       } else if (p.dropped) {
-        // A gun a soldier dropped lies flat on the ground (no bob, no glow).
         const gy = p.y - cam.y + 5;
         drawWeaponPickup(ctx, p.weapon, x, gy, { scale: 1.1 });
         label(WEAPONS[p.weapon].name, x, gy - 12, 11);
       } else {
-        // A weapon pickup is the gun itself, floating over a soft glow and tilting
-        // gently, so players see at a glance which weapon it is.
         const glow = ctx.createRadialGradient(x, y + 2, 2, x, y + 2, 30);
         glow.addColorStop(0, 'rgba(255,240,170,0.55)');
         glow.addColorStop(1, 'rgba(255,240,170,0)');
         ctx.fillStyle = glow;
         ctx.beginPath(); ctx.ellipse(x, y, 36, 20, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';   // its shadow on the platform below
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
         ctx.beginPath(); ctx.ellipse(x, p.y - cam.y + 14, 18 - bob, 3, 0, 0, Math.PI * 2); ctx.fill();
         drawWeaponPickup(ctx, p.weapon, x, y - 4, { scale: 1.6, angle: -0.12 + Math.sin(time * 2 + p.x) * 0.08 });
         label(WEAPONS[p.weapon].name, x, y - 24, 11);
@@ -451,8 +422,6 @@ export function createRenderer(canvas) {
     ctx.fillText(text, x, y);
   }
 
-  // A player busy solving a banana-crate puzzle (online): a banana-yellow bubble round
-  // them and a small "🍌?" badge over their head with a ring turning round it.
   function drawSolvingBubble(cx, cy, iconY, time) {
     const calm = effects.calm();
     ctx.fillStyle = 'rgba(255,225,53,0.16)';
@@ -476,11 +445,8 @@ export function createRenderer(canvas) {
   function drawSoldiers(world, time) {
     for (const s of world.soldiers) {
       if (!s.alive) continue;
-      // A player solving a banana-crate puzzle online is protected too, but shows the
-      // solving bubble instead of the spawn-shield flicker.
       const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0 && !s.busy, recoil: effects.recoilOf(s) };
-      effects.applyPose(s, view);   // lean, landing squash, reload/swap/melee/throw poses
-      // A Banana Power makes the soldier glow in the power's colour (it flickers near the end).
+      effects.applyPose(s, view);
       const pw = s.power && POWERS[s.power.id ?? s.power];
       if (pw && !(s.power.timer < 2 && Math.floor(time * 8) % 2)) {
         const gx = view.x + s.w / 2;
@@ -510,7 +476,6 @@ export function createRenderer(canvas) {
     }
   }
 
-  // Tracers: a bright head with a tail that fades out behind the bullet.
   function drawProjectiles(world) {
     ctx.lineCap = 'round';
     for (const b of world.bullets) {
@@ -567,7 +532,6 @@ export function createRenderer(canvas) {
     ctx.globalAlpha = 1;
   }
 
-  // A faint red sight line from the gun towards the crosshair; it stops at walls.
   function drawLaser(mouse, world) {
     const p = world.player;
     if (!laser || !p.alive) return;
@@ -585,8 +549,6 @@ export function createRenderer(canvas) {
     ctx.stroke();
   }
 
-  // Sniper scope: dark vignette outside a round lens, a faint lens tint and a thin
-  // reticle with mil-dots. The lens shrinks into place as the scope comes in.
   let lensTint = null;
   function drawScope(mouse) {
     if (scopeT < 0.01) return;
@@ -613,7 +575,6 @@ export function createRenderer(canvas) {
     ctx.strokeStyle = '#05070a';
     ctx.lineWidth = 6;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-    // Reticle: thick posts at the edge, thin lines to the middle, mil-dots every r/6.
     ctx.strokeStyle = 'rgba(10,10,10,0.9)';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -637,7 +598,7 @@ export function createRenderer(canvas) {
   }
 
   function drawCrosshair(mouse, world) {
-    if (scopeT > 0.6) return;   // the scope reticle replaces the crosshair
+    if (scopeT > 0.6) return;
     const p = world.player;
     const reloading = p.reloadTimer > 0;
     ctx.strokeStyle = reloading ? '#f4a261' : '#ffffff';
@@ -660,7 +621,6 @@ export function createRenderer(canvas) {
     scopeT += ((scoped ? 1 : 0) - scopeT) * Math.min(1, dt * 7);
     updateCamera(world, mouse, dt);
     effects.update(world, dt);
-    // Recoil kick and screen shake move the camera only while the world is drawn.
     const { offset } = effects;
     cam.x += offset.x;
     cam.y += offset.y;
@@ -668,7 +628,7 @@ export function createRenderer(canvas) {
     drawBackground(world.time, world.map);
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
     drawTerrain(world.map);
-    effects.drawUnder(ctx, cam, world.time);   // scorch marks and ragdoll corpses
+    effects.drawUnder(ctx, cam, world.time);
     drawPickups(world, world.time);
     drawSoldiers(world, world.time);
     drawProjectiles(world);

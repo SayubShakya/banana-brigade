@@ -1,8 +1,4 @@
-// The server for the end-to-end tests (npm run e2e): the real app with an in-memory
-// MongoDB and a fake Banana API whose answer is always 7, so a test can solve a
-// puzzle. Never used for real play.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const fs = require('node:fs');
 const http = require('node:http');
@@ -11,7 +7,6 @@ const { createApp } = require('../../server/app');
 const { attachRealtime } = require('../../server/realtime/socket');
 const { openDatabase } = require('../../server/repositories');
 
-// A 1×1 PNG, so the test needs no network for puzzle pictures.
 const IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
 const fakeBananaApi = { fetchPuzzle: async () => ({ image: IMAGE, solution: 7 }) };
 const PORT = Number(process.env.E2E_PORT) || 3199;

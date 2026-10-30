@@ -1,7 +1,4 @@
-// /api/admin: admin-only tools. requireAdmin reads the user's role from the database
-// on every request; hiding the admin button in the page is not what protects this.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const express = require('express');
 const { requireAdmin } = require('../middleware/auth');

@@ -1,7 +1,4 @@
-// The session cookie (express-session). The session itself lives on the server (in
-// MongoDB in the real server, in memory in tests); the browser only holds its id.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const session = require('express-session');
 
@@ -13,12 +10,12 @@ function createSessionMiddleware({ secret, store, production }) {
     secret,
     store,
     resave: false,
-    saveUninitialized: false,     // no cookie until someone logs in
+    saveUninitialized: false,
     cookie: {
-      httpOnly: true,             // page JavaScript cannot read it (protects against XSS stealing it)
-      sameSite: 'lax',            // not sent with cross-site POSTs (CSRF protection)
-      secure: production,         // HTTPS only in production
-      maxAge: 2 * 60 * 60 * 1000, // 2 hours
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: production,
+      maxAge: 2 * 60 * 60 * 1000,
     },
   });
 }

@@ -1,21 +1,16 @@
-// Auto-fire tests (client/src/game/autoFire.js): the gun should fire by itself only
-// when the aim is on an enemy that is in range and not behind a wall.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { isAimedAtEnemy } = require('../../client/src/game/autoFire.js');
 const { TILE, WEAPONS } = require('../../client/src/game/config.js');
 
-// An open 60 x 20 tile arena; `wallCol` adds a solid column of tiles.
 function arena(wallCol = null) {
   const cols = 60, rows = 20;
   const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, (_, c) => (c === wallCol ? 1 : 0)));
   return { cols, rows, grid };
 }
 
-// A soldier whose centre is at (cx, cy), like the game's 28 x 50 soldiers.
 function soldier(id, team, cx, cy, extra = {}) {
   return {
     id, team, alive: true, w: 28, h: 50, x: cx - 14, y: cy - 25,
@@ -24,7 +19,6 @@ function soldier(id, team, cx, cy, extra = {}) {
   };
 }
 
-// The player at (200, 400) aiming at the point (aimX, aimY).
 function setup({ enemy, wallCol, aim, team = 'p1', playerExtra = {} }) {
   const player = soldier('p0', 'p0', 200, 400, playerExtra);
   player.controls.aimX = aim.x;
@@ -70,8 +64,6 @@ test('does not fire at a dead enemy', () => {
 });
 
 test('respects the range of the weapon in hand', () => {
-  // The shotgun reaches about 430 px; an enemy 1000 px away is out of range for it
-  // but within the sniper's range.
   const far = { x: 1200, y: 400 };
   const shotgun = setup({ enemy: far, aim: { x: 1200, y: 375 }, playerExtra: { current: 'primary', primary: { key: 'shotgun', ammo: 6, spare: 18 } } });
   assert.ok(WEAPONS.shotgun.range < 1000);

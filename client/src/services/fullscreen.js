@@ -1,8 +1,4 @@
-// Fullscreen for the 16:9 game stage (Settings and the pause menu). Uses the
-// Fullscreen API, with the older webkit names for Safari; on browsers without it
-// (iPhone Safari) the button is simply not shown.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 
@@ -22,10 +18,9 @@ export async function toggleFullscreen() {
       const el = stage();
       await (el.requestFullscreen ?? el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' });
     }
-  } catch { /* the browser refused (no user gesture or blocked): stay as we are */ }
+  } catch { }
 }
 
-// [isFullscreen, supported], kept up to date when the player presses Esc or F11.
 export function useFullscreen() {
   const [on, setOn] = useState(() => !!current());
   useEffect(() => {

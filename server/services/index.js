@@ -1,7 +1,4 @@
-// Builds every service from its dependencies (the composition root for the business
-// layer). Each service gets only what it needs, through its factory's parameters.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { createRateLimiter } = require('./rateLimiter');
 const { createAuthService } = require('./authService');

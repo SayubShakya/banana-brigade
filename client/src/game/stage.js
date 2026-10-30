@@ -1,8 +1,4 @@
-// The battle canvas, its renderer, the keyboard/mouse/touch input and the HUD.
-// They are created once and shared by local games (GameSession) and online games
-// (NetGame), because both draw on the same canvas and read the same keys.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { createRenderer } from './render.js';
 import { createInput } from './input.js';
@@ -12,7 +8,6 @@ import { initMusic } from './music.js';
 
 let stage = null;
 
-// Optional frames-per-second readout (Settings → Show FPS), to check smoothness.
 function createMeter(el) {
   let visible = false;
   let frames = 0;
@@ -21,7 +16,7 @@ function createMeter(el) {
   return {
     setVisible(on) { visible = on; el.hidden = !on; },
     tick(now) {
-      if (!visible || now === lastTick) return;   // both game loops call this; count each frame once
+      if (!visible || now === lastTick) return;
       lastTick = now;
       frames += 1;
       if (now - since >= 500) {

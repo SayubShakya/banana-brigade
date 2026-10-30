@@ -1,6 +1,4 @@
-// HTTP side of /api/scores and the public leaderboard.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { puzzleTally } = require('../lib/httpSession');
 
@@ -18,7 +16,6 @@ function createScoresController({ scoreService }) {
       res.json(await scoreService.mine(req.session.userId));
     },
 
-    // For other websites: cacheable for 30 s, no cookie, no ids.
     async publicLeaderboard(req, res) {
       const { mode, rows } = await scoreService.publicLeaderboard(req.query);
       res.set('Cache-Control', 'public, max-age=30').json({ game: 'Banana Brigade', mode, updated: new Date().toISOString(), rows });

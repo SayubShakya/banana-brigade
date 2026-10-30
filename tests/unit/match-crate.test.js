@@ -1,10 +1,4 @@
-// Tests for banana crates in an online match (server/realtime/match.js): the player
-// solving a crate puzzle is frozen and cannot be hurt until the puzzle window has
-// closed, then gets a spawn-length shield; the server closes a puzzle nobody
-// answers; crates have a cooldown; and the online respawn puzzle is one try per death.
-// Timers are faked, so the test does not wait for real seconds.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +7,6 @@ const { damage, revive } = require('../../client/src/game/world.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { SOLDIER, DIFFICULTY } = require('../../client/src/game/config.js');
 
-// One human (user 1) against bots, on hard (12 s crate puzzles).
 function setup(t) {
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'setImmediate', 'Date'] });
   const sent = [];
@@ -50,7 +43,7 @@ test('bots do not pick a player who is solving a crate puzzle', (t) => {
   const { world, me, pressE } = setup(t);
   me.shieldTimer = 0;
   pressE();
-  me.shieldTimer = 0;                         // even without the shield, busy alone keeps bots away
+  me.shieldTimer = 0;
   updateBots(world, 1 / 30);
   assert.ok(world.soldiers.every((s) => s.brain?.target?.soldier !== me));
 });
@@ -101,7 +94,7 @@ test('the server closes a crate puzzle nobody answers', (t) => {
   assert.equal(me.busy, false);
   assert.ok(sent.some((m) => m.event === 'puzzle:closed' && m.userId === '1'));
   assert.equal(crate.active, true);
-  match.applyPuzzle('1', 'crate', true);       // a late answer gives nothing
+  match.applyPuzzle('1', 'crate', true);
   assert.equal(sent.some((m) => m.event === 'power:offer'), false);
 });
 
@@ -136,7 +129,7 @@ test('the online respawn puzzle is one try per death', (t) => {
   match.applyPuzzle('1', 'respawn', false);
   assert.equal(me.alive, false);
   assert.equal(match.canAsk('1', 'respawn'), false, 'no second try after a miss or a closed window');
-  revive(match.world, me);                    // back by the timer
+  revive(match.world, me);
   me.alive = false;
   assert.equal(match.canAsk('1', 'respawn'), true, 'a new death gives a new try');
 });

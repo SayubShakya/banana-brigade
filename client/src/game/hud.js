@@ -1,9 +1,4 @@
-// The battle HUD: health and jetpack bars, ammo, grenades, timer, score, kill feed,
-// the death / Banana respawn message, the banana crate prompt and the Tab scoreboard.
-// Bars are refreshed every frame from the world; everything else reacts to events
-// that the world publishes on the event bus.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../services/eventBus.js';
 import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS } from './config.js';
@@ -23,18 +18,18 @@ export function createHud() {
     board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'), buffs: $('buffs'), help: $('hud-help'),
   };
   let world = null;
-  let banners = true;   // kill-streak banners (Settings)
+  let banners = true;
   let helpTimer = 0;
   let crateNearUntil = 0;
   let pickupText = '';
   let pickupUntil = 0;
-  let zoomLevel = 0;    // 0, 1 or 2 from the Z key / mouse wheel
+  let zoomLevel = 0;
   let zoomText = '';
 
   function toast(text) {
     el.toast.textContent = text;
     el.toast.classList.remove('show');
-    void el.toast.offsetWidth; // restart the CSS animation
+    void el.toast.offsetWidth;
     el.toast.classList.add('show');
   }
 
@@ -49,7 +44,6 @@ export function createHud() {
   }
   const nameTag = (s) => `<span class="${s.isPlayer ? 'me' : s.team === 'blue' ? 'team-blue' : s.team === 'red' ? 'team-red' : ''}">${esc(s.name)}</span>`;
 
-  // A headshot kill gets a small gold chip after the weapon. Names still go through esc().
   const headTag = '<span class="headshot-tag" title="Headshot">🎯 HEADSHOT</span>';
   on('soldier:killed', ({ victim, killer, weapon, headshot }) => {
     if (victim.isDummy) return;
@@ -74,7 +68,7 @@ export function createHud() {
     else if (kind === 'shield') toast(`Shield: absorbs ${PICKUPS.shieldAmount} damage for ${PICKUPS.shieldTime} s`);
     else if (kind === 'fuel') toast(`Jet fuel: full tank, unlimited for ${PICKUPS.fuelBoostTime} s`);
     else if (kind === 'ammo') toast('Ammo box: spare ammo refilled');
-    else if (kind === 'banana') { /* the power:start toast says which power */ }
+    else if (kind === 'banana') { }
     else toast(`Picked up ${WEAPONS[weapon].name}`);
   });
   on('survival:wave', ({ wave, count }) => toast(`Wave ${wave}: ${count} enemies incoming`));
@@ -104,12 +98,10 @@ export function createHud() {
       el.zoom.textContent = '1x';
       zoomText = '1x';
       drawAvatarPreview(el.badge, w.player.avatar);
-      // The controls, shown for the first seconds of every battle.
       el.help.hidden = false;
       el.help.classList.remove('fade');
       clearTimeout(helpTimer);
       helpTimer = setTimeout(() => el.help.classList.add('fade'), 7000);
-      // Name the battlefield; keep any message already showing (e.g. the first wave).
       const showing = el.toast.classList.contains('show') ? el.toast.textContent : '';
       toast(showing ? `Map: ${w.map.name} · ${showing}` : `Map: ${w.map.name}`);
     },
@@ -122,7 +114,6 @@ export function createHud() {
       el.hp.className = p.health > 50 ? 'fill good' : p.health > 25 ? 'fill warn' : 'fill bad';
       el.hpText.textContent = Math.ceil(p.health);
       el.fuel.style.width = `${(p.fuel / PHYSICS.fuelMax) * 100}%`;
-      // Active power-ups (shield points, infinite jet fuel), only rewritten when they change.
       const pw = p.power && POWERS[p.power.id];
       const buffs = `${pw ? `<span class="buff power" style="--power:${pw.color}">${pw.icon} ${pw.name.toUpperCase()} ${Math.ceil(p.power.timer)}s</span>` : ''}${p.armor > 0 ? `<span class="buff shield">SHIELD ${Math.ceil(p.armor)}</span>` : ''}${p.fuelBoost > 0 ? `<span class="buff fuel">JET ∞ ${Math.ceil(p.fuelBoost)}s</span>` : ''}`;
       if (buffs !== el.buffs.dataset.last) { el.buffs.innerHTML = buffs; el.buffs.dataset.last = buffs; }
@@ -132,7 +123,6 @@ export function createHud() {
       el.weapon.textContent = w.name;
       el.ammo.textContent = `${gun.ammo} / ${gun.spare === Infinity ? '∞' : gun.spare}`;
       el.grenades.textContent = p.grenades;
-      // Only the sniper reaches 3x, which is the scope; other guns stop at 2x.
       const scoped = w.zoom ? zoomLevel >= w.zoom - 1 : false;
       const z = w.zoom ? (scoped ? '3x · SCOPE' : `${zoomLevel + 1}x · Z for scope`) : `${Math.min(zoomLevel, 1) + 1}x`;
       if (z !== zoomText) { zoomText = z; el.zoom.textContent = z; }
@@ -168,7 +158,6 @@ export function createHud() {
         }
       }
 
-      // Death message with the Banana respawn offer.
       if (!p.alive && !world.over) {
         const by = p.lastAttacker && p.lastAttacker !== p ? `Killed by ${esc(p.lastAttacker.name)}` : 'You went down';
         el.msg.innerHTML = world.mode === 'campaign' && p.lives <= 0 ? `${by}: <b>out of lives</b>`
@@ -179,7 +168,6 @@ export function createHud() {
         el.msg.hidden = false;
       } else el.msg.hidden = true;
 
-      // Banana crate prompt when standing next to one; weapon pickup hint otherwise.
       const now = performance.now();
       if (p.alive && now < crateNearUntil) {
         el.crate.hidden = false;

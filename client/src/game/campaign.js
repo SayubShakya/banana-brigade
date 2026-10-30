@@ -1,16 +1,4 @@
-// The Campaign: 9 missions in 3 chapters. Each mission is one row of this table, so
-// adding or tuning a level means editing data, not code (both the browser and the
-// server read this file). Each mission is fought on one fixed map from maps.js.
-//
-// A mission is won by reaching the kill target before the time runs out. You have a
-// number of lives; when they are gone you can solve one Banana puzzle to continue.
-// Stars:  ★ mission complete
-//         ★★ without needing a Banana continue
-//         ★★★ and every Banana puzzle in the mission solved
-// The next mission unlocks when the previous one is complete; chapters also need stars.
-// Bots get a little sharper every minute inside a mission.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 export const CHAPTERS = [
   { id: 1, name: 'Boot Camp', needStars: 0, difficulty: 'easy' },
@@ -30,12 +18,11 @@ export const MISSIONS = [
   { id: 9, chapter: 3, name: 'Banana Marshal', map: 'night', text: 'The final test: seven bots, two lives.', bots: 7, target: 20, timeLimit: 180, lives: 2 },
 ];
 
-export const RAMP = { every: 60, accuracy: 0.05, reaction: 0.9 };   // per minute inside a mission
+export const RAMP = { every: 60, accuracy: 0.05, reaction: 0.9 };
 
 export const missionById = (id) => MISSIONS.find((m) => m.id === id) ?? null;
 export const chapterOf = (mission) => CHAPTERS.find((c) => c.id === mission.chapter);
 
-// progress: { [missionId]: { stars, bestS } }
 export const totalStars = (progress) => Object.values(progress ?? {}).reduce((n, p) => n + (p.stars ?? 0), 0);
 
 export function isUnlocked(mission, progress) {

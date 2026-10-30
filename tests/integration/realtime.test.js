@@ -1,7 +1,4 @@
-// Tests for online play over Socket.io: only logged-in players can connect, rooms
-// work by code, the server runs the match and writes the scores itself.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,7 +11,6 @@ const once = (socket, event, ms = 4000) => new Promise((resolve, reject) => {
 });
 const call = (socket, event, data) => new Promise((resolve) => (data === undefined ? socket.emit(event, resolve) : socket.emit(event, data, resolve)));
 
-// Registers a player over HTTP, then opens a WebSocket that carries the session cookie.
 async function player(s, username) {
   const c = client(s.base);
   await c.post('/api/auth/register', { username, password: 'bananas123' });
@@ -63,7 +59,7 @@ test('the server runs the match, ignores faked scores and saves the results itse
     assert.deepEqual(await call(a.socket, 'room:start'), { ok: true });
     const start = await started;
     assert.equal(start.me, `u${a.me.id}`);
-    assert.equal(start.roster.length, 6);                    // 2 players + 4 bots
+    assert.equal(start.roster.length, 6);
     assert.ok(['jungle', 'desert', 'snow', 'night'].includes(start.map), 'the server names the map');
     assert.equal(start.roster.filter((r) => r.human).length, 2);
 
@@ -71,7 +67,6 @@ test('the server runs the match, ignores faked scores and saves the results itse
     assert.ok(snap.soldiers.some((x) => x.id === `u${b.me.id}`));
     assert.equal('solution' in snap, false);
 
-    // A cheating browser: invented messages and impossible controls change nothing.
     b.socket.emit('score', { kills: 999 });
     b.socket.emit('match:end', { winner: 'bravo' });
     b.socket.emit('input', { fire: true, aimX: 'x', kills: 999 });
@@ -82,7 +77,7 @@ test('the server runs the match, ignores faked scores and saves the results itse
     s.realtime.rooms.endMatch(room.code);
     const summary = await ended;
     assert.equal(summary.ranking.length, 6);
-    await new Promise((r) => setTimeout(r, 200));            // scores are written after match:end
+    await new Promise((r) => setTimeout(r, 200));
 
     const board = await a.c.get('/api/scores/leaderboard?mode=online');
     assert.equal(board.body.rows.length, 2);
@@ -97,7 +92,7 @@ test('the host picks the bot difficulty; the server checks it and passes it to t
   try {
     assert.equal((await call(a.socket, 'room:create', { difficulty: 'insane' })).error, 'Unknown difficulty');
     assert.equal((await call(a.socket, 'room:create', { difficulty: { $ne: 1 } })).error, 'Unknown difficulty');
-    assert.equal((await call(a.socket, 'room:create', {})).room.difficulty, 'medium');   // default
+    assert.equal((await call(a.socket, 'room:create', {})).room.difficulty, 'medium');
 
     const { room } = await call(a.socket, 'room:create', { difficulty: 'hard' });
     assert.equal(room.difficulty, 'hard');
@@ -110,7 +105,7 @@ test('the host picks the bot difficulty; the server checks it and passes it to t
 });
 
 test('banana crates online: the room difficulty time, a server time limit, and one respawn try per death', async () => {
-  const s = await startServer({ matchOptions: { crateTimings: { extraMs: -11800 } } });   // hard: 12 s - 11.8 s = a 0.2 s limit
+  const s = await startServer({ matchOptions: { crateTimings: { extraMs: -11800 } } });
   const a = await player(s, 'crater');
   try {
     const { room } = await call(a.socket, 'room:create', { difficulty: 'hard' });
@@ -120,7 +115,6 @@ test('banana crates online: the room difficulty time, a server time limit, and o
     const match = s.realtime.rooms.room(room.code).match;
     const me = match.world.soldiers.find((x) => x.id === `u${a.me.id}`);
 
-    // Pressing E at a crate: the offer carries the hard crate time; nobody answers, so the server closes it.
     const offered = once(a.socket, 'puzzle:offer');
     match.world.emit('banana:crate', { soldier: me, pickup: match.world.pickups.find((p) => p.kind === 'banana') });
     assert.deepEqual(await offered, { purpose: 'crate', seconds: 12 });
@@ -129,7 +123,6 @@ test('banana crates online: the room difficulty time, a server time limit, and o
     assert.equal(me.busy, false);
     assert.ok(me.shieldTimer > 1.5);
 
-    // Down: one respawn puzzle, then no more until the next death.
     me.alive = false;
     me.respawnTimer = 99;
     const first = await call(a.socket, 'puzzle:get', { purpose: 'respawn' });

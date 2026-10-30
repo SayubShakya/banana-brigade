@@ -1,7 +1,4 @@
-// Choose a difficulty before every battle. It changes how the bots fight and how
-// long each Banana puzzle gives you. The last choice is remembered.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { DIFFICULTY, MODES } from '../game/config.js';
 import { Panel, Icon } from '../components/common.jsx';

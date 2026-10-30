@@ -1,7 +1,4 @@
-// Tests for the account tools: remember me, log out of all devices, change password,
-// delete account, the username check, the session count and admin role changes.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +19,6 @@ async function loggedIn(s, username, password = PW, extra = {}) {
   const res = await c.post('/api/auth/login', { username, password, ...extra });
   return { c, res };
 }
-// express-session sends Expires (not Max-Age); turn it into seconds from now.
 const maxAge = (setCookie) => (Date.parse(/Expires=([^;]+)/i.exec(setCookie ?? '')?.[1]) - Date.now()) / 1000;
 const connectSocket = async (s, c) => {
   const socket = io(s.base, { transports: ['websocket'], extraHeaders: { Cookie: c.cookie }, forceNew: true });
@@ -52,7 +48,7 @@ test('log out of all devices ends the sessions and live sockets on other clients
     socket = await connectSocket(s, phone);
     const dropped = once(socket, 'disconnect');
     const count = await laptop.get('/api/auth/sessions');
-    assert.equal(count.body.count, 3);   // register + two logins
+    assert.equal(count.body.count, 3);
     assert.ok(count.body.current.createdAt);
     assert.ok(count.body.memberSince);
 
@@ -61,7 +57,6 @@ test('log out of all devices ends the sessions and live sockets on other clients
     assert.equal((await phone.get('/api/auth/me')).body.user, null);
     const [reason] = await dropped;
     assert.equal(reason, 'io server disconnect');
-    // Someone else's session is not touched.
     assert.equal((await other.get('/api/auth/me')).body.user.username, 'bystander');
   } finally { socket?.close(); await s.close(); }
 });
@@ -77,7 +72,7 @@ test('changing the password needs the current one and logs out the other session
 
     const ok = await me.post('/api/auth/password', { current: PW, next: 'newbananas1' });
     assert.equal(ok.status, 200);
-    assert.equal((await me.get('/api/auth/me')).body.user.username, 'changer');   // this device stays in
+    assert.equal((await me.get('/api/auth/me')).body.user.username, 'changer');
     assert.equal((await other.get('/api/auth/me')).body.user, null);
     assert.equal((await loggedIn(s, 'changer')).res.status, 401);
     assert.equal((await loggedIn(s, 'changer', 'newbananas1')).res.status, 200);
@@ -99,7 +94,6 @@ test('deleting the account removes the user, their scores and their session', as
     assert.equal((await c.get('/api/auth/me')).body.user, null);
     assert.equal((await second.get('/api/auth/me')).body.user, null);
     assert.equal(await s.db.countersFor('leaver'), 0);
-    // The name is free again.
     assert.deepEqual((await client(s.base).get('/api/auth/available?u=leaver')).body, { available: true, valid: true });
   } finally { await s.close(); }
 });
@@ -129,7 +123,6 @@ test('only admins can change roles, and an admin cannot demote themselves', asyn
     const promoted = await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'admin', reason: 'test promotion' });
     assert.equal(promoted.status, 200);
     assert.equal((await s.db.findUserById(playerId)).role, 'admin');
-    // The role is read from the database, so it applies to the next request, no re-login.
     assert.equal((await player.get('/api/admin/users')).status, 200);
     assert.equal((await admin.patch(`/api/admin/users/${playerId}/role`, { role: 'player', reason: 'test demotion' })).status, 200);
     assert.equal((await player.get('/api/admin/users')).status, 403);
@@ -142,7 +135,7 @@ test('a demoted or deleted admin loses access at once, even with a live session'
     const boss = await s.db.createUser('chief', bcrypt.hashSync(PW, 4), 'admin');
     const admin = (await loggedIn(s, 'chief')).c;
     assert.equal((await admin.get('/api/admin/users')).status, 200);
-    await s.db.setRole(boss.id, 'player');   // changed straight in the database
+    await s.db.setRole(boss.id, 'player');
     assert.equal((await admin.get('/api/admin/users')).status, 403);
     await s.db.deleteUser(boss.id);
     assert.equal((await admin.get('/api/scores/me')).status, 401);

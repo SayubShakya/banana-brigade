@@ -1,7 +1,4 @@
-// Players: accounts, guests, roles, suspensions, achievements, campaign progress,
-// Banana Powers, daily streak and puzzle counters (all inside the user document).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { CASE_INSENSITIVE } = require('../models/user');
 const { userRow, isId, oid } = require('./rows');
@@ -16,12 +13,9 @@ function createUserRepository(m) {
     async createUser(username, passwordHash, role = 'player') {
       return userRow(await m.User.create({ username, passwordHash, role }));
     },
-    // A temporary player with no password; MongoDB deletes it at expiresAt unless it is saved.
     async createGuest(username, expiresAt) {
       return userRow(await m.User.create({ username, guest: true, guestExpiresAt: expiresAt }));
     },
-    // Turns a guest into a normal account: same _id, so scores, achievements and campaign
-    // progress stay. Only works while the player is still a guest.
     async upgradeGuest(id, username, passwordHash) {
       const doc = await m.User.findOneAndUpdate(
         { _id: oid(id), guest: true },
@@ -57,13 +51,11 @@ function createUserRepository(m) {
         created_at: r.createdAt, games: r.games, kills: r.kills, puzzles_solved: r.puzzles_solved,
       }));
     },
-    // Adds an achievement once; returns true only the first time (write-once).
     async unlockAchievement(userId, id) {
       const res = await m.User.updateOne({ _id: oid(userId), 'achievements.id': { $ne: id } }, { $push: { achievements: { id, at: new Date() } } });
       return res.modifiedCount === 1;
     },
     campaignProgress,
-    // Keeps the best stars and the fastest time for a mission.
     async saveMission(userId, mission, stars, timeS) {
       const progress = await campaignProgress(userId);
       const old = progress[mission];
@@ -72,13 +64,11 @@ function createUserRepository(m) {
       await m.User.updateOne({ _id: oid(userId) }, { $push: { campaign: entry } });
       return { ...progress, [mission]: { stars: entry.stars, bestS: entry.bestS } };
     },
-    // Adds Banana Powers to the player's set and returns the whole set.
     async addPowersUsed(userId, powers) {
       const u = await m.User.findOneAndUpdate({ _id: oid(userId) }, { $addToSet: { powersUsed: { $each: powers } } }, { returnDocument: 'after', projection: { powersUsed: 1 } }).lean();
       return u?.powersUsed ?? [];
     },
     setDailyStreak: (userId, daily) => m.User.updateOne({ _id: oid(userId) }, { daily }),
-    // Updates the puzzle counters in one atomic step and returns the new values.
     async recordPuzzle(userId, { correct, crate }) {
       const update = correct
         ? { $inc: { 'counters.streak': 1, 'counters.crates': crate ? 1 : 0 } }
@@ -89,9 +79,6 @@ function createUserRepository(m) {
     suspendUser: (id, reason, by) => m.User.updateOne({ _id: oid(id) }, { suspended: { at: new Date(), reason, by } }),
     restoreUser: (id) => m.User.updateOne({ _id: oid(id) }, { $unset: { suspended: 1 } }),
 
-    // Everything stored about one player, for "download my data" (GDPR right of
-    // access). The password hash is left out: it is not useful to the player and
-    // should never leave the server.
     async exportUser(userId) {
       if (!isId(userId)) return null;
       const u = await m.User.findById(userId).lean();

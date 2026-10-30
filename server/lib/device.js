@@ -1,8 +1,4 @@
-// A short, readable name for the device from its User-Agent header, e.g.
-// "Chrome on macOS", for the "where you're signed in" list. Only this short name is
-// kept, not the whole header.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 function describeDevice(ua = '') {
   const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'

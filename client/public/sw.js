@@ -1,14 +1,4 @@
-// Service worker: lets Banana Brigade be installed (phone home screen, desktop app)
-// and open without a connection. It keeps a copy of the app itself (the page,
-// scripts, styles, pictures); the game's data never comes from here.
-//
-//   /api/... and /socket.io/...  always the network (logins, puzzles and scores must be live)
-//   page loads                    network first, the saved copy when offline (the app then
-//                                 shows its "offline" screen, because the server cannot be reached)
-//   /assets/... (hashed files)    saved copy first: a new build has new file names
-//   other files (logo, icons)     saved copy, refreshed in the background
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const CACHE = 'brigade-v1';
 const SHELL = ['/', '/manifest.webmanifest', '/logo.svg', '/favicon.svg', '/img/gameplay.jpg', '/icons/icon-192.png', '/icons/icon-512.png'];
@@ -17,7 +7,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
-// Old caches from earlier versions are deleted.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -38,8 +27,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== location.origin) return;
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) return;   // never cached
-  if (url.pathname.startsWith('/media/')) return;   // videos stream with range requests, so they skip the cache
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) return;
+  if (url.pathname.startsWith('/media/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

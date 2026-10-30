@@ -1,7 +1,4 @@
-// Test helpers: start the app on a random port with an in-memory MongoDB and a
-// fake Banana API, and a tiny client that keeps the session cookie like a browser.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -12,12 +9,10 @@ const { createApp } = require('../../server/app');
 const { attachRealtime } = require('../../server/realtime/socket');
 const { openDatabase } = require('../../server/repositories');
 
-// Use the locally installed mongod if there is one (no download); CI downloads one.
 if (!process.env.MONGOMS_SYSTEM_BINARY && fs.existsSync('/opt/homebrew/bin/mongod')) {
   process.env.MONGOMS_SYSTEM_BINARY = '/opt/homebrew/bin/mongod';
 }
 
-// One throw-away MongoDB per test file; every server gets its own empty database.
 let mongo = null;
 const opened = [];
 async function freshDatabase() {
@@ -34,7 +29,6 @@ after(async () => {
 const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 const fakeApi = (solution = 7) => ({ fetchPuzzle: async () => ({ image: IMAGE, solution }) });
 
-// appOptions go to createApp (e.g. trustProxy, sendResetLink).
 async function startServer({ bananaApi = fakeApi(), db, matchOptions, appOptions = {} } = {}) {
   db ??= await freshDatabase();
   const app = createApp({ db, bananaApi, sessionSecret: 'test-secret', ...appOptions });
@@ -47,8 +41,6 @@ async function startServer({ bananaApi = fakeApi(), db, matchOptions, appOptions
   return { base, db, realtime, close };
 }
 
-// Remembers the session cookie between requests, as a browser would. headers are
-// sent with every request (e.g. X-Forwarded-For to act as another IP address).
 function client(base, { headers = {} } = {}) {
   let cookie = '';
   const call = async (method, path, body) => {
@@ -60,7 +52,7 @@ function client(base, { headers = {} } = {}) {
     const set = res.headers.get('set-cookie');
     if (set) cookie = set.split(';')[0];
     let json = null;
-    try { json = await res.json(); } catch { /* empty body */ }
+    try { json = await res.json(); } catch { }
     return { status: res.status, body: json, setCookie: set };
   };
   return {

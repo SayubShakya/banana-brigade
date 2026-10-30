@@ -1,9 +1,4 @@
-// The public home page, shown before anyone logs in: what the game is, a picture of
-// a battle, how the Banana puzzles fit in, the modes, and a live line saying
-// whether the Banana API is answering. Play leads to the login screen, and
-// "Watch trailer" plays the short animated trailer (/media/trailer.mp4).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
@@ -26,7 +21,6 @@ const MODES = [
   ['helmet', 'Training', 'Target dummies to warm up on.'],
 ];
 
-// "Banana API online · 3 puzzles ready", from GET /api/status.
 export function useApiLine() {
   const [line, setLine] = useState({ state: 'checking', text: 'Checking the Banana API…' });
   useEffect(() => {
@@ -39,7 +33,6 @@ export function useApiLine() {
   return line;
 }
 
-// The trailer opens over the page; Esc, the close button or a click outside closes it.
 function Trailer({ onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };

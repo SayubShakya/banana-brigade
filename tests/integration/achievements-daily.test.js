@@ -1,7 +1,4 @@
-// Tests for achievements (unlocked by server events, only once) and the Daily
-// Banana Challenge (same puzzles for everyone, one attempt a day, scored on the server).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,7 +17,7 @@ test('saving a score unlocks achievements once, from numbers the server checks',
     const first = await c.post('/api/scores', { mode: 'survival', kills: 12, deaths: 1, wave: 6, durationS: 200 });
     assert.deepEqual(first.body.unlocked.map((a) => a.id).sort(), ['first_blood', 'sharpshooter', 'survivor']);
     const again = await c.post('/api/scores', { mode: 'survival', kills: 12, deaths: 1, wave: 6, durationS: 200 });
-    assert.deepEqual(again.body.unlocked, []);                  // write-once
+    assert.deepEqual(again.body.unlocked, []);
     const list = await c.get('/api/achievements');
     assert.ok(list.body.all.length >= 10);
     assert.equal(list.body.mine.length, 3);
@@ -53,15 +50,14 @@ test('the daily challenge: 5 puzzles, doubling points, one attempt a day, no sol
     for (const answer of [6, 6, 1, 6, 6]) r = (await c.post('/api/daily/answer', { answer })).body;
     assert.equal(r.finished, true);
     assert.equal(r.solved, 4);
-    assert.equal(r.score, 100 + 200 + 0 + 100 + 200);          // the miss resets the bonus
+    assert.equal(r.score, 100 + 200 + 0 + 100 + 200);
     assert.equal(r.streak, 1);
-    assert.equal((await c.post('/api/daily/start')).status, 409);   // one attempt a day
+    assert.equal((await c.post('/api/daily/start')).status, 409);
     const status = (await c.get('/api/daily')).body;
     assert.deepEqual([status.played, status.result.score, status.streak], [true, 600, 1]);
     const board = (await c.get('/api/daily/leaderboard')).body.rows;
     assert.equal(board[0].username, 'daily1');
 
-    // A second player gets the same puzzles (stored once for the day).
     const c2 = await login(s, 'daily2');
     const start2 = await c2.post('/api/daily/start');
     assert.equal(start2.body.image, start.body.image);
@@ -75,7 +71,6 @@ test('daily: answers sent at the same time cannot score one puzzle twice', async
     await c.post('/api/daily/start');
     const replies = await Promise.all(Array.from({ length: 10 }, (_, d) => c.post('/api/daily/answer', { answer: d })));
     const ok = replies.filter((r) => r.status === 200);
-    // Later requests may answer the next puzzles, but no puzzle is ever answered twice.
     const answered = ok.map((r) => (r.body.finished ? 5 : r.body.next.index));
     assert.equal(new Set(answered).size, ok.length);
     assert.equal(ok.length + replies.filter((r) => r.status === 409 || r.status === 400).length, 10);
@@ -91,6 +86,6 @@ test('daily: a Banana API outage does not use up the day\'s attempt', async () =
     const c = await login(s, 'patient');
     assert.equal((await c.post('/api/daily/start')).status, 502);
     down = false;
-    assert.equal((await c.post('/api/daily/start')).status, 200);   // still allowed after the outage
+    assert.equal((await c.post('/api/daily/start')).status, 200);
   } finally { await s.close(); }
 });

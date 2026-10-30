@@ -1,6 +1,4 @@
-// HTTP side of /api/puzzle, /api/status and /api/achievements.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { puzzleTally } = require('../lib/httpSession');
 

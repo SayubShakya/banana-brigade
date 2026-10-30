@@ -1,19 +1,4 @@
-// Keyboard, mouse, on-screen buttons and touch joysticks. Browser events are turned
-// into the player's controls; menu keys are re-published on the event bus as
-// "input:pause" and "input:scoreboard".
-//
-//   A / D or ← / →   move              W or Space   jetpack
-//   Mouse            aim               Left click   shoot
-//   R reload   Q switch weapon   G or right click grenade   F melee   E pick up
-//   Z or mouse wheel zoom   B banana respawn   Tab scoreboard   Esc pause
-//
-// On touch screens the left stick moves and flies (push up), the right stick aims
-// and fires when pushed far enough, like the original dual-stick layout.
-//
-// Auto-fire (on by default, Settings → Auto-fire): just aim at an enemy with the
-// mouse or the right stick and the gun fires by itself (see autoFire.js).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit } from '../services/eventBus.js';
 import { isAimedAtEnemy } from './autoFire.js';
@@ -89,7 +74,6 @@ export function createInput(canvas, renderer) {
   canvas.addEventListener('wheel', (e) => { if (enabled) cycleZoom(); e.preventDefault(); }, { passive: false });
   window.addEventListener('blur', () => { Object.keys(held).forEach((k) => { held[k] = false; }); });
 
-  // On-screen HUD buttons (work with mouse and touch).
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -101,9 +85,7 @@ export function createInput(canvas, renderer) {
     });
   });
 
-  // Touch: show the joysticks the first time the screen is touched.
   window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') document.body.classList.add('touch'); }, { once: false });
-  // A phone or tablet: touch layout from the start (sticks, no keyboard hints).
   if (window.matchMedia?.('(pointer: coarse)').matches) document.body.classList.add('touch');
   joystick(document.getElementById('stick-move'), (x, y) => { touchMove.x = x; touchMove.y = y; });
   joystick(document.getElementById('stick-aim'), (x, y) => {
@@ -114,15 +96,12 @@ export function createInput(canvas, renderer) {
   return {
     mouse,
     get zoom() { return zoom; },
-    // A new battle starts unzoomed.
     resetZoom() { zoom = 0; emit('input:zoom', { level: 0 }); },
     setEnabled(on) {
       enabled = on;
       if (!on) Object.keys(held).forEach((k) => { held[k] = false; });
     },
     setAutoFire(on) { autoFire = on !== false; },
-    // Copy the current input into the player's controls once per frame. `world` is
-    // the match the player is in (local world or online view), used by auto-fire.
     apply(player, world) {
       const c = player.controls;
       c.left = held.left || touchMove.x < -0.3;
@@ -141,7 +120,6 @@ export function createInput(canvas, renderer) {
         c.aimX = aim.x;
         c.aimY = aim.y;
       }
-      // Auto-fire once the aim (worked out above) is on an enemy in range and in sight.
       if (autoFire && !c.fire && world) c.fire = isAimedAtEnemy(player, world);
       for (const k of Object.keys(pending)) {
         if (pending[k]) { c[k] = true; pending[k] = false; }

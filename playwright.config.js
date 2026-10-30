@@ -1,9 +1,4 @@
-// End-to-end tests in a real browser (Playwright). The web server is the app with an
-// in-memory MongoDB and a fake Banana API (tests/e2e/server.js); the React app
-// must be built first (npm run build). Locally it uses the installed Google Chrome;
-// in CI it uses Playwright's own Chromium.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { defineConfig } = require('@playwright/test');
 

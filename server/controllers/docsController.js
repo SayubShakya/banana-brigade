@@ -1,11 +1,7 @@
-// The API description: the OpenAPI 3 file (routes/openapi.js) as JSON at
-// /api/v1/openapi.json, and a page that shows it with Swagger UI at /api/docs.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { spec } = require('../routes/openapi');
 
-// Swagger UI (pinned version from a CDN) reading our OpenAPI file.
 const DOCS_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Banana Brigade API</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css"></head>

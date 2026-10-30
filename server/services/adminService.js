@@ -1,16 +1,10 @@
-// Admin-only tools. Every action needs a reason and is written to the audit log
-// (who, what, to whom, when, why), which admins can read but nobody can edit through
-// the app. Actions also appear in the live event feed. `admin` is the logged-in
-// admin's user record (the role was read from the database by requireAdmin).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { badRequest, notFound, conflict } = require('../lib/errors');
 
 const ROLES = ['player', 'admin'];
 const NEED_REASON = 'Give a reason (3–200 characters); it goes in the audit log';
 
-// The reason an admin gives, trimmed; refused if missing or too short to mean anything.
 function requireReason(raw) {
   const r = typeof raw === 'string' ? raw.trim() : '';
   if (r.length < 3 || r.length > 200) throw badRequest(NEED_REASON);
@@ -18,8 +12,6 @@ function requireReason(raw) {
 }
 
 function createAdminService({ db, pool, sessions, eventLog = null }) {
-  // Writes the audit row and tells the live feed. `said` is the feed's wording,
-  // e.g. "suspended sam (2 sessions ended)".
   async function audit(admin, action, target, reason, detail, said) {
     await db.addAudit({ actor: admin.id, actorName: admin.username, action, target: target?.id, targetName: target?.username, reason, detail });
     eventLog?.record('admin', admin.username, `${said}. Reason: ${reason}`);
@@ -38,7 +30,6 @@ function createAdminService({ db, pool, sessions, eventLog = null }) {
     return { rows: await db.listAudit(limit) };
   }
 
-  // The Banana API's health now and over time (samples every 30 s, see pool.js).
   const health = () => ({ now: pool.status(), history: pool.history() });
 
   async function resetScores(admin, id, rawReason) {
@@ -49,9 +40,6 @@ function createAdminService({ db, pool, sessions, eventLog = null }) {
     return { deleted };
   }
 
-  // Promote a player to admin or demote an admin. requireAdmin reads the role from
-  // the database, so the change applies to their very next request (no re-login).
-  // An admin cannot demote themselves, so the last admin cannot lock everyone out.
   async function setRole(admin, id, role, rawReason) {
     if (!ROLES.includes(role)) throw badRequest('Role must be player or admin');
     const reason = requireReason(rawReason);
@@ -64,9 +52,6 @@ function createAdminService({ db, pool, sessions, eventLog = null }) {
     return { user: { id: user.id, username: user.username, role } };
   }
 
-  // Suspend: the player is thrown out at once (every session ended, live sockets
-  // closed) and cannot log in until an admin restores the account. Admins must be
-  // demoted first, so admins cannot suspend each other by accident.
   async function suspend(admin, id, rawReason) {
     const reason = requireReason(rawReason);
     if (id === admin.id) throw badRequest('You cannot suspend yourself');

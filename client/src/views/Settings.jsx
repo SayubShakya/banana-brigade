@@ -1,7 +1,4 @@
-// Settings: game options saved in this browser, and the account tools, which all
-// run on the server (change password, log out everywhere, delete account).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
@@ -14,8 +11,6 @@ const OPTIONS = [['autoFire', 'Auto-fire when aimed at an enemy'], ['laser', 'Si
 const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];
 const VOLUMES = [['musicVolume', 'Music volume'], ['sfxVolume', 'Effects volume']];
 
-// The Banana API connection, explained in plain words (the server fetches puzzles
-// in advance and keeps a reserve for when the API is down).
 function useApiStatus() {
   const [s, setS] = useState(null);
   useEffect(() => { api.status().then(setS).catch(() => setS({ online: false, ready: 0, reserve: 0 })); }, []);
@@ -27,7 +22,6 @@ function useApiStatus() {
   return { line, health: describeHealth(s) };
 }
 
-// e.g. "Usually answers in 240 ms · 19 of the last 20 calls worked · 2 retries"
 function describeHealth(s) {
   if (!s.calls) return 'No calls to the Banana API yet.';
   const worked = Math.round((s.successRate / 100) * s.calls);
@@ -39,8 +33,6 @@ function describeHealth(s) {
   return parts.join(' · ');
 }
 
-// "Where you're signed in": every live session of this account (device, last used),
-// read from the MongoDB session store, with a button to sign out any other device.
 const ago = (iso) => {
   if (!iso) return 'unknown';
   const min = Math.round((Date.now() - Date.parse(iso)) / 60000);
@@ -71,8 +63,6 @@ function Devices() {
   );
 }
 
-// The account tools. Each one asks for the password again where it matters, so a
-// session left open on someone else's computer cannot take over the account.
 function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy }) {
   const [open, setOpen] = useState('');
   const [current, setCurrent] = useState('');
@@ -82,7 +72,6 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
 
   const show = (name) => { setOpen(open === name ? '' : name); setMsg({ text: '', ok: false }); setCurrent(''); setNext(''); setConfirmPw(''); };
   const fail = (err) => setMsg({ text: err.message, ok: false });
-  // The result of the open form is shown inside it, next to its button.
   const note = msg.text ? <p className={msg.ok ? 'account-ok' : 'auth-error'} role="alert">{msg.text}</p> : null;
 
   async function changePassword(e) {
@@ -94,7 +83,6 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
     } catch (err) { fail(err); }
   }
   async function logoutAll() {
-    // Close our own WebSocket first, so the server dropping it is not mistaken for being thrown out.
     try { closeSocket(); await api.logoutAll(); onSignedOut(); } catch (err) { fail(err); }
   }
   async function deleteAccount(e) {
@@ -142,7 +130,6 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
   );
 }
 
-// One on/off switch row.
 function Toggle({ label, value, onClick }) {
   return (
     <div className="setting">

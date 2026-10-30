@@ -1,8 +1,4 @@
-// HTTP side of the login routes (/api/auth/...): reads the request, calls the auth
-// service with the current session as a port, and sends the JSON answer.
-// Errors (including the service's AppErrors) go to middleware/errorHandler.js.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { sessionPort, puzzleTally } = require('../lib/httpSession');
 

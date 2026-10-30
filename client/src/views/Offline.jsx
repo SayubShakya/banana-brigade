@@ -1,9 +1,4 @@
-// Shown when the game server cannot be reached: either this device is offline (the
-// installed app still opens from the service worker's copy) or the server is down.
-// It asks GET /api/status every five seconds and carries on by itself as soon as
-// the server answers again.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
@@ -26,7 +21,7 @@ export default function Offline({ onBack }) {
     setChecking(true);
     try {
       await api.status();
-      onBack();               // the server is back
+      onBack();
     } catch {
       setTries((n) => n + 1);
     } finally {

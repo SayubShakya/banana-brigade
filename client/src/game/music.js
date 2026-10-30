@@ -1,43 +1,36 @@
-// Background music made with the Web Audio API (no audio files): a calm menu loop
-// and a faster battle loop, each a bass line plus an arpeggio over four chords.
-// Notes are scheduled a little ahead of time on the audio clock ("lookahead"), so
-// the rhythm stays steady even when the page is busy. Like the sound effects, the
-// music reacts to events: 'game:state' switches between the two loops with a crossfade.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on } from '../services/eventBus.js';
 import { audioContext, unlockAudio } from './sound.js';
 
-const LOOKAHEAD = 0.12;   // seconds of notes scheduled in advance
-const TICK_MS = 25;       // how often the scheduler wakes up
-const FADE = 1.2;         // crossfade length in seconds
+const LOOKAHEAD = 0.12;
+const TICK_MS = 25;
+const FADE = 1.2;
 
-// Chords as [bass note, [arpeggio notes]] in MIDI numbers (60 = middle C).
 const TRACKS = {
   menu: {
     bpm: 84, stepsPerBeat: 2, stepsPerBar: 8, cutoff: 1400,
     bass: { type: 'triangle', volume: 0.2 }, lead: { type: 'sine', volume: 0.07 },
-    chords: [[45, [69, 72, 76]], [41, [65, 69, 72]], [48, [67, 72, 76]], [43, [67, 71, 74]]],   // Am F C G
-    bassAt: (s) => (s === 0 || s === 4 ? 0 : null),                                           // two long notes a bar
+    chords: [[45, [69, 72, 76]], [41, [65, 69, 72]], [48, [67, 72, 76]], [43, [67, 71, 74]]],
+    bassAt: (s) => (s === 0 || s === 4 ? 0 : null),
     bassLength: 4,
     leadAt: (s) => [0, 1, 2, 1, 2, 1, 0, null][s],
   },
   battle: {
     bpm: 138, stepsPerBeat: 4, stepsPerBar: 16, cutoff: 2200,
     bass: { type: 'sawtooth', volume: 0.13 }, lead: { type: 'square', volume: 0.045 },
-    chords: [[40, [64, 67, 71]], [36, [64, 67, 72]], [38, [62, 66, 69]], [35, [63, 66, 71]]],   // Em C D B
-    bassAt: (s) => (s % 2 ? null : s % 4 === 2 ? 12 : 0),                                      // driving eighths, octave jumps
+    chords: [[40, [64, 67, 71]], [36, [64, 67, 72]], [38, [62, 66, 69]], [35, [63, 66, 71]]],
+    bassAt: (s) => (s % 2 ? null : s % 4 === 2 ? 12 : 0),
     bassLength: 1.6,
-    leadAt: (s) => [0, 1, 2, 3, 2, 1][s % 6],                                                  // 3 = root an octave up
+    leadAt: (s) => [0, 1, 2, 3, 2, 1][s % 6],
   },
 };
 
-let master = null;        // music bus: volume slider and mute
+let master = null;
 let volume = 0.6;
 let muted = false;
-let wanted = 'menu';      // which loop the game state asks for
-const players = [];       // playing loops (two while crossfading)
+let wanted = 'menu';
+const players = [];
 let timer = null;
 
 const freq = (midi) => 440 * 2 ** ((midi - 69) / 12);
@@ -56,11 +49,10 @@ function note(ctx, out, midi, time, length, { type, volume: v }) {
   o.stop(time + length + 0.02);
 }
 
-// Schedules every step of one loop that falls inside the lookahead window.
 function schedule(ctx, p) {
   const t = TRACKS[p.name];
   const stepLen = 60 / t.bpm / t.stepsPerBeat;
-  if (p.next < ctx.currentTime - 0.05) p.next = ctx.currentTime + 0.02;   // tab was asleep: skip, don't burst
+  if (p.next < ctx.currentTime - 0.05) p.next = ctx.currentTime + 0.02;
   while (p.next < ctx.currentTime + LOOKAHEAD) {
     const inBar = p.step % t.stepsPerBar;
     const [root, arp] = t.chords[Math.floor(p.step / t.stepsPerBar) % t.chords.length];
@@ -87,10 +79,9 @@ function loop() {
   if (!players.length) { clearInterval(timer); timer = null; }
 }
 
-// Fades the current loop out and the wanted one in.
 function sync() {
   const ctx = audioContext();
-  if (!ctx) return;                       // no click or key press yet: stay silent
+  if (!ctx) return;
   if (!master) {
     master = ctx.createGain();
     master.gain.value = level();
@@ -123,18 +114,15 @@ function applyLevel() {
   if (master && ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.1);
 }
 
-// 0..1, from the Music volume slider.
 export function setMusicVolume(value) { volume = Math.min(1, Math.max(0, value)); applyLevel(); }
 export function setMusicMuted(value) { muted = !!value; applyLevel(); }
 export const currentTrack = () => players.find((p) => !p.stopAt)?.name ?? null;
 
 export function initMusic() {
-  // Battle music while a battle is on screen (paused or in a puzzle too), menu music otherwise.
   on('game:state', ({ state }) => {
     wanted = ['playing', 'puzzle', 'paused'].includes(state) ? 'battle' : 'menu';
     sync();
   });
-  // Browsers block sound until the player clicks or presses a key: start on the first one.
   const start = () => {
     unlockAudio();
     sync();

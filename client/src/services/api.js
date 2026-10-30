@@ -1,17 +1,9 @@
-// One place for every call to our server. fetch sends the HttpOnly session cookie
-// automatically; the browser never sees the session id or a token. Any achievements
-// a reply says were unlocked are announced on the event bus for the toasts.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit } from './eventBus.js';
 
-// Every call goes to version 1 of our API (/api/v1/...); see /api/docs.
 const API = '/api/v1';
 
-// fetch only throws when the server cannot be reached at all; that error is marked
-// `offline` so the app can show the "Server down" screen instead of a message.
-// quiet: no error toast (for calls whose failure has its own screen, e.g. "server down").
 async function call(method, path, body, { quiet = false } = {}) {
   let res;
   try {
@@ -27,14 +19,9 @@ async function call(method, path, body, { quiet = false } = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // 401 (the session is gone: logged out elsewhere, signed out by another device,
-    // account deleted) or 403 for a suspended account, outside the login forms:
-    // tell the app, which signs out with a message instead of half-working screens.
     if ((res.status === 401 && !/\/auth\/(login|register|forgot|reset)$/.test(path)) || data.suspended) {
       emit('session:ended', { text: data.suspended ? data.error : 'You were signed out. Please log in again.' });
     }
-    // Server faults (5xx) are shown as a toast on any screen; 4xx answers (wrong
-    // password, name taken...) are for the form that asked, so they are not.
     if (res.status >= 500 && !quiet) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });
     throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
   }

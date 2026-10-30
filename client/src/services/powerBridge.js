@@ -1,7 +1,4 @@
-// Lets the game (plain JavaScript) open the React power picker and wait for the
-// choice: askPower(choices) resolves to a power id or 'random'.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 let opener = null;
 let closer = null;
@@ -13,7 +10,6 @@ export function registerPowerOpener(fn, close) {
   return () => { if (opener === fn) { opener = null; closer = null; } };
 }
 
-// Closes an open picker (the match ended or the player left); it counts as Random.
 export function closePower() {
   if (open) closer?.();
 }

@@ -1,8 +1,4 @@
-// Online lobby: public rooms, create a room, join one by its code, get ready and
-// start. Everything here is pushed by the server over the WebSocket (room:update,
-// rooms:changed), so the screen updates the moment another player joins.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useEffect, useState } from 'react';
 import { getSocket, request } from '../net/socket.js';

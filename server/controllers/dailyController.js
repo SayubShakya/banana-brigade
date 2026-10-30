@@ -1,6 +1,4 @@
-// HTTP side of /api/daily (the Daily Banana Challenge).
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 function createDailyController({ dailyService }) {
   return {

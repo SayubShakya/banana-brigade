@@ -1,8 +1,4 @@
-// Tests for interoperability: /api/v1 and the old paths both work, the OpenAPI file
-// lists every route the server has, and the public leaderboard can be read from
-// another website (CORS) without a login.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,8 +7,6 @@ const path = require('node:path');
 const { spec } = require('../../server/routes/openapi');
 const { startServer, client } = require('./helpers');
 
-// Every route in the server code, as "get /auth/me", read from the source files and
-// the prefix each router is mounted on in app.js.
 function routesInCode() {
   const dir = path.join(__dirname, '..', '..', 'server');
   const app = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
@@ -75,7 +69,6 @@ test('the public leaderboard needs no login, allows any origin and sets no cooki
     const pre = await fetch(`${s.base}/api/v1/public/leaderboard`, { method: 'OPTIONS', headers: { Origin: 'https://example.org', 'Access-Control-Request-Method': 'GET' } });
     assert.equal(pre.status, 204);
     assert.match(pre.headers.get('access-control-allow-methods'), /GET/);
-    // Private routes do not get CORS headers.
     assert.equal((await fetch(`${s.base}/api/v1/auth/me`, { headers: { Origin: 'https://example.org' } })).headers.get('access-control-allow-origin'), null);
   } finally { await s.close(); }
 });

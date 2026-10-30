@@ -1,13 +1,4 @@
-// The Banana API puzzle window. It opens when you deploy, ask for a Banana respawn
-// or open a banana crate. The picture comes from the Banana API through our server
-// and answers are checked on the server, so the solution is never in the browser.
-// Each puzzle has a countdown; running out of time counts as a miss.
-//
-// Anything can open it with askPuzzle() (puzzleBridge.js); it resolves to
-// 'solved', 'failed' or 'cancelled'. Puzzles come over HTTP (/api/puzzle) by default;
-// online matches pass options.source to fetch and answer them over the WebSocket.
-//
-// Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emit } from '../services/eventBus.js';
@@ -16,10 +7,9 @@ import { PUZZLE_RULES } from '../game/config.js';
 import { registerPuzzleOpener } from '../services/puzzleBridge.js';
 import { puzzleStats } from '../services/storage.js';
 
-const RING = 2 * Math.PI * 26;   // circumference of the timer ring (r = 26)
+const RING = 2 * Math.PI * 26;
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
-// What a right answer does, by puzzle purpose.
 const CORRECT = {
   deploy: 'Correct! Deploying…',
   respawn: 'Correct! Back in the fight.',
@@ -28,23 +18,22 @@ const CORRECT = {
 };
 
 export default function PuzzleModal() {
-  const [req, setReq] = useState(null);          // { purpose, options, resolve }
-  const [puzzle, setPuzzle] = useState(null);    // { puzzleId, image, source }
-  const [phase, setPhase] = useState('loading'); // loading | ready | error | answering | done
+  const [req, setReq] = useState(null);
+  const [puzzle, setPuzzle] = useState(null);
+  const [phase, setPhase] = useState('loading');
   const [status, setStatus] = useState({ text: '', kind: '' });
   const [left, setLeft] = useState(0);
   const [picked, setPicked] = useState(null);
   const [flash, setFlash] = useState('');
   const [showRetry, setShowRetry] = useState('');
   const deadline = useRef(0);
-  const live = useRef(null);                     // the request currently on screen
+  const live = useRef(null);
 
-  const closeRef = useRef(null);   // finish('closed'), for closePuzzle() in puzzleBridge
+  const closeRef = useRef(null);
   useEffect(() => registerPuzzleOpener((purpose, options) => new Promise((resolve) => {
     setReq({ purpose, options, resolve, key: Math.random() });
   }), () => closeRef.current?.()), []);
 
-  // options.seconds (from the chosen difficulty) overrides the default time.
   const rules = req ? {
     ...PUZZLE_RULES[req.purpose], seconds: req.options.seconds ?? PUZZLE_RULES[req.purpose].seconds,
     ...(req.options.retry ? { rule: 'New puzzle after a miss' } : {}),
@@ -73,7 +62,7 @@ export default function PuzzleModal() {
     emit('banana:requested', { purpose: r.purpose });
     try {
       const p = await (r.options.source?.get ?? api.puzzle)(r.purpose);
-      await new Promise((ok, fail) => {      // wait until the picture can be shown
+      await new Promise((ok, fail) => {
         const img = new Image();
         img.onload = ok;
         img.onerror = () => fail(new Error('The puzzle image could not be loaded.'));
@@ -94,7 +83,6 @@ export default function PuzzleModal() {
     }
   }, []);
 
-  // A new request: show the window and fetch the first puzzle.
   useEffect(() => {
     if (!req) return;
     live.current = req;
@@ -132,7 +120,6 @@ export default function PuzzleModal() {
     }
   }, [puzzle, phase, finish, load]);
 
-  // Countdown; running out of time is a wrong answer.
   useEffect(() => {
     if (phase !== 'ready') return undefined;
     const tick = () => {
@@ -145,7 +132,6 @@ export default function PuzzleModal() {
     return () => clearInterval(id);
   }, [phase, answer]);
 
-  // Number keys answer, Esc cancels. Captured first so the game does not see them.
   useEffect(() => {
     if (!req) return undefined;
     const onKey = (e) => {
@@ -163,7 +149,6 @@ export default function PuzzleModal() {
   const { options = {} } = req;
   const total = rules.seconds;
   const imgState = phase === 'error' && !puzzle ? 'error' : puzzle ? 'ready' : 'loading';
-  // Timer colour: banana while more than half is left, orange under half, red and pulsing under a quarter.
   const counting = phase === 'ready' || phase === 'answering';
   const frac = counting && total ? left / total : 1;
   const urgency = frac > 0.5 ? 'safe' : frac >= 0.25 ? 'warn' : 'danger';

@@ -1,9 +1,5 @@
 <!DOCTYPE html>
-<!-- Banana Brigade: a doodle-army style jetpack shooter. Banana API puzzles unlock
-     deployment, respawns and banana crates. React draws the menus and screens into
-     #ui; the battle canvas and HUD below are plain HTML that the game engine updates
-     60 times a second without React.
-     Written with help from a generative AI coding assistant; reviewed by Sayub Shakya. -->
+<!-- Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -36,8 +32,7 @@
   </svg>
 
     <div id="stage">
-    <!-- ============ Battle (canvas and HUD, drawn by the game engine, not React) ============ -->
-    <section id="screen-battle" class="screen battle" hidden>
+        <section id="screen-battle" class="screen battle" hidden>
       <canvas id="battle-canvas" aria-label="Battlefield"></canvas>
       <div id="hud">
         <div class="hud-player">
@@ -101,8 +96,7 @@
     <div id="ui"></div>
   </div>
 
-  <!-- Shown by CSS only on a narrow portrait screen (a phone held upright). -->
-  <div id="rotate-hint" role="alert">
+    <div id="rotate-hint" role="alert">
     <div class="rotate-phone" aria-hidden="true"></div>
     <p><b>Turn your phone sideways</b>Banana Brigade is played in landscape.</p>
   </div>
