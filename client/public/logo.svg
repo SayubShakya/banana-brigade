@@ -1,40 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t">
-  <!-- Banana Brigade emblem: a jetpack banana flying up from an olive army shield.
+  <!-- Banana Brigade emblem: a banana soldier in a helmet and goggles, jetting up on puzzle power, on an olive army badge.
        Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. -->
   <title id="t">Banana Brigade</title>
   <defs>
-    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6d7f3c"/><stop offset="1" stop-color="#3b4a1d"/>
+    <linearGradient id="bb-olive" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a6b32"/><stop offset="1" stop-color="#3b4a1e"/>
     </linearGradient>
-    <linearGradient id="peel" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff07a"/><stop offset="0.55" stop-color="#ffe135"/><stop offset="1" stop-color="#e0b400"/>
-    </linearGradient>
-    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff3b0"/><stop offset="0.45" stop-color="#ff9f1c"/><stop offset="1" stop-color="#e63946" stop-opacity="0"/>
+    <linearGradient id="bb-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fdcff"/><stop offset="1" stop-color="#4cb3ef"/>
     </linearGradient>
   </defs>
-  <!-- shield with a banana-yellow rim -->
-  <path d="M128 10 L226 44 V120 C226 182 184 226 128 246 C72 226 30 182 30 120 V44 Z" fill="#c9a800"/>
-  <path d="M128 22 L214 52 V120 C214 175 177 214 128 232 C79 214 42 175 42 120 V52 Z" fill="url(#shield)"/>
-  <path d="M128 22 L214 52 V120 C214 175 177 214 128 232 C79 214 42 175 42 120 V52 Z" fill="none" stroke="#1b1f12" stroke-width="5" stroke-linejoin="round"/>
-  <!-- chevrons (rank stripes) -->
-  <path d="M78 192 L128 168 L178 192 L178 206 L128 182 L78 206 Z" fill="#ffe135" stroke="#1b1f12" stroke-width="4" stroke-linejoin="round"/>
-  <!-- star -->
-  <path d="M128 36 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2 z" fill="#ffe135" stroke="#1b1f12" stroke-width="3" stroke-linejoin="round"/>
-  <!-- the banana, flying up and to the right -->
-  <g transform="translate(-4 -18) rotate(-40 134 120)">
-    <path d="M78 104 C82 146 120 166 168 150 C184 145 192 134 190 126 C176 136 150 140 128 134 C104 128 90 116 84 98 Z" fill="url(#peel)" stroke="#1b1f12" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M92 116 C104 134 128 144 160 142" fill="none" stroke="#c9a800" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
-    <path d="M80 104 L72 92 L82 88 L88 100 Z" fill="#6b4f00" stroke="#1b1f12" stroke-width="4" stroke-linejoin="round"/>
-    <circle cx="190" cy="126" r="4" fill="#3b2a00"/>
-    <!-- little jetpack strapped on the banana -->
-    <rect x="112" y="150" width="22" height="26" rx="6" fill="#8a8f9c" stroke="#1b1f12" stroke-width="4"/>
-    <rect x="116" y="174" width="14" height="6" rx="2" fill="#4a4f5c" stroke="#1b1f12" stroke-width="3"/>
-    <!-- jet flame from the nozzle -->
-    <path d="M115 181 C112 200 118 214 123 226 C128 214 134 200 131 181 Z" fill="url(#flame)"/>
-    <path d="M119 181 C118 192 121 200 123 206 C125 200 128 192 127 181 Z" fill="#fff3b0"/>
-    <!-- goggles -->
-    <rect x="150" y="128" width="26" height="12" rx="6" fill="#1b1f12"/>
-    <circle cx="158" cy="134" r="3" fill="#7ec8ff"/><circle cx="169" cy="134" r="3" fill="#7ec8ff"/>
+  <path d="M128 10 C170 10 202 18 230 32 V116 C230 180 188 226 128 248 C68 226 26 180 26 116 V32 C54 18 86 10 128 10 Z" fill="#f2c230" stroke="#1d1d1d" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M128 26 C164 26 192 32 214 42 V116 C214 170 180 208 128 230 C76 208 42 170 42 116 V42 C64 32 92 26 128 26 Z" fill="url(#bb-olive)" stroke="#1d1d1d" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="128" cy="106" r="66" fill="url(#bb-sky)" stroke="#1d1d1d" stroke-width="6"/>
+  <path d="M70 148 C58 172 70 190 82 206 C94 190 106 172 94 148 Z" fill="#ff7b29" stroke="#1d1d1d" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M75 150 C70 168 77 180 82 190 C87 180 94 168 89 150 Z" fill="#ffe135"/>
+  <rect x="68" y="108" width="28" height="46" rx="9" fill="#8a8f9c" stroke="#1d1d1d" stroke-width="5"/>
+  <path d="M75 116 V144" stroke="#c3c7cf" stroke-width="4" stroke-linecap="round"/>
+  <path d="M88 98 C80 144 98 178 134 186 C152 190 168 184 174 174 L166 166 C146 168 138 150 140 126 C141 114 146 106 160 98 Z" fill="#ffe135" stroke="#1d1d1d" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M96 132 C98 156 112 172 138 178" fill="none" stroke="#e0a800" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="174" cy="172" r="5.5" fill="#6b4f00" stroke="#1d1d1d" stroke-width="3"/>
+  <path d="M80 98 C80 46 176 46 176 98 Z" fill="#5d6e33" stroke="#1d1d1d" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="70" y="92" width="116" height="15" rx="7.5" fill="#3b4a1e" stroke="#1d1d1d" stroke-width="5"/>
+  <path d="M96 70 C104 60 116 56 128 56" fill="none" stroke="#7d8f4a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M128 62 l4.7 9.5 10.5 1.5 -7.6 7.4 1.8 10.4 -9.4 -4.9 -9.4 4.9 1.8 -10.4 -7.6 -7.4 10.5 -1.5 z" fill="#ffe135" stroke="#1d1d1d" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M84 124 H158" stroke="#1d1d1d" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="107" cy="124" r="14" fill="#5b6170" stroke="#1d1d1d" stroke-width="5"/>
+  <circle cx="135" cy="124" r="14" fill="#5b6170" stroke="#1d1d1d" stroke-width="5"/>
+  <circle cx="107" cy="124" r="8.5" fill="#bfe8ff"/><circle cx="135" cy="124" r="8.5" fill="#bfe8ff"/>
+  <circle cx="104" cy="121" r="3" fill="#fff"/><circle cx="132" cy="121" r="3" fill="#fff"/>
+  <path d="M108 150 C116 160 130 160 138 150" fill="none" stroke="#1d1d1d" stroke-width="5" stroke-linecap="round"/>
+  <g transform="rotate(-12 70 62)">
+    <rect x="52" y="44" width="36" height="36" rx="8" fill="#7ec8ff" stroke="#1d1d1d" stroke-width="6"/>
+    <path d="M70 52 V72 M60 62 H80" stroke="#1d1d1d" stroke-width="6" stroke-linecap="round"/>
   </g>
+  <g transform="rotate(12 186 62)">
+    <rect x="164" y="40" width="44" height="44" rx="8" fill="#fff8dc" stroke="#1d1d1d" stroke-width="6"/>
+    <text x="186" y="75" text-anchor="middle" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="34" fill="#1d1d1d">?</text>
+  </g>
+  <path d="M12 198 L40 192 L40 228 L12 234 L24 214 Z" fill="#c99a12" stroke="#1d1d1d" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M244 198 L216 192 L216 228 L244 234 L232 214 Z" fill="#c99a12" stroke="#1d1d1d" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M26 190 Q128 174 230 190 V222 Q128 206 26 222 Z" fill="#ffe135" stroke="#1d1d1d" stroke-width="6" stroke-linejoin="round"/>
+  <path id="bb-arc" d="M38 212 Q128 196 218 212" fill="none"/>
+  <text font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="17" fill="#1d1d1d"><textPath href="#bb-arc" startOffset="50%" text-anchor="middle" textLength="172" lengthAdjust="spacingAndGlyphs">BANANA BRIGADE</textPath></text>
 </svg>

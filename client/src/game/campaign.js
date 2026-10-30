@@ -18,7 +18,7 @@ export const MISSIONS = [
   { id: 9, chapter: 3, name: 'Banana Marshal', map: 'night', text: 'The final test: seven bots, two lives.', bots: 7, target: 20, timeLimit: 180, lives: 2 },
 ];
 
-export const RAMP = { every: 60, accuracy: 0.05, reaction: 0.9 };
+export const RAMP = { every: 60, accuracy: 0.03, reaction: 0.95, cap: 0.8 };
 
 export const missionById = (id) => MISSIONS.find((m) => m.id === id) ?? null;
 export const chapterOf = (mission) => CHAPTERS.find((c) => c.id === mission.chapter);

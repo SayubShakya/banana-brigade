@@ -3,10 +3,12 @@
 import { WEAPONS, SOLDIER, TILE, GRENADE, BOT_TACTICS, DIFFICULTY } from './config.js';
 import { hasLineOfSight, isSolid } from './map.js';
 import { center, activeGun } from './world.js';
+import { RAMP } from './campaign.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 export const EASY_HESITATION = 30;
 export const hesitating = (world) => world.difficulty?.name === DIFFICULTY.easy.name && world.time < EASY_HESITATION;
+export const aimSpread = (accuracy, d) => (1.2 - accuracy) * (Math.min(300, d * 0.26) + Math.min(80, Math.max(0, d - 500) * 0.1));
 const leaveAlone = (world, s) => s.shieldTimer > 0 || s.busy || world.time < (s.graceUntil ?? 0);
 
 function brainFor(bot, level) {
@@ -119,8 +121,8 @@ function think(world, bot, b, level) {
     b.waypoint = { x: p.x, y: p.y };
   }
 
-  const accuracy = Math.min(0.95, b.accuracy + (world.rampBonus ?? 0));
-  const spread = (1.2 - accuracy) * (target ? Math.min(300, target.d * 0.26) : 0);
+  const accuracy = Math.min(RAMP.cap, b.accuracy + (world.rampBonus ?? 0));
+  const spread = target ? aimSpread(accuracy, target.d) : 0;
   b.aimErr = { x: rand(-spread, spread), y: rand(-spread, spread) };
 }
 
