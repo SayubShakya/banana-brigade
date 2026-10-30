@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
+import { emit } from '../services/eventBus.js';
+import { readJson } from '../services/storage.js';
 import { rankFor, xpFor } from '../services/rank.js';
 import { Icon, AvatarCanvas, RankCard, Sky } from '../components/common.jsx';
+import '../styles/bootcamp.css';
 
 const MAIN = [
   { action: 'campaign', icon: 'map', name: 'Campaign', text: '9 missions · earn stars · unlock chapters', tag: 'Missions', primary: true },
@@ -16,6 +19,10 @@ const RAIL = [['profile', 'user', 'Profile'], ['scores', 'trophy', 'Scores'], ['
 export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
   const [rank, setRank] = useState(rankFor(0));
   const [daily, setDaily] = useState(null);
+  const [camp] = useState(() => readJson('settings', { bootCampDone: false, bootCampOffered: false }));
+  const [offer, setOffer] = useState(!camp.bootCampDone && !camp.bootCampOffered);
+  const closeOffer = () => { setOffer(false); emit('settings:set', { key: 'bootCampOffered', value: true }); };
+  const bootCamp = () => { closeOffer(); onDeploy('tutorial'); };
   useEffect(() => {
     api.myRecord().then(({ totals }) => setRank(rankFor(xpFor(totals)))).catch(() => {});
     api.daily().then(setDaily).catch(() => {});
@@ -40,9 +47,23 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
         {account.guest
           ? <button className="welcome guest-save" onClick={() => onOpen('save')}>Playing as a guest · <b>Save your progress</b></button>
           : isNew && <p className="welcome">Welcome to the Brigade, {account.username}!</p>}
+        {offer && (
+          <div className="bootcamp-offer" role="region" aria-label="New to Banana Brigade?">
+            <p>New here? <b>Boot Camp</b> teaches you to move, fly, shoot and open banana crates in about 90 seconds.</p>
+            <div className="row">
+              <button className="mbtn primary" onClick={bootCamp}>Start Boot Camp</button>
+              <button className="mbtn" onClick={closeOffer}>Not now</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <nav className="menu-right" aria-label="Play">
+        <button className={`bootcamp-card${offer ? ' offer' : ''}`} onClick={bootCamp}>
+          <Icon id="target" className="mode-ico" />
+          <span><b>How to play: Boot Camp</b><small>{camp.bootCampDone ? 'Done! Replay the 90-second drill any time' : '90-second guided drill · no puzzle to start'}</small></span>
+          <span className="mode-tag">{camp.bootCampDone ? 'Replay' : 'Start here'}</span>
+        </button>
         {MAIN.map((m) => (
           <button key={m.action} className={`mode-card big${m.primary ? ' primary' : ''}`} onClick={() => (m.action === 'modes' || m.action === 'campaign' ? onOpen(m.action) : onDeploy(m.action))}>
             <Icon id={m.icon} className="mode-ico" />

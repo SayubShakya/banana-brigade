@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { readJson, store } from '../services/storage.js';
+import { useBus } from '../hooks/useBus.js';
 import { game } from './gameEngine.js';
 
 const DEFAULT_SETTINGS = {
-  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, autoFire: true, difficulty: 'medium',
-  contrast: false, largeText: false, calm: false,
+  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, autoFire: true, difficulty: 'easy',
+  contrast: false, largeText: false, calm: false, bootCampDone: false, bootCampOffered: false, tipsSeen: {},
 };
 function loadSettings() {
   const { sound, ...saved } = readJson('settings', DEFAULT_SETTINGS);
@@ -31,6 +32,7 @@ export function useSettings() {
     return next;
   });
   const toggle = (key) => setSetting(key, (v) => !v);
+  useBus('settings:set', ({ key, value }) => { if (key in DEFAULT_SETTINGS) setSetting(key, value); });
 
   return { settings, setSetting, toggle };
 }

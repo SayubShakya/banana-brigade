@@ -7,20 +7,50 @@ import { MODES, DIFFICULTY } from '../game/config.js';
 import { chapterOf } from '../game/campaign.js';
 import { mapName } from '../game/maps.js';
 import { getSocket } from '../net/socket.js';
+import { emit } from '../services/eventBus.js';
+import { BOOT_CAMP, startBootCamp, stopBootCamp } from '../game/tutorial.js';
 import { game, net, netIfStarted } from './gameEngine.js';
+
+const NO_DEPLOY_PUZZLE = ['training'];
+const TIPS = {
+  weapon: 'Weapon crate! Stand on it and press E to swap guns.',
+  banana: 'Banana crate! Press E and solve the puzzle to pick a super power.',
+  death: 'You went down. Press B to solve a Banana puzzle and respawn at once.',
+};
 
 export function useBattle({ setScreen, setParent }, { account, accountRef, parts }, { settings, setSetting }) {
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
   const lastMode = useRef('quick');
   const [pendingMode, setPendingMode] = useState('quick');
+  const bootCamp = useRef(false);
+  const tipsShown = useRef(new Set());
+
+  const tip = (key) => {
+    if (bootCamp.current || tipsShown.current.has(key) || settings.tipsSeen?.[key]) return;
+    tipsShown.current.add(key);
+    setSetting('tipsSeen', (seen) => ({ ...seen, [key]: true }));
+    emit('tip:show', { id: key, text: TIPS[key] });
+  };
+  useBus('pickup:available', ({ weapon, banana, soldier }) => {
+    if (soldier && !soldier.isPlayer) return;
+    if (banana) tip('banana');
+    else if (weapon) tip('weapon');
+  });
+  useBus('soldier:killed', ({ victim }) => { if (victim?.isPlayer && victim.id === 'p0') tip('death'); });
 
   useBus('game:state', ({ state, online: isOnline = false }) => {
     setOnline(isOnline);
     if (state === 'paused') setScreen('pause');
     else if (state === 'playing' || state === 'ending') setScreen('battle');
   });
-  useBus('game:over', (payload) => { setOver(payload); setScreen('results'); });
+  useBus('game:over', (payload) => {
+    if (payload.mission?.bootCamp) { finishBootCamp(false); return; }
+    setOver(payload);
+    setScreen('results');
+  });
+  useBus('tutorial:done', () => finishBootCamp(true));
+  useBus('tutorial:skip', () => finishBootCamp(false));
 
   const startBattle = useCallback((mode) => {
     game().start({ playerName: accountRef.current?.username ?? 'You', parts });
@@ -28,8 +58,18 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     setScreen('battle');
   }, [account, parts]);
 
+  const startBootCampBattle = useCallback(() => {
+    game().quit();
+    setOver(null);
+    game().prepare('training', 'easy', BOOT_CAMP);
+    bootCamp.current = true;
+    startBootCamp();
+    startBattle('training');
+  }, [startBattle]);
+
   const deploy = useCallback((mode) => {
     if (mode === 'online') { net(); setScreen('lobby'); return; }
+    if (mode === 'tutorial') { startBootCampBattle(); return; }
     setPendingMode(mode);
     setScreen('difficulty');
   }, []);
@@ -38,6 +78,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   const deployWith = useCallback(async (mode, difficulty) => {
     setSetting('difficulty', difficulty);
     game().prepare(mode, difficulty);
+    if (NO_DEPLOY_PUZZLE.includes(mode)) { startBattle(mode); return; }
     setScreen('menu');
     const result = await askPuzzle('deploy', {
       modeLabel: `${MODES[mode].name} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
@@ -60,12 +101,24 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   }, [startBattle]);
 
   const toMenu = () => {
+    bootCamp.current = false;
+    stopBootCamp();
     game().quit();
     if (netIfStarted()) { net().leave(); getSocket().emit('room:leave'); }
     setOver(null);
     setOnline(false);
     setScreen('menu');
   };
+
+  function finishBootCamp(completed) {
+    if (!bootCamp.current) return;
+    if (completed) {
+      setSetting('bootCampDone', true);
+      setSetting('bootCampOffered', true);
+      emit('toast:info', { text: 'Boot Camp complete! You are ready for battle.' });
+    }
+    toMenu();
+  }
 
   const resume = () => (online ? net().resume() : game().resume());
   const endNow = () => game().endNow();
@@ -78,5 +131,5 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     deployWith(m, settings.difficulty);
   };
 
-  return { over, online, pendingMode, startBattle, deploy, deployFrom, deployWith, playMission, toMenu, resume, endNow, toMap, playAgain };
+  return { over, online, pendingMode, startBattle, startBootCamp: startBootCampBattle, deploy, deployFrom, deployWith, playMission, toMenu, resume, endNow, toMap, playAgain };
 }

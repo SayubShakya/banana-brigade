@@ -1,0 +1,71 @@
+/* Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. */
+
+.coach-layer { position: absolute; inset: 0; z-index: 12; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 1.2cqh; padding-top: 12cqh; }
+.coach-card {
+  pointer-events: auto; width: min(64cqh, 92%); padding: 1.6cqh 2.4cqh 1.4cqh; border-radius: 1.6cqh;
+  background: var(--panel); border: 0.35cqh solid var(--banana); color: var(--paper);
+  box-shadow: 0 1cqh 3cqh rgba(0, 0, 0, 0.45); text-align: center; animation: coach-in 0.35s ease-out;
+}
+.coach-head { display: flex; align-items: center; gap: 1.2cqh; }
+.coach-chip { display: inline-flex; align-items: center; gap: 0.6cqh; padding: 0.3cqh 1.2cqh; border-radius: 3cqh; background: var(--banana); color: var(--ink); font: 800 1.5cqh 'Rubik', sans-serif; letter-spacing: 0.12cqh; text-transform: uppercase; }
+.coach-chip .ico { width: 1.8cqh; height: 1.8cqh; }
+.coach-count { color: var(--khaki); font-size: 1.6cqh; font-weight: 600; }
+.coach-skip { margin-left: auto; padding: 0.4cqh 1.4cqh; border-radius: 1cqh; border: 0.25cqh solid var(--panel-line); background: rgba(255, 255, 255, 0.08); font: 600 1.6cqh 'Rubik', sans-serif; }
+.coach-skip:hover, .coach-skip:focus-visible { background: rgba(255, 255, 255, 0.18); outline: none; }
+.coach-title { display: block; margin-top: 1cqh; font: 400 3.6cqh 'Black Ops One', sans-serif; color: var(--banana); letter-spacing: 0.1cqh; }
+.coach-text { margin: 0.6cqh 0 0; font-size: 2.2cqh; font-weight: 600; }
+.coach-keys { display: inline-flex; gap: 0.8cqh; align-items: center; margin-top: 1.2cqh; font-weight: 800; }
+.coach-keys kbd { font-size: 2.4cqh; min-width: 4.4cqh; padding: 0.5cqh 1.1cqh; }
+.coach-progress { display: flex; gap: 0.6cqh; justify-content: center; margin-top: 1.4cqh; }
+.coach-progress i { width: 4.4cqh; height: 0.8cqh; border-radius: 1cqh; background: rgba(255, 255, 255, 0.18); }
+.coach-progress i.on { background: var(--good); }
+.coach-progress i.now { background: var(--banana); animation: coach-pulse 1.2s ease-in-out infinite; }
+.coach-card.done { border-color: var(--good); }
+.coach-card.done .coach-title { color: var(--good); font-size: 4.4cqh; }
+.coach-card.retry { border-color: var(--bad); }
+.coach-card.compact { position: absolute; top: 1.4cqh; width: auto; max-width: 92%; padding: 0.8cqh 1.6cqh; display: flex; align-items: center; gap: 1.4cqh; }
+.coach-card.compact .coach-head { display: contents; }
+.coach-card.compact .coach-title { margin: 0; font-size: 2.4cqh; order: 1; }
+.coach-card.compact .coach-skip { order: 2; margin-left: 0.6cqh; }
+.coach-card.compact .coach-text, .coach-card.compact .coach-keys, .coach-card.compact .coach-progress { display: none; }
+.coach-tips { display: flex; flex-direction: column; gap: 0.8cqh; align-items: center; }
+.coach-tip {
+  display: flex; align-items: center; gap: 1cqh; max-width: 64cqh; padding: 1cqh 1.8cqh; border-radius: 1.2cqh;
+  background: rgba(24, 28, 15, 0.88); border-left: 0.8cqh solid var(--banana); color: var(--paper);
+  font-size: 2cqh; font-weight: 600; animation: coach-in 0.35s ease-out;
+}
+.coach-tip .ico { width: 2.6cqh; height: 2.6cqh; color: var(--banana); flex: none; }
+
+.bootcamp-card {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2cqh; text-align: left;
+  padding: 1.2cqh 2.2cqh; border-radius: 1.4cqh; color: var(--ink);
+  background: linear-gradient(#ffe866, var(--banana)); border: 0.35cqh solid var(--banana-dark);
+  box-shadow: 0 0.7cqh 0 var(--banana-dark); transition: transform 100ms, filter 120ms;
+}
+.bootcamp-card:hover { filter: brightness(1.05); transform: translateX(-0.6cqh); }
+.bootcamp-card:active { transform: translateY(0.5cqh); box-shadow: 0 0.2cqh 0 var(--banana-dark); }
+.bootcamp-card:focus-visible { outline: 0.5cqh solid var(--paper); outline-offset: 0.4cqh; }
+.bootcamp-card .mode-ico { background: rgba(0, 0, 0, 0.12); color: var(--olive-dark); width: 4.8cqh; height: 4.8cqh; }
+.bootcamp-card b { display: block; font: 400 2.6cqh 'Black Ops One', sans-serif; }
+.bootcamp-card small { display: block; font-size: 1.7cqh; font-weight: 600; }
+.bootcamp-card .mode-tag { padding: 0.5cqh 1.2cqh; border-radius: 3cqh; background: var(--olive-dark); color: var(--banana); font: 800 1.5cqh 'Rubik', sans-serif; text-transform: uppercase; letter-spacing: 0.1cqh; }
+.bootcamp-card.offer { animation: coach-glow 1.6s ease-in-out infinite; }
+
+.bootcamp-offer {
+  display: flex; flex-direction: column; gap: 1cqh; padding: 1.4cqh 1.8cqh; border-radius: 1.4cqh;
+  background: rgba(24, 28, 15, 0.88); border: 0.3cqh solid var(--banana); color: var(--paper);
+}
+.bootcamp-offer p { margin: 0; font-size: 2cqh; font-weight: 600; }
+.bootcamp-offer p b { color: var(--banana); }
+.bootcamp-offer .row { display: flex; gap: 1cqh; }
+.bootcamp-offer .mbtn { font-size: 1.9cqh; padding: 0.8cqh 1.8cqh; }
+
+.recommended { display: inline-block; margin-top: 0.4cqh; padding: 0.3cqh 1cqh; border-radius: 3cqh; background: var(--good); color: var(--ink); font: 800 1.4cqh 'Rubik', sans-serif; text-transform: uppercase; letter-spacing: 0.1cqh; }
+.controls-hint { margin: 1.4cqh 0 0; font-size: 1.9cqh; color: var(--khaki); text-align: center; }
+.controls-hint .mbtn { margin-left: 1cqh; font-size: 1.8cqh; padding: 0.6cqh 1.6cqh; }
+
+@keyframes coach-in { from { opacity: 0; transform: translateY(-1.5cqh); } to { opacity: 1; transform: none; } }
+@keyframes coach-pulse { 50% { opacity: 0.45; } }
+@keyframes coach-glow { 50% { box-shadow: 0 0.7cqh 0 var(--banana-dark), 0 0 3cqh rgba(255, 225, 53, 0.9); } }
+body.a11y-calm .coach-card, body.a11y-calm .coach-tip, body.a11y-calm .bootcamp-card.offer, body.a11y-calm .coach-progress i.now { animation: none; }
+body.a11y-large .coach-card { scale: 1.12; transform-origin: top center; }

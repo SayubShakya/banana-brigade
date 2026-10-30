@@ -42,7 +42,7 @@ export function useNavigation() {
   return { screen, setScreen, parent, setParent, loginKey, openFrom, open, back, clearHash, leavePublic, toHome, reload };
 }
 
-export function useStartRoute({ setScreen }, { restore }, { settings }, { startBattle, deploy }) {
+export function useStartRoute({ setScreen }, { restore }, { settings }, { startBattle, startBootCamp, deploy }) {
   const start = useCallback(() => {
     if (location.pathname !== '/') { setScreen('notfound'); return; }
     api.me().then(({ user }) => {
@@ -62,6 +62,7 @@ export function useStartRoute({ setScreen }, { restore }, { settings }, { startB
     const [name, arg] = hash.split('-');
     if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick', settings.difficulty); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'difficulty') deploy('quick');
+    else if (name === 'bootcamp') startBootCamp();
     else if (name === 'mission' && missionById(Number(arg))) {
       const m = missionById(Number(arg));
       game().prepare('campaign', chapterOf(m).difficulty, m);
