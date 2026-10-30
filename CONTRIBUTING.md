@@ -12,6 +12,8 @@ How work gets into this repository. The Git history is part of the assessment, s
 | `feature/` | A new feature | `feature/campaign` |
 | `fix/` | A bug fix or a behaviour change | `fix/lag-and-clear-ui` |
 | `docs/` | Documentation only | `docs/readme-ci` |
+| `refactor/` | Restructuring with no change in behaviour | `refactor/server-mvc` |
+| `chore/` | Housekeeping (folders, tooling) | `chore/folder-structure` |
 | `test/` | Tests only | `test/daily-edge-cases` |
 
 Use short lower-case names with hyphens.
@@ -73,7 +75,7 @@ Use this for every pull request or before every local merge.
 - [ ] No secrets in the code; settings come from `.env`.
 
 **Clear**
-- [ ] The file header says what the file does and carries the AI credit line.
+- [ ] The file starts with the one-line credit header (code files have no other comments).
 - [ ] Names are clear; no dead code or stray `console.log`.
 - [ ] New events are added to `docs/events.md`; new endpoints to `docs/api.md`.
 - [ ] `CHANGELOG.md` has an entry under the next version.
@@ -93,12 +95,13 @@ git push origin v1.0.0
 ```
 
 Milestones from before 1.0.0 can be tagged on their merge commits in the same way, for example
-`git tag -a v0.4-multiplayer b8b4252 -m "Online rooms over Socket.io, run by the server"` (already done for v0.1 to v0.5). List tags with `git tag -n`.
+`git tag -a v0.4-multiplayer b8b4252 -m "Online rooms over Socket.io, run by the server"` (already done for v0.1 to v0.5;
+releases since then are `v1.0.0` to `v1.3.2`). List tags with `git tag -n`.
 
 ## AI-assisted code
 
 Generative AI may be used for code (not for the assessment video). Every file it helped with carries this line
-in its header comment: "Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya."
+as its one-line header comment: "Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya."
 Code from other people or websites is credited in a comment where it is used.
 
 _Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._
