@@ -51,6 +51,7 @@ export function createHud() {
   let pickupText = '';
   let pickupUntil = 0;
   let zoomLevel = 0;
+  let zoomLabelNow = '1x';
   let zoomText = '';
 
   function toast(text) {
@@ -113,7 +114,7 @@ export function createHud() {
   on('survival:cleared', ({ wave }) => toast(`Wave ${wave} cleared!`));
   on('campaign:ramp', () => toast('The bots are getting sharper!'));
   on('soldier:respawned', ({ soldier }) => { if (soldier.isPlayer) toast('Back in the fight'); });
-  on('input:zoom', ({ level }) => { zoomLevel = level; });
+  on('input:zoom', ({ level, zoomLabel }) => { zoomLevel = level; zoomLabelNow = zoomLabel ?? '1x'; });
   on('input:scoreboard', ({ show }) => { if (world) el.board.hidden = !show; });
 
   function renderMini() {
@@ -160,6 +161,7 @@ export function createHud() {
 
   return {
     attach(w) {
+      zoomLabelNow = '1x';
       world = w;
       el.feed.innerHTML = '';
       el.board.hidden = true;
@@ -207,8 +209,7 @@ export function createHud() {
       el.weapon.textContent = w.name;
       el.ammo.textContent = `${gun.ammo} / ${gun.spare === Infinity ? '∞' : gun.spare}`;
       el.grenades.textContent = p.grenades;
-      const scoped = w.zoom ? zoomLevel >= w.zoom - 1 : false;
-      const z = w.zoom ? (scoped ? '3x · SCOPE' : `${zoomLevel + 1}x · Z for scope`) : `${Math.min(zoomLevel, 1) + 1}x`;
+      const z = zoomLabelNow === '1x' && w.zoom ? '1x · Z / RMB scope' : zoomLabelNow;
       if (z !== zoomText) { zoomText = z; el.zoom.textContent = z; }
       el.reloadBar.style.visibility = p.reloadTimer > 0 ? 'visible' : 'hidden';
       el.reload.style.width = p.reloadTimer > 0 ? `${(1 - p.reloadTimer / w.reload) * 100}%` : '0%';
