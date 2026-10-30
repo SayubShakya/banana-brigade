@@ -203,3 +203,6 @@ so they also work online, where `NetGame.js` re-emits the server's events.
 | `tutorial:step`, `tutorial:done`, `tutorial:skip` | `client/src/game/tutorial.js` | `client/src/components/BootCampCoach.jsx`, `client/src/controllers/useBattle.js` |
 | `tip:show`, `input:help`, `input:move`, `input:jet` | `useBattle.js`, `client/src/game/input.js` | `BootCampCoach.jsx`, `tutorial.js` |
 | `cutscene:started`, `cutscene:ended` | `client/src/services/cutsceneBridge.js` | (available to listeners) |
+
+| `match:countdown` {seconds} | `client/src/game/world.js`, `client/src/net/NetGame.js` (last 10 s) | `client/src/game/hud.js` (red timer) |
+| `input:zoom` {scoped, zoomLabel}, `input:minimap` | `client/src/game/input.js` | `client/src/game/hud.js`, `client/src/game/render.js` |
