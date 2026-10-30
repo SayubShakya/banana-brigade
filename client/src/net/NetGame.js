@@ -41,11 +41,12 @@ export function createNetGame() {
 
   const soldierById = (id) => view?.soldiers.find((s) => s.id === id) ?? null;
 
-  socket.on('match:start', ({ me: myId, teamMode, map, difficulty, roster }) => {
+  socket.on('match:start', ({ me: myId, teamMode, map, difficulty, timeLimit, killLimit, roster }) => {
     level = DIFFICULTY[difficulty] ?? DIFFICULTY.medium;
+    const cfg = { ...MODES.online, ...(timeLimit > 0 && { timeLimit }), ...(killLimit > 0 && { killLimit }) };
     view = {
-      map: createMap(map), mode: teamMode ? 'team' : 'quick', cfg: MODES.online, teamMode, over: false, wave: 0,
-      time: 0, timeLeft: MODES.online.timeLimit, teamKills: { blue: 0, red: 0 },
+      map: createMap(map), mode: teamMode ? 'team' : 'quick', cfg, teamMode, over: false, wave: 0, countdown: null,
+      time: 0, timeLeft: cfg.timeLimit, teamKills: { blue: 0, red: 0 },
       bullets: [], rockets: [], flames: [], grenades: [], particles: [], pickups: [],
       soldiers: roster.map((r) => ({
         ...r, isPlayer: r.id === myId, isDummy: false, w: SOLDIER.width, h: SOLDIER.height,
@@ -205,6 +206,8 @@ export function createNetGame() {
       time: latest.time, timeLeft: latest.timeLeft, teamKills: latest.teamKills,
       bullets: latest.bullets, rockets: latest.rockets, flames: latest.flames, grenades: latest.grenades, pickups: latest.pickups,
     });
+    const seconds = Math.ceil(view.timeLeft);
+    if (seconds <= 10 && seconds > 0 && seconds !== view.countdown) { view.countdown = seconds; emit('match:countdown', { seconds, online: true }); }
   }
 
   function updateParticles(dt) {
