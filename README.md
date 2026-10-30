@@ -51,6 +51,17 @@ only shows pictures and sends controls and answers.
   single-use reset link (30 minutes), and roles.
 - **Open API:** `/api/v1` with an OpenAPI 3 file and Swagger UI at `/api/docs`, plus a public read-only
   leaderboard (`/api/v1/public/leaderboard`, CORS) that other websites can use.
+- **Banana puzzles power the game:** the server times every answer and grades it gold (<5 s), silver (<10 s) or
+  bronze. Grades fill the **Banana Meter** (with a streak multiplier; a miss halves the streak); a full meter calls a
+  **Supply Drop** (X) with a free Banana Power. Gold deploys start with a full meter, gold respawns get a longer
+  shield, gold crates offer more powers. Results show a **Banana report** (accuracy, average time, grades, live vs
+  reserve puzzles).
+- **Boot Camp:** a 90-second guided tutorial (move, jetpack, shoot, pick up, crate, puzzle, power) with a Skip
+  button; one-time tips; H shows the controls again. New players start on Easy, which adds light aim assist and
+  bots that hold fire for 30 s.
+- **Game feel and story clips:** trauma screen shake, a short hit-stop on kills, aim-leading camera, tracers,
+  pickup badges, a low-fuel warning; short skippable story clips (intro, crate, chapters, victory, daily), each
+  shown once, with a Settings switch.
 - **Headshots and animations:** every bullet gun can headshot (gold HEADSHOT tag and pop); ragdolls, respawn
   rings, jetpack smoke, big explosions, melee/throw/reload/swap poses, multi-kill banners, low-health glow.
 - **Fair online crates:** a player solving a banana-crate puzzle is protected and shown in a banana bubble until

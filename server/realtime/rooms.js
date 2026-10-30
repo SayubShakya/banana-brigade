@@ -220,9 +220,9 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       if (!result) return ack(cb)({ error: 'That puzzle has expired' });
       const room = rooms.get(roomOf.get(userId));
       room?.match?.countPuzzle(userId, result.correct);
-      room?.match?.applyPuzzle(userId, owner.purpose, result.correct);
+      room?.match?.applyPuzzle(userId, owner.purpose, result.correct, result.grade);
       award(userId, 'puzzle:answered', result);
-      ack(cb)({ correct: result.correct, solution: result.solution, purpose: owner.purpose });
+      ack(cb)({ correct: result.correct, solution: result.solution, purpose: owner.purpose, ms: result.ms, grade: result.grade });
     });
 
     socket.on('power:choose', (opts, cb) => {

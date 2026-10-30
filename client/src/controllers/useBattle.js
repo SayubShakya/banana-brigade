@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
 import { askPuzzle } from '../services/puzzleBridge.js';
+import { playCutscene } from '../services/cutsceneBridge.js';
 import { MODES, DIFFICULTY } from '../game/config.js';
 import { chapterOf } from '../game/campaign.js';
 import { mapName } from '../game/maps.js';
@@ -44,8 +45,9 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     if (state === 'paused') setScreen('pause');
     else if (state === 'playing' || state === 'ending') setScreen('battle');
   });
-  useBus('game:over', (payload) => {
+  useBus('game:over', async (payload) => {
     if (payload.mission?.bootCamp) { finishBootCamp(false); return; }
+    if (payload.outcome?.won && !payload.online && payload.result?.mode !== 'training') await playCutscene('victory');
     setOver(payload);
     setScreen('results');
   });
@@ -58,7 +60,8 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     setScreen('battle');
   }, [account, parts]);
 
-  const startBootCampBattle = useCallback(() => {
+  const startBootCampBattle = useCallback(async () => {
+    await playCutscene('intro');
     game().quit();
     setOver(null);
     game().prepare('training', 'easy', BOOT_CAMP);
@@ -80,6 +83,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     game().prepare(mode, difficulty);
     if (NO_DEPLOY_PUZZLE.includes(mode)) { startBattle(mode); return; }
     setScreen('menu');
+    await playCutscene('intro');
     const result = await askPuzzle('deploy', {
       modeLabel: `${MODES[mode].name} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
       title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.',
@@ -93,6 +97,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     setOver(null);
     game().prepare('campaign', difficulty, mission);
     setScreen('campaign');
+    await playCutscene(`chapter-${mission.chapter}`);
     const result = await askPuzzle('deploy', {
       modeLabel: `Mission ${mission.id} · ${DIFFICULTY[difficulty].name}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
       title: mission.name, subtitle: `${mapName(mission.map)}: ${mission.target} kills in ${Math.floor(mission.timeLimit / 60)} minutes. Solve the Banana puzzle to deploy.`,

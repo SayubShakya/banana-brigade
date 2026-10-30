@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { emit } from '../services/eventBus.js';
 import { Panel, Rank, Icon, Skeleton } from '../components/common.jsx';
+import { playCutscene } from '../services/cutsceneBridge.js';
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
@@ -50,6 +51,7 @@ export default function Daily({ me, onBack }) {
       setMsg(r.correct ? { text: `Correct! +${r.score - run.score} points`, kind: 'good' } : { text: n < 0 ? `Time is up: it was ${r.solution}.` : `Not quite: it was ${r.solution}.`, kind: 'bad' });
       if (r.finished) {
         setRun((x) => ({ ...x, score: r.score, solved: r.solved, finished: true, streak: r.streak }));
+        playCutscene('daily');
         refresh();
       } else {
         setRun((x) => ({ ...x, score: r.score, solved: r.solved, bonus: r.bonus }));
