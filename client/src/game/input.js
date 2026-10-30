@@ -1,7 +1,8 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { emit } from '../services/eventBus.js';
-import { isAimedAtEnemy } from './autoFire.js';
+import { isAimedAtEnemy, assistAim } from './autoFire.js';
+import { tutorialTick } from './tutorial.js';
 
 const MOVE_KEYS = {
   KeyA: 'left', ArrowLeft: 'left',
@@ -9,6 +10,14 @@ const MOVE_KEYS = {
   KeyW: 'jet', ArrowUp: 'jet', Space: 'jet',
 };
 const ACTION_KEYS = { KeyR: 'reload', KeyQ: 'swap', KeyG: 'grenade', KeyF: 'melee', KeyV: 'melee', KeyE: 'pickup' };
+
+export function toggleHelp(el = document.getElementById('hud-help')) {
+  if (!el) return false;
+  const showing = !el.hidden && !el.classList.contains('fade');
+  el.hidden = false;
+  el.classList.toggle('fade', showing);
+  return !showing;
+}
 
 function joystick(base, onMove) {
   const knob = base.querySelector('.knob');
@@ -45,6 +54,8 @@ export function createInput(canvas, renderer) {
   let zoom = 0;
   let enabled = false;
   let autoFire = true;
+  let lastDir = 0;
+  let lastJet = false;
 
   const press = (action) => { if (enabled) pending[action] = true; };
   const cycleZoom = () => { zoom = (zoom + 1) % 3; emit('input:zoom', { level: zoom }); };
@@ -55,6 +66,7 @@ export function createInput(canvas, renderer) {
     if (e.code === 'Tab') { e.preventDefault(); emit('input:scoreboard', { show: true }); return; }
     if (e.code === 'KeyZ' && !e.repeat) cycleZoom();
     if (e.code === 'KeyB' && !e.repeat) emit('input:banana');
+    if (e.code === 'KeyH' && !e.repeat) emit('input:help', { visible: toggleHelp() });
     if (MOVE_KEYS[e.code]) { held[MOVE_KEYS[e.code]] = true; e.preventDefault(); }
     if (ACTION_KEYS[e.code] && !e.repeat) pending[ACTION_KEYS[e.code]] = true;
   });
@@ -120,6 +132,13 @@ export function createInput(canvas, renderer) {
         c.aimX = aim.x;
         c.aimY = aim.y;
       }
+      const assisted = assistAim(world, player, { x: c.aimX, y: c.aimY });
+      c.aimX = assisted.x;
+      c.aimY = assisted.y;
+      const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
+      if (dir !== lastDir) { lastDir = dir; emit('input:move', { dir, time: world?.time ?? 0 }); }
+      if (c.jet !== lastJet) { lastJet = c.jet; emit('input:jet', { on: c.jet, time: world?.time ?? 0 }); }
+      tutorialTick(world);
       if (autoFire && !c.fire && world) c.fire = isAimedAtEnemy(player, world);
       for (const k of Object.keys(pending)) {
         if (pending[k]) { c[k] = true; pending[k] = false; }
