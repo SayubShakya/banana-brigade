@@ -1,9 +1,14 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { VIEW, TILE, WEAPONS, SOLDIER, ZOOM_LEVELS, POWERS } from './config.js';
+import { VIEW, TILE, WEAPONS, SOLDIER, POWERS } from './config.js';
 
 const LEAD = { distance: 60, rate: 4 };
-const SNIPER_ZOOM_OUT = 0.9;
+export const ZOOM_SCALE = { normal: 1, scope: 1.6, far: 0.85 };
+export const LOOK = { normal: 0.3, far: 0.35, scope: 0.55 };
+export const SAFE_BOX = { left: 0.3, right: 0.62, top: 0.3, bottom: 0.6 };
+export const HARD_BOX = { left: 0.12, right: 0.8, top: 0.12, bottom: 0.78 };
+const ANCHOR = { x: 0.47, y: 0.45 };
+const CAMERA_RATE = 8;
 const TRACER_SPEED = 1500;
 const REACH = { x: 26, y: 36 };
 const NEEDS_KEY = new Set(['banana', 'weapon']);
@@ -12,6 +17,34 @@ import { drawSoldier, drawWeaponPickup } from './characters.js';
 import { activeGun } from './world.js';
 import { raycast, KIND } from './map.js';
 import { createEffects } from './effects.js';
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+export function playerScreenTarget({ mouse, lead, scale, look, view = VIEW }) {
+  const sx = view.width * ANCHOR.x - (mouse.x - view.width / 2) * look - lead.x * scale;
+  const sy = view.height * ANCHOR.y - (mouse.y - view.height / 2) * look - lead.y * scale;
+  return {
+    x: clamp(sx, view.width * SAFE_BOX.left, view.width * SAFE_BOX.right),
+    y: clamp(sy, view.height * SAFE_BOX.top, view.height * SAFE_BOX.bottom),
+  };
+}
+
+export function cameraTarget({ px, py, mouse, lead, scale, look, map, view = VIEW }) {
+  const s = playerScreenTarget({ mouse, lead, scale, look, view });
+  return {
+    x: clamp(px - s.x / scale, 0, Math.max(0, map.width - view.width / scale)),
+    y: clamp(py - s.y / scale, 0, Math.max(0, map.height - view.height / scale)),
+  };
+}
+
+export function keepInBox(cam, px, py, scale, map, view = VIEW, box = HARD_BOX) {
+  const x = clamp(cam.x, px - (view.width * box.right) / scale, px - (view.width * box.left) / scale);
+  const y = clamp(cam.y, py - (view.height * box.bottom) / scale, py - (view.height * box.top) / scale);
+  return {
+    x: clamp(x, 0, Math.max(0, map.width - view.width / scale)),
+    y: clamp(y, 0, Math.max(0, map.height - view.height / scale)),
+  };
+}
 
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
@@ -40,23 +73,23 @@ export function createRenderer(canvas) {
   const onScreen = (wx, wy) => wx >= cam.x && wx <= cam.x + vw() && wy >= cam.y && wy <= cam.y + vh();
   const effects = createEffects({ toViewFromWorld, onScreen });
   let scopeT = 0;
+  let scoped = false;
+  let look = LOOK.normal;
 
   function updateCamera(world, mouse, dt) {
     const p = world.player;
     const px = p.x + p.w / 2;
     const py = p.y + p.h / 2;
-    const lookX = ((mouse.x - VIEW.width / 2) / scale) * 0.35;
-    const lookY = ((mouse.y - VIEW.height / 2) / scale) * 0.35;
     const k0 = Math.min(1, dt * LEAD.rate);
     const leadX = p.alive ? Math.cos(p.aim ?? 0) * LEAD.distance : 0;
     const leadY = p.alive ? Math.sin(p.aim ?? 0) * LEAD.distance * 0.6 : 0;
     lead.x += (leadX - lead.x) * k0;
     lead.y += (leadY - lead.y) * k0;
-    const tx = Math.max(0, Math.min(world.map.width - vw(), px - vw() / 2 + lookX + lead.x));
-    const ty = Math.max(0, Math.min(world.map.height - vh(), py - vh() / 2 + lookY + lead.y));
-    const k = Math.min(1, dt * (8 - 5 * scopeT));
-    cam.x += (tx - cam.x) * k;
-    cam.y += (ty - cam.y) * k;
+    const t = cameraTarget({ px, py, mouse, lead, scale, look, map: world.map });
+    const k = Math.min(1, dt * CAMERA_RATE);
+    cam.x += (t.x - cam.x) * k;
+    cam.y += (t.y - cam.y) * k;
+    Object.assign(cam, keepInBox(cam, px, py, scale, world.map));
   }
 
   const hash = (a, b = 0) => {
@@ -628,52 +661,35 @@ export function createRenderer(canvas) {
   function drawScope(mouse) {
     if (scopeT < 0.01) return;
     const ease = 1 - (1 - scopeT) * (1 - scopeT);
-    const r = 250 + (1 - ease) * 500;
-    const { x, y } = mouse;
-    ctx.globalAlpha = ease;
-    ctx.fillStyle = 'rgba(8,10,12,0.86)';
-    ctx.beginPath();
-    ctx.rect(0, 0, VIEW.width, VIEW.height);
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill('evenodd');
     if (!lensTint) {
-      lensTint = ctx.createRadialGradient(0, 0, 0.55, 0, 0, 1);
-      lensTint.addColorStop(0, 'rgba(120,200,255,0.05)');
-      lensTint.addColorStop(1, 'rgba(0,30,40,0.45)');
+      const cx = VIEW.width / 2;
+      const cy = VIEW.height / 2;
+      lensTint = ctx.createRadialGradient(cx, cy, VIEW.height * 0.5, cx, cy, Math.hypot(cx, cy));
+      lensTint.addColorStop(0, 'rgba(6,10,14,0)');
+      lensTint.addColorStop(0.55, 'rgba(6,10,14,0.18)');
+      lensTint.addColorStop(1, 'rgba(6,10,14,0.35)');
     }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(r, r);
+    ctx.globalAlpha = ease;
     ctx.fillStyle = lensTint;
-    ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = '#05070a';
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(10,10,10,0.9)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x - r, y); ctx.lineTo(x - r * 0.45, y); ctx.moveTo(x + r * 0.45, y); ctx.lineTo(x + r, y);
-    ctx.moveTo(x, y + r); ctx.lineTo(x, y + r * 0.45);
-    ctx.stroke();
+    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+    const { x, y } = mouse;
+    const r = 34;
+    ctx.strokeStyle = 'rgba(10,14,18,0.75)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x - 4, y); ctx.moveTo(x + 4, y); ctx.lineTo(x + r * 0.45, y);
-    ctx.moveTo(x, y - r); ctx.lineTo(x, y - 4); ctx.moveTo(x, y + 4); ctx.lineTo(x, y + r * 0.45);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.moveTo(x - r - 46, y); ctx.lineTo(x - 20, y); ctx.moveTo(x + 20, y); ctx.lineTo(x + r + 46, y);
+    ctx.moveTo(x, y - r - 46); ctx.lineTo(x, y - 20); ctx.moveTo(x, y + 20); ctx.lineTo(x, y + r + 46);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(10,10,10,0.9)';
-    for (let i = 1; i <= 3; i++) {
-      const d = (r / 6) * i * 0.9;
-      ctx.fillRect(x - d - 1.5, y - 1.5, 3, 3); ctx.fillRect(x + d - 1.5, y - 1.5, 3, 3);
-      ctx.fillRect(x - 1.5, y - d - 1.5, 3, 3); ctx.fillRect(x - 1.5, y + d - 1.5, 3, 3);
+    ctx.fillStyle = 'rgba(10,14,18,0.75)';
+    for (const d of [r * 0.45, r * 0.8]) {
+      ctx.fillRect(x - d - 1, y + 3, 2, 3); ctx.fillRect(x + d - 1, y + 3, 2, 3);
+      ctx.fillRect(x - 1, y + d - 1, 2, 2);
     }
-    ctx.fillStyle = '#e63946';
-    ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 
   function drawCrosshair(mouse, world) {
-    if (scopeT > 0.6) return;
     const p = world.player;
     const reloading = p.reloadTimer > 0;
     ctx.strokeStyle = reloading ? '#f4a261' : '#ffffff';
@@ -691,10 +707,13 @@ export function createRenderer(canvas) {
 
   function render(world, mouse, dt, zoomTarget = 1) {
     const p = world.player;
-    const sniperHeld = p.alive && activeGun(p).key === 'sniper';
-    const scoped = sniperHeld && zoomTarget <= ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
-    const wantScale = sniperHeld && !scoped ? zoomTarget * SNIPER_ZOOM_OUT : zoomTarget;
-    if (!effects.frozen) scale += (wantScale - scale) * Math.min(1, dt * 6 || 1);
+    const engaged = p.alive && zoomTarget < 1;
+    scoped = engaged && activeGun(p).key === 'sniper';
+    const wantScale = scoped ? ZOOM_SCALE.scope : engaged ? ZOOM_SCALE.far : ZOOM_SCALE.normal;
+    const wantLook = scoped ? LOOK.scope : engaged ? LOOK.far : LOOK.normal;
+    const ks = Math.min(1, dt * 6 || 1);
+    if (!effects.frozen) scale += (wantScale - scale) * ks;
+    look += (wantLook - look) * ks;
     scopeT += ((scoped ? 1 : 0) - scopeT) * Math.min(1, dt * 7);
     if (!effects.frozen) updateCamera(world, mouse, dt);
     effects.update(world, dt);
@@ -729,6 +748,8 @@ export function createRenderer(canvas) {
 
   return {
     render, toView, toWorld, toViewFromWorld,
+    get scoped() { return scoped; },
+    get zoomLabel() { return scoped ? 'SCOPE' : scale < 0.95 ? 'FAR' : '1x'; },
     setLaser: (on) => { laser = on; },
     setBanners: (on) => effects.setBanners(on),
   };
