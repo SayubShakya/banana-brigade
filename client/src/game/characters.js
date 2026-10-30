@@ -225,7 +225,27 @@ function swingAngle(t) {
   return 0.9 * (1 - (t - 0.55) / 0.45);
 }
 
+const flashAvatars = new WeakMap();
+function flashAvatar(avatar) {
+  let white = flashAvatars.get(avatar);
+  if (!white) {
+    white = Object.fromEntries(Object.entries(avatar).map(([k, v]) => [k, typeof v === 'string' && (v.startsWith('#') || v.startsWith('rgb')) ? '#ffffff' : v]));
+    flashAvatars.set(avatar, white);
+  }
+  return white;
+}
+
 export function drawSoldier(ctx, s, avatar, time) {
+  drawSoldierBody(ctx, s, avatar, time);
+  const flash = Math.min(1, s.hitFlash || 0);
+  if (flash <= 0) return;
+  ctx.save();
+  ctx.globalAlpha *= 0.85 * flash;
+  drawSoldierBody(ctx, { ...s, hurtFlash: 0, shielded: false, jetting: false, swing: 0 }, flashAvatar(avatar), time);
+  ctx.restore();
+}
+
+function drawSoldierBody(ctx, s, avatar, time) {
   const cx = s.x + s.w / 2;
   const top = s.y;
   const feet = s.y + s.h;

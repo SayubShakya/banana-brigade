@@ -15,6 +15,10 @@ const GOLD = '#ffc300';
 const POSE = { melee: 0.32, throw: 0.4, swap: 0.35, land: 0.28, flinch: 0.18 };
 const CORPSE_LIFE = 2.2;
 const NO_MAG = new Set(['rocket', 'flamer']);
+const TRAUMA = { max: 16, decay: 1.7, perPixel: 1 / 14 };
+const HIT_STOP = 0.05;
+const HIT_FLASH = 0.09;
+const KILL_FLASH = 0.12;
 
 function makePool(size, make) {
   const items = Array.from({ length: size }, () => ({ ...make(), active: false }));
@@ -67,7 +71,8 @@ export function createEffects(view) {
   const headPop = { age: 9, life: 0.8, kill: false };
   const banner = { age: 9, life: 1.6, text: '' };
   const kick = { x: 0, y: 0 };
-  let shake = 0;
+  let trauma = 0;
+  let hitStop = 0;
   let streak = 0;
   let quickKills = 0;
   let lastKillAt = -99;
@@ -84,7 +89,7 @@ export function createEffects(view) {
     recoil.clear();
     anims.clear();
     marker.age = killPop.age = headPop.age = banner.age = 9;
-    kick.x = kick.y = shake = 0;
+    kick.x = kick.y = trauma = hitStop = 0;
     streak = quickKills = 0;
     lastKillAt = -99;
   }
@@ -92,7 +97,7 @@ export function createEffects(view) {
   function animOf(s) {
     let a = anims.get(s);
     if (!a) {
-      a = { melee: 9, throwT: 9, swap: 9, land: 9, landAmp: 0, flinch: 9, flinchDir: 0, lean: 0, prevX: null, current: s.current, jet: 0 };
+      a = { hit: 9, melee: 9, throwT: 9, swap: 9, land: 9, landAmp: 0, flinch: 9, flinchDir: 0, lean: 0, prevX: null, current: s.current, jet: 0 };
       anims.set(s, a);
     }
     return a;
@@ -105,7 +110,8 @@ export function createEffects(view) {
 
   const isMe = (s) => !!s && !!world && s === world.player;
 
-  function addShake(amount) { if (!calm()) shake = Math.min(14, Math.max(shake, amount)); }
+  function addShake(amount) { if (!calm() && amount > 0) trauma = Math.min(1, trauma + amount * TRAUMA.perPixel); }
+  const wobble = (t, seed) => Math.sin(t * 37 + seed) * 0.6 + Math.sin(t * 23.3 + seed * 2.1) * 0.4;
 
   function traceImpact(shooter, x, y, angle, w) {
     const ex = x + Math.cos(angle) * w.range;
@@ -191,6 +197,7 @@ export function createEffects(view) {
     if (amount > 0) {
       const a = animOf(victim);
       a.flinch = 0;
+      a.hit = 0;
       a.flinchDir = attacker && attacker !== victim ? Math.sign(attacker.x - victim.x) || 1 : 0;
       let n = null;
       for (const it of numbers.items) if (it.active && it.victim === victim && it.age < 0.15) { n = it; break; }
@@ -221,6 +228,7 @@ export function createEffects(view) {
     if (victim) spawnCorpse(victim, killer, headshot);
     if (isMe(victim)) { streak = 0; quickKills = 0; }
     if (isMe(killer) && victim !== killer) {
+      if (!calm()) hitStop = HIT_STOP;
       streak += 1;
       marker.age = 0; marker.life = 0.45; marker.kill = true; marker.headshot = !!headshot;
       killPop.age = 0; killPop.streak = streak;
@@ -250,6 +258,7 @@ export function createEffects(view) {
     const spin = Math.sign(c.vx || -c.facing) * rand(5, 8) * (headshot ? 1.4 : 1);
     c.vr = calm() ? spin * 0.4 : spin;
     c.rot = 0; c.bounces = 0; c.resting = false;
+    c.flash = isMe(killer) && killer !== victim;
   }
 
   const halfHeight = (c) => Math.abs(Math.cos(c.rot)) * c.h / 2 + Math.abs(Math.sin(c.rot)) * c.w / 2;
@@ -335,6 +344,7 @@ export function createEffects(view) {
 
   function update(w, dt) {
     if (w !== world) { world = w; reset(); }
+    if (hitStop > 0) { hitStop = Math.max(0, hitStop - dt); dt *= 0.15; }
     clock += dt;
     updateSoldiers(dt);
     for (const c of corpses.items) if (c.active) updateCorpse(c, dt);
@@ -390,15 +400,17 @@ export function createEffects(view) {
 
     const k = Math.min(1, dt * 12);
     kick.x -= kick.x * k; kick.y -= kick.y * k;
-    shake = Math.max(0, shake - shake * Math.min(1, dt * 7) - dt * 2);
-    offset.x = kick.x + (shake ? rand(-shake, shake) : 0);
-    offset.y = kick.y + (shake ? rand(-shake, shake) : 0);
+    if (calm()) trauma = 0;
+    trauma = Math.max(0, trauma - TRAUMA.decay * dt);
+    const amp = TRAUMA.max * trauma * trauma;
+    offset.x = kick.x + (amp ? amp * wobble(clock, 1.3) : 0);
+    offset.y = kick.y + (amp ? amp * wobble(clock, 7.9) : 0);
   }
 
   function updateSoldiers(dt) {
     for (const s of world.soldiers) {
       const a = animOf(s);
-      a.melee += dt; a.throwT += dt; a.swap += dt; a.land += dt; a.flinch += dt;
+      a.hit += dt; a.melee += dt; a.throwT += dt; a.swap += dt; a.land += dt; a.flinch += dt;
       if (s.current !== a.current) { if (s.alive && a.current !== undefined) a.swap = 0; a.current = s.current; }
       let target = 0;
       if (s.alive && a.prevX !== null && dt > 0) {
@@ -417,9 +429,10 @@ export function createEffects(view) {
 
   function applyPose(s, v) {
     const a = anims.get(s);
-    v.lean = 0; v.squash = 0; v.gunTilt = 0; v.swing = 0; v.throwArm = 0;
+    v.lean = 0; v.squash = 0; v.gunTilt = 0; v.swing = 0; v.throwArm = 0; v.hitFlash = 0;
     if (!a) return v;
     v.lean = a.lean;
+    if (a.hit < HIT_FLASH && !calm()) v.hitFlash = 1 - a.hit / HIT_FLASH;
     if (a.flinch < POSE.flinch && a.flinchDir && !calm()) v.lean -= a.flinchDir * 0.14 * (1 - a.flinch / POSE.flinch);
     if (a.land < POSE.land) v.squash = a.landAmp * (1 - a.land / POSE.land) ** 2;
     if (a.melee < POSE.melee) v.swing = a.melee / POSE.melee;
@@ -549,7 +562,7 @@ export function createEffects(view) {
     ctx.globalAlpha = 1;
   }
 
-  const corpseView = { x: 0, y: 0, w: 28, h: 50, facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false, weapon: 'magnum', hurtFlash: 0, shielded: false, recoil: 0 };
+  const corpseView = { x: 0, y: 0, w: 28, h: 50, facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false, weapon: 'magnum', hurtFlash: 0, hitFlash: 0, shielded: false, recoil: 0 };
 
   function drawUnder(ctx, cam, time) {
     for (const sc of scorches.items) {
@@ -568,6 +581,7 @@ export function createEffects(view) {
       corpseView.w = c.w; corpseView.h = c.h; corpseView.x = -c.w / 2; corpseView.y = -c.h / 2;
       corpseView.facing = c.facing; corpseView.aim = c.aim; corpseView.weapon = c.weapon;
       corpseView.hurtFlash = c.age < 0.15 ? 1 : 0;
+      corpseView.hitFlash = c.flash && c.age < KILL_FLASH && !calm() ? 1 - c.age / KILL_FLASH : 0;
       drawSoldier(ctx, corpseView, c.avatar, time);
       ctx.restore();
     }
@@ -699,6 +713,9 @@ export function createEffects(view) {
     drawUnder,
     applyPose,
     calm,
+    get frozen() { return hitStop > 0; },
+    get trauma() { return trauma; },
+    addShake,
     recoilOf: (s) => recoil.get(s) ?? 0,
     get offset() { return offset; },
     setBanners(onOff) { banners = onOff; },
