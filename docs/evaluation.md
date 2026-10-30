@@ -1,8 +1,8 @@
 # Evaluation: choices, alternatives and limits
 
 For each theme: what was chosen, what else was possible, the trade-offs, and the honest limits. Comparisons with
-other students' Banana API games come from the research notes in
-`04 Assessment and Feedback/My plans/RESEARCH-other-banana-games.md` (outside this repository).
+other Banana API games come from looking at other students' public projects; they are described in general
+terms, without names.
 
 ## 1. Version control
 
@@ -11,7 +11,8 @@ other students' Banana API games come from the research notes in
 into `main`, so every feature shows as its own bubble in `git log --graph`. GitHub Actions runs the tests and
 the build on every push and pull request. A pull-request template and a review checklist are in the repository.
 Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`,
-`v0.4-multiplayer`, `v0.5-campaign` and `v1.0.0` (`git tag -n`). The release steps are in `CONTRIBUTING.md`.
+`v0.4-multiplayer`, `v0.5-campaign`, then `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.3.1` and `v1.3.2` (`git tag -n`).
+The release steps are in `CONTRIBUTING.md`. At the time of writing `main` has 355 commits, 75 of them merge commits.
 
 | Alternative | For | Against |
 |---|---|---|
@@ -26,10 +27,13 @@ Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-
   GitHub. The PR template and CI are the review workflow; using real GitHub pull requests with a required green
   check is the obvious improvement.
 - One developer: branches rarely conflict, so the history shows little real merge-conflict resolution.
-- Most work happened on two days (14 and 28 October), so the dates show bursts rather than steady progress.
+- Most work happened in a few days (14 and 28–30 October), so the dates show bursts rather than steady progress.
 - The history keeps a real design change: SQLite (`fadda7c`) replaced by MongoDB (`75afbbd`). Because
-  `server/repositories/index.js` hid the database behind functions, the swap touched only the database and schema files (today `server/repositories/` and `server/models/`) and the session
-  store; the routes did not change. That is evidence the modular structure worked.
+  `server/db.js` hid the database behind functions, the swap commit changed only `server/db.js`, a new
+  `server/models.js` and the package files; the routes did not change (`git show 75afbbd --stat`). That is evidence
+  the modular structure worked. Today the same idea is split into `server/repositories/` and `server/models/`.
+- A later restructure (`refactor/server-mvc`, `refactor/client-mvc`) moved the code into layers on its own
+  branches, with the tests passing before and after.
 - CI checks tests and the build, but there is no linter or test-coverage gate.
 
 ## 2. Event-driven programming
@@ -41,7 +45,7 @@ for online play.
 
 | Choice | Alternative | Why this one |
 |---|---|---|
-| Custom bus (28 lines) | DOM `CustomEvent` on `window`; a library such as mitt or RxJS | Works in Node too (the engine runs on the server); no dependency; errors in one listener are caught |
+| Custom bus (23 lines) | DOM `CustomEvent` on `window`; a library such as mitt or RxJS | Works in Node too (the engine runs on the server); no dependency; errors in one listener are caught |
 | Engine emits, others listen | Engine calls `hud.addKill()`, `sound.play()` directly | The engine has no screen code, so the same `world.js` runs on the server with a different `emit` |
 | React for screens, canvas loop for the battle | Everything in React state; or everything in canvas | React re-rendering 60 times a second would be slow; menus in canvas would be hard to build and not accessible |
 | Two events (`game:state`, `game:over`) as the engine↔React contract | React polls the engine | Local and online games emit the same events, so `App.jsx` has one code path |
@@ -51,10 +55,11 @@ for online play.
 
 **Limits**
 - A global bus makes it harder to see who listens to what. `docs/events.md` exists for that reason.
-- Some events have no listeners yet (`match:started`, `weapon:switched`, `banana:requested`).
-- On the server, the rules are held in an array and `achievements.emit` awaits them in order. The
-  `EventEmitter` itself has no extra listeners yet. This keeps the "which badges did this unlock?" reply simple,
-  but a slow rule delays the HTTP reply.
+- Some events have no listeners yet (`banana:requested`, `banana:loaded`, `match:countdown`, `input:minimap`,
+  `cutscene:started`).
+- On the server, the rules are held in an array and `achievements.emit` awaits them in order. The only other
+  listener on the `EventEmitter` is the admin event feed (`server/services/eventLog.js:27-36`). This keeps the
+  "which badges did this unlock?" reply simple, but a slow rule delays the HTTP reply.
 - Bus events are synchronous; a heavy listener would slow the frame.
 
 ## 3. Interoperability
@@ -72,16 +77,17 @@ JSON over HTTP (`fetch`) and, for online play, Socket.io.
 | Ready pool (3) + reserve (25) | Fetch on every request; a fixed fallback image | Instant puzzles and the game still works if the API "may be discontinued without notice". A reserve puzzle can repeat |
 | All API code in one file (`bananaApi.js`) | Calls spread over routes | If the API changes, only one file changes; the tests replace it with a fake |
 | REST/JSON for menus, Socket.io for matches | Polling HTTP for matches; raw `ws`; WebRTC | Polling at 30 Hz would be wasteful and laggy. Socket.io adds rooms, acks, reconnection and a polling fallback over raw `ws`, at the cost of a bigger library and its own protocol. WebRTC would be peer-to-peer, so no server authority |
-| Server-authoritative online matches | Each browser reports its own kills (as Banana Brain Quest did) | The server must run the physics for every room (CPU cost), and players see others 60 ms in the past; in return nobody can fake kills |
+| Server-authoritative online matches | Each browser reports its own kills (as one other student's game did) | The server must run the physics for every room (CPU cost), and players see others 60 ms in the past; in return nobody can fake kills |
 
 **Limits**
 - No caching headers or rate limits towards the Banana API beyond the pool; many players at once could still
   hit it often.
-- The reserve lives in memory and is lost on restart.
+- The reserve (the last 25 puzzles) is saved in MongoDB and loaded at start-up, so it survives a restart; but a
+  reserve puzzle can repeat, so a player could remember its answer.
 - **Daily answers can be shared.** Every player gets the same 5 puzzles, and the solution is shown after
   answering, so a player who has finished could tell a friend. This is an accepted trade-off: a fair shared
   leaderboard needs the same puzzles, and showing the answer helps players learn.
-- **A daily run that crosses midnight UTC cannot be finished.** The routes use today's date, so a run started at
+- **A daily run that crosses midnight UTC cannot be finished.** The daily service uses today's date, so a run started at
   23:59 belongs to a day that has ended.
 - ~~Our REST API has no version prefix and no OpenAPI file~~: now `/api/v1` with the old paths kept, an OpenAPI 3
   file checked against the code by a test, and Swagger UI at `/api/docs` (`feature/openapi-v1`).
@@ -139,8 +145,9 @@ The first version locked a *username* after 5 wrong passwords. That had two prob
 could lock you out for 10 minutes, and the check ("fewer than 5 failures?") and the record ("one more failure")
 were two separate steps, so guesses sent in parallel could all pass the check before any was recorded.
 Now every try is counted *before* the password is checked, with one atomic `findOneAndUpdate` + `$inc` on a
-counter document (`server/repositories/index.js`, `bumpCounter`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
-5 are checked and 7 are refused (`tests/integration/password-reset.test.js`). A correct password takes its try back.
+counter document (`bumpCounter`, `server/repositories/rateLimitRepository.js:5-19`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
+5 are checked and 7 are refused (`tests/integration/password-reset.test.js:114`). A correct password takes its try back
+(`server/services/rateLimiter.js:32`).
 
 | Option | For | Against |
 |---|---|---|
@@ -234,7 +241,7 @@ warning is logged (fail open).
 
 | Alternative | For | Against |
 |---|---|---|
-| JWT in `localStorage` (Banana Brain Quest) | Stateless; no session store | JavaScript can read it, so an XSS bug can steal it; cannot be revoked before it expires without a deny-list |
+| JWT in `localStorage` (as one other student's game does) | Stateless; no session store | JavaScript can read it, so an XSS bug can steal it; cannot be revoked before it expires without a deny-list |
 | JWT in an HttpOnly cookie | Not readable by JavaScript; stateless | Still hard to revoke; "log out everywhere" needs a server-side list anyway |
 | OAuth / OpenID Connect (Google, GitHub) | No passwords to store; MFA from the provider | Depends on a third party; extra setup (client ids, redirect URLs); players need such an account |
 | Plain SHA-256 password hash | Fast | Fast is bad: easy to brute-force. bcrypt is slow on purpose and salted |
@@ -254,7 +261,7 @@ warning is logged (fail open).
 - "Remember me" on a shared computer lets the next person in; that is why it is off by default.
 - **Single-player kills are reported by the browser.** Puzzle counts, stars and daily scores are checked by the
   server, and online matches are fully server-authoritative, but in offline modes a modified browser could post
-  a high kill count (within the limits in `routes/scores.js`).
+  a high kill count (within the limits in `server/services/scoreService.js:12-23`).
 - No HTTPS in local development; the cookie becomes `Secure` only with `NODE_ENV=production`.
 - No email address on accounts, so no email verification; no multi-factor authentication.
 - SameSite=Lax is the CSRF defence; there is no separate CSRF token.
