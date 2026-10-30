@@ -9,25 +9,25 @@ const FADE = 1.2;
 
 const TRACKS = {
   menu: {
-    bpm: 84, stepsPerBeat: 2, stepsPerBar: 8, cutoff: 1400,
-    bass: { type: 'triangle', volume: 0.2 }, lead: { type: 'sine', volume: 0.07 },
+    bpm: 70, stepsPerBeat: 2, stepsPerBar: 8, cutoff: 1100,
+    bass: { type: 'triangle', volume: 0.15 }, lead: { type: 'sine', volume: 0.05 },
     chords: [[45, [69, 72, 76]], [41, [65, 69, 72]], [48, [67, 72, 76]], [43, [67, 71, 74]]],
     bassAt: (s) => (s === 0 || s === 4 ? 0 : null),
     bassLength: 4,
     leadAt: (s) => [0, 1, 2, 1, 2, 1, 0, null][s],
   },
   battle: {
-    bpm: 138, stepsPerBeat: 4, stepsPerBar: 16, cutoff: 2200,
-    bass: { type: 'sawtooth', volume: 0.13 }, lead: { type: 'square', volume: 0.045 },
+    bpm: 96, stepsPerBeat: 2, stepsPerBar: 8, cutoff: 1300,
+    bass: { type: 'triangle', volume: 0.16 }, lead: { type: 'sine', volume: 0.05 },
     chords: [[40, [64, 67, 71]], [36, [64, 67, 72]], [38, [62, 66, 69]], [35, [63, 66, 71]]],
     bassAt: (s) => (s % 2 ? null : s % 4 === 2 ? 12 : 0),
-    bassLength: 1.6,
-    leadAt: (s) => [0, 1, 2, 3, 2, 1][s % 6],
+    bassLength: 1.8,
+    leadAt: (s) => [0, null, 2, null, 1, null, 3, null][s],
   },
 };
 
 let master = null;
-let volume = 0.6;
+let volume = 0.4;
 let muted = false;
 let wanted = 'menu';
 const players = [];
@@ -42,7 +42,7 @@ function note(ctx, out, midi, time, length, { type, volume: v }) {
   o.frequency.value = freq(midi);
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, time);
-  g.gain.exponentialRampToValueAtTime(v, time + 0.015);
+  g.gain.exponentialRampToValueAtTime(v, time + 0.05);
   g.gain.exponentialRampToValueAtTime(0.0001, time + length);
   o.connect(g).connect(out);
   o.start(time);
