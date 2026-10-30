@@ -139,7 +139,7 @@ export function createHud() {
       }
       const [rank, name, kills] = li.children;
       const scored = !fresh && Number(kills.textContent) < r.kills;
-      rank.textContent = r.rank;
+      rank.textContent = rows.some((x) => x.kills > 0) ? r.rank : '–';
       name.textContent = r.name;
       kills.textContent = r.kills;
       li.className = ['mb-row', r.me && 'me', r.gap && 'gap', r.team && `mb-${r.team}`].filter(Boolean).join(' ');
@@ -149,7 +149,8 @@ export function createHud() {
     if (!animate) return;
     for (const r of rows) {
       const li = miniEls.get(r.id);
-      const dy = (before.get(r.id) ?? li.getBoundingClientRect().top) - li.getBoundingClientRect().top;
+      if (!before.has(r.id)) { li.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 250 }); continue; }
+      const dy = before.get(r.id) - li.getBoundingClientRect().top;
       if (dy) li.animate?.([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.3,1)' });
     }
   }

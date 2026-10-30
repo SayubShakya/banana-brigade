@@ -113,7 +113,7 @@ export const BANANA_METER = {
   crateChoices: { gold: 4, silver: 3, bronze: 2 },
   supplyChoices: 4,
   goldShield: 4,
-  dropOffset: 60,
+  dropOffset: 20,
   dropLife: 25,
   key: 'KeyX',
 };

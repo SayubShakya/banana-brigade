@@ -54,6 +54,7 @@ test('a full meter calls a supply drop crate that opens without a puzzle', () =>
   const drop = events.find((e) => e.name === 'banana:drop');
   assert.deepEqual({ x: drop.payload.x, y: drop.payload.y }, { x: crate.x, y: crate.y });
   assert.ok(Math.abs(crate.x - (p.x + p.w / 2)) <= BANANA_METER.dropOffset);
+  assert.ok(Math.abs(crate.x - (p.x + p.w / 2)) <= 26 && Math.abs(crate.y - (p.y + p.h / 2)) <= 36, 'the drop lands within E reach, no walking needed');
   openSupplyCrate(crate);
   updateWorld(w, 1 / 60);
   assert.ok(!w.pickups.includes(crate), 'an opened supply crate is gone for good');

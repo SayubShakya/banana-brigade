@@ -34,10 +34,7 @@ function BananaReport({ s }) {
     <section className="banana-report" aria-label="Banana report">
       <h3>Banana report</h3>
       <dl>
-        <div><dt>Puzzles solved</dt><dd>{r.solved} / {r.attempts}</dd></div>
-        <div><dt>Accuracy</dt><dd>{r.accuracy}</dd></div>
         <div><dt>Average solve time</dt><dd>{r.average}</dd></div>
-        <div><dt>Best streak</dt><dd>{r.best}</dd></div>
         <div><dt>Speed medals</dt><dd className="medals">{MEDALS.map(([k, label]) => <span key={k} className="grade-badge" data-grade={k}>{label} {r.grades[k]}</span>)}</dd></div>
         <div><dt>Live / reserve puzzles</dt><dd>{r.live} / {r.reserve}</dd></div>
         <div><dt>Supply drops called</dt><dd>{r.drops}</dd></div>
@@ -106,7 +103,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
       {result.mode !== 'training' && <table className="results">
         <thead><tr><th>#</th><th>Soldier</th><th>Kills</th><th>Deaths</th></tr></thead>
         <tbody>
-          {result.ranking.map((r, i) => (
+          {result.ranking.map((r, i) => ({ r, i })).filter(({ r, i }) => i < 3 || r.isPlayer).map(({ r, i }) => (
             <tr key={r.id} className={r.isPlayer ? 'me' : ''}>
               <td>{i + 1}</td><td>{r.name}{(result.mode === 'team' || result.teamMode) && <> <small className={`team-${r.team}`}>{r.team}</small></>}</td><td>{r.kills}</td><td>{r.deaths}</td>
             </tr>

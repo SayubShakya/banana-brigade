@@ -84,7 +84,7 @@ export default function Daily({ me, onBack }) {
           <div className="puzzle-img-wrap" data-state="ready"><img id="puzzle-img" src={run.image} alt="Banana API puzzle" /></div>
           <div className="puzzle-side">
             <div className="daily-stats"><span>Puzzle <b>{run.index + 1} / {run.total}</b></span><span>Score <b>{run.score}</b></span><span>Next ×<b>{run.bonus}</b></span><span className={left < 6 ? 'low' : ''}><b>{Math.ceil(left)}</b> s</span></div>
-            <p id="puzzle-status" data-kind={msg.kind}>{msg.text || 'Enter the digit hidden by the banana.'}</p>
+            <p id="puzzle-status" data-kind={msg.kind}>{msg.text || 'Every banana hides the same digit: type it.'}</p>
             <div className="keypad">
               {DIGITS.map((d) => <button key={d} className={d === 0 ? 'zero' : ''} disabled={busy} onClick={() => answer(d)}>{d}</button>)}
             </div>
