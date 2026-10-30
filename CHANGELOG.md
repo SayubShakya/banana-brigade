@@ -6,6 +6,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`feature/gemini-trailer`)
+- New 20-second home page trailer from Google Gemini: one hero flies in, opens a banana crate, the five Banana Power
+  orbs come out, then desert, night and blue-vs-red battles. Compressed for the web (2.8 MB, starts playing at once)
+  with a new poster of the crate and the power orbs.
+
 ### Added (`feature/headshots`)
 - **Headshots for every bullet gun:** magnum ×1.5, SMG ×1.3, rifle ×1.5, shotgun ×1.25 per pellet, sniper ×2.0.
   The head zone matches the drawn head (top 45% of the body plus a small cap above it). A gold 🎯 HEADSHOT tag in
