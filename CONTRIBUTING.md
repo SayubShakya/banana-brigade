@@ -98,7 +98,7 @@ Milestones from before 1.0.0 can be tagged on their merge commits in the same wa
 ## AI-assisted code
 
 Generative AI may be used for code (not for the assessment video). Every file it helped with carries this line
-in its header comment: "Written with help from a generative AI coding assistant; reviewed by Sayub Shakya."
+in its header comment: "Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya."
 Code from other people or websites is credited in a comment where it is used.
 
-_Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+_Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

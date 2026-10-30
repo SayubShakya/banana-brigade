@@ -28,7 +28,7 @@ Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-
 - One developer: branches rarely conflict, so the history shows little real merge-conflict resolution.
 - Most work happened on two days (14 and 28 October), so the dates show bursts rather than steady progress.
 - The history keeps a real design change: SQLite (`fadda7c`) replaced by MongoDB (`75afbbd`). Because
-  `server/models/db.js` hid the database behind functions, the swap touched only `db.js`, `models.js` (now in `server/models/`) and the session
+  `server/repositories/index.js` hid the database behind functions, the swap touched only the database and schema files (today `server/repositories/` and `server/models/`) and the session
   store; the routes did not change. That is evidence the modular structure worked.
 - CI checks tests and the build, but there is no linter or test-coverage gate.
 
@@ -131,7 +131,7 @@ The first version locked a *username* after 5 wrong passwords. That had two prob
 could lock you out for 10 minutes, and the check ("fewer than 5 failures?") and the record ("one more failure")
 were two separate steps, so guesses sent in parallel could all pass the check before any was recorded.
 Now every try is counted *before* the password is checked, with one atomic `findOneAndUpdate` + `$inc` on a
-counter document (`server/models/db.js`, `bumpCounter`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
+counter document (`server/repositories/index.js`, `bumpCounter`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
 5 are checked and 7 are refused (`tests/integration/password-reset.test.js`). A correct password takes its try back.
 
 | Option | For | Against |
@@ -268,4 +268,4 @@ The project started on SQLite (`fadda7c`) and moved to MongoDB (`75afbbd`).
 Trade-off: MongoDB needs a running server, which makes the tutor demo harder. The in-memory demo mode
 (`npm run demo`) and the in-memory test database answer that.
 
-_Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+_Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

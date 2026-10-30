@@ -2,7 +2,7 @@
 
 Two interfaces connect the browser and the server:
 
-- a **REST-style HTTP/JSON API** under `/api` (called by `client/src/lib/api.js` with `fetch`);
+- a **REST-style HTTP/JSON API** under `/api` (called by `client/src/services/api.js` with `fetch`);
 - a **Socket.io (WebSocket) protocol** for online play (called by `client/src/net/socket.js` and `NetGame.js`).
 
 The server also calls one external API: the **Banana API** (last section).
@@ -14,7 +14,7 @@ Errors always have the shape `{ "error": "message" }`.
 
 ## Versioning, OpenAPI and the public endpoint
 
-- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/lib/api.js`). The old paths without `/v1`
+- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/services/api.js`). The old paths without `/v1`
   are the same handlers and keep working (`server/app.js` rewrites `/api/v1/x` to `/api/x`).
 - **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/routes/openapi.js`), shown with Swagger UI at
   **`/api/docs`**. `tests/integration/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
@@ -222,4 +222,4 @@ usual bus events. In a snapshot, a gun's `spare: -1` means unlimited (JSON has n
 
 More on these choices: [resilience.md](resilience.md).
 
-_Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+_Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

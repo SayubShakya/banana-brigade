@@ -3,7 +3,7 @@
 Audit date: 28 Oct 2026. Source of truth: `../../ASSIGNMENT-SUMMARY.md`, which summarises the brief, the Student Guide and the grade bands.
 Status key: [ ] open · [x] done (with branch). All branches are merged into `main` with `--no-ff`.
 
-Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
+Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 ## Game (case study)
 - [x] Campaign: 9 missions, stars, unlocks checked by the server, Banana continue, difficulty ramp (`feature/campaign`)

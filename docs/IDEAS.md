@@ -39,4 +39,4 @@ Things that would make Banana Brigade better, grouped by theme. Each one says wh
 - Email verification and password reset.
 - HTTPS in development with a local certificate (mkcert), so the cookie is always `Secure`.
 
-_Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+_Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._
