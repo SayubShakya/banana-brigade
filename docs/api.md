@@ -14,13 +14,16 @@ Errors always have the shape `{ "error": "message" }`.
 
 ## Versioning, OpenAPI and the public endpoint
 
-- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/services/api.js`). The old paths without `/v1`
-  are the same handlers and keep working (`server/app.js` rewrites `/api/v1/x` to `/api/x`).
-- **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/routes/openapi.js`), shown with Swagger UI at
-  **`/api/docs`**. `tests/integration/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
+- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/services/api.js:5`). The old paths without `/v1`
+  are the same handlers and keep working (`server/middleware/apiVersion.js:3-6` rewrites `/api/v1/x` to `/api/x`).
+- **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/routes/openapi.js`, also written to
+  `docs/openapi.yaml` by `npm run openapi`), shown with Swagger UI at **`/api/docs`** (`server/routes/docs.js`; the
+  Swagger UI files come from a CDN, so this page needs internet). `tests/integration/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
 - **Public leaderboard** for other sites: `GET /api/v1/public/leaderboard?mode=quick&limit=10`. No login and no
-  cookie; `Access-Control-Allow-Origin: *` (CORS) and `OPTIONS` preflight; `Cache-Control: public, max-age=30`.
-  It returns only `rank, username, kills, deaths, wave, puzzlesSolved, at`. Try it from any page's console:
+  cookie; `Access-Control-Allow-Origin: *` (CORS, `server/middleware/cors.js`) and `OPTIONS` preflight;
+  `Cache-Control: public, max-age=30`. `mode` is `quick`, `survival`, `team`, `online` or `campaign`; `limit` is
+  1–50 (default 10). It returns `{ game, mode, updated, rows }`, where each row has only
+  `rank, username, kills, deaths, wave, puzzlesSolved, at`. Try it from any page's console:
   `fetch('http://localhost:3100/api/v1/public/leaderboard').then(r => r.json()).then(console.log)`.
 
 ## REST endpoints
@@ -38,23 +41,23 @@ The table lists paths without `/v1`; both forms work.
 | POST | `/api/auth/password` (login) | `{ current, next }` | `{ ok: true, ended }` | 400 new password too short/long, 403 current password wrong |
 | DELETE | `/api/auth/account` (login) | `{ password }` | `{ ok: true }`, cookie cleared | 403 password wrong |
 | POST | `/api/auth/guest` | none | `201 { user: { id, username: 'guest_…', role, guest: true } }` + 7-day cookie | 429 more than 10 guests per IP an hour |
-| POST | `/api/auth/upgrade` (guest) | `{ username, password }` | `{ user }` (same id, `guest: false`) + new cookie | 400 not a guest / bad name / breached password, 409 name taken |
+| POST | `/api/auth/upgrade` (login, guest only) | `{ username, password }` | `{ user }` (same id, `guest: false`) + new cookie | 400 not a guest / bad name / breached password, 409 name taken |
 | POST | `/api/auth/forgot` | `{ username }` | `{ ok: true, message }` (same for unknown names); the link goes to the server log | 400 bad name, 429 more than 5 requests per IP in 15 min |
 | POST | `/api/auth/reset/check` | `{ token }` | `{ ok: true, username }` (does not use the link) | 400 link unknown, used or expired |
 | POST | `/api/auth/reset` | `{ token, password }` | `{ ok: true, username, ended }` | 400 password too short/long, 400 link unknown, used or expired |
 | GET | `/api/auth/available?u=name` | none | `{ available, valid }` | 429 more than 20 checks a minute |
 | GET | `/api/auth/sessions` (login) | none | `{ count, list: [{ handle, device, createdAt, lastSeen, expires, current }], current, memberSince, lastLogin }` | |
-| GET | `/api/admin/audit?limit=` (admin) | none | `{ rows: [{ id, at, actor, action, target, reason, detail }] }` newest first | 403 |
-| POST | `/api/admin/users/:id/suspend` (admin) | `{ reason }` | `{ ok, ended }` | 400 no reason / yourself / an admin, 409 already |
-| POST | `/api/admin/users/:id/restore` (admin) | `{ reason }` | `{ ok }` | 400 no reason, 409 not suspended |
-| GET | `/api/admin/health` (admin) | none | `{ now: <status>, history: [{ at, online, ready, reserve, p50LatencyMs, successRate, circuit }] }` | 403 |
 | DELETE | `/api/auth/sessions/:handle` (login) | none | `{ ok: true }` | 400 this session (use logout), 404 not yours or ended |
 | GET | `/api/auth/export` (login) | none | JSON file: `{ exportedAt, profile, scores, dailyResults, sessions }` (no password hash) | |
 | GET | `/api/auth/me` | none | `{ user, puzzles: { solved, attempted } }` or `{ user: null }` | |
 
-Rules: username `^[A-Za-z0-9_]{3,16}$` (case-insensitive unique); password 8–72 characters; login tries are counted
-per IP: 5 for one name from one IP, or 20 from one IP across all names, in 10 minutes, then 429 until the window
-ends (a correct password does not count). A reset link (`/#reset=<token>`) works once, for 30 minutes, and ends
+`user` is `{ id, username, role, guest }`.
+
+Rules: username `^[A-Za-z0-9_]{3,16}$` (case-insensitive unique, `guest_` is reserved); password 8–72 characters and
+not in a known breach (Have I Been Pwned). Login tries are counted per name+IP and per IP: 5 for one name from one
+IP, or 20 from one IP across all names, in 10 minutes, then 429 until the window ends. Every try is counted before
+the password is checked; a correct password clears its name+IP counter and gives back its per-IP try
+(`server/services/rateLimiter.js:16-34`). There is no per-username lockout, so nobody can lock another player out. A reset link (`/#reset=<token>`) works once, for 30 minutes, and ends
 every session of the account. `remember: true` keeps the cookie (and the stored session) for
 30 days instead of 2 hours. `logout-all` ends every session of the player and closes their WebSockets;
 `password` does the same for every other device (`ended` is how many sessions were ended). `account` deletes
@@ -73,17 +76,21 @@ Set-Cookie: brigade.sid=s%3A...; Path=/; Expires=...; HttpOnly; SameSite=Lax
 {"user":{"id":"6720f1...","username":"sayub","role":"player"}}
 ```
 
-### Banana puzzles (`server/app.js`)
+### Banana puzzles (`server/routes/puzzles.js`, `server/routes/status.js`)
 
 | Method | Path | Body | Response | Errors |
 |---|---|---|---|---|
 | GET | `/api/puzzle?purpose=deploy\|respawn\|crate` | none | `{ puzzleId, image, purpose, source }` | 401, 502 API down and no reserve |
-| POST | `/api/puzzle/answer` | `{ puzzleId, answer }` | `{ correct, solution, purpose, unlocked }` | 400 bad body, 404 expired or already answered |
+| POST | `/api/puzzle/answer` | `{ puzzleId, answer }` | `{ correct, solution, purpose, ms, grade, unlocked }` | 400 bad body, 404 expired or already answered |
 | GET | `/api/status` | none | see below | |
 
 Login is needed for the first two. `image` is a `data:image/png;base64,...` URL. `source` is `live` or `reserve`.
 The response has **no solution** and is sent with `Cache-Control: no-store`. An unknown purpose falls back to
-`deploy`.
+`deploy`. Each puzzle is a Banana API picture of a sum in which every banana hides the same digit (0–9); the
+answer is that digit.
+
+`ms` is the time the **server** measured between handing out the puzzle and receiving the answer, and `grade` is
+`gold` (under 5 s), `silver` (under 10 s) or `bronze`, or `null` when wrong (`server/services/puzzles.js:5-10`).
 
 ```json
 { "puzzleId": "3f1c9b2e-...", "image": "data:image/png;base64,iVBORw0KGgo...", "purpose": "deploy", "source": "live" }
@@ -93,7 +100,7 @@ POST /api/puzzle/answer
 {"puzzleId":"3f1c9b2e-...","answer":7}
 ```
 ```json
-{ "correct": true, "solution": 7, "purpose": "deploy", "unlocked": [] }
+{ "correct": true, "solution": 7, "purpose": "deploy", "ms": 3820, "grade": "gold", "unlocked": [] }
 ```
 
 `/api/status` (no login needed) describes the Banana API connection:
@@ -115,20 +122,21 @@ on the browser's event bus by `api.js`.
 
 | Method | Path | Body / query | Response |
 |---|---|---|---|
-| POST | `/api/scores` (login) | `{ mode, difficulty, kills, deaths, wave, won, durationS }` | `201 { id, puzzlesSolved, puzzlesAttempted, unlocked }` |
-| GET | `/api/scores/leaderboard` | `?mode=quick\|survival\|training\|team\|online&period=all\|today&limit=1..50` | `{ mode, period, rows }` |
+| POST | `/api/scores` (login) | `{ mode, difficulty, kills, deaths, wave, won, durationS, powers }` | `201 { id, puzzlesSolved, puzzlesAttempted, unlocked }` |
+| GET | `/api/scores/leaderboard` | `?mode=quick\|survival\|training\|team\|online&period=all\|today&limit=1..50` (default 20) | `{ mode, period, rows }` |
 | GET | `/api/scores/me` (login) | none | `{ totals, recent }` |
 
 `mode` may be `quick`, `survival`, `training` or `team` (online and campaign scores are written by the server).
 Numbers must be whole and within limits (kills and deaths up to 500, wave up to 200, durationS up to 3600).
-Puzzle counts are **taken from the session**, not from the body.
+Puzzle counts are **taken from the session**, not from the body. `powers` (optional) lists the Banana Powers used,
+for the Power Hungry achievement.
 
 ### Campaign (`server/routes/campaign.js`, login)
 
 | Method | Path | Body | Response | Errors |
 |---|---|---|---|---|
 | GET | `/api/campaign` | none | `{ chapters, missions, progress, stars }` | |
-| POST | `/api/campaign/result` | `{ mission, won, kills, deaths, continues, timeS }` | `{ stars, best, progress, totalStars, unlockedNext, unlocked }` | 400 bad body, 403 mission locked |
+| POST | `/api/campaign/result` | `{ mission, won, kills, deaths, continues, timeS, powers }` | `{ stars, best, progress, totalStars, unlockedNext, unlocked }` | 400 bad body, 403 mission locked |
 
 A win only counts if `kills` reaches the mission target. Stars use the session's puzzle counts.
 
@@ -147,19 +155,37 @@ An answer later than 20 s (plus 2 s grace) counts as wrong. The date is UTC. The
 Today's puzzles are fetched before the attempt is used up, so an API outage (502) does not cost the day's go.
 `/current` lets the page carry on after a reload.
 
-### Achievements and admin
+### Achievements (`server/routes/achievements.js`)
 
 | Method | Path | Access | Response |
 |---|---|---|---|
-| GET | `/api/achievements` | login | `{ all: [{ id, name, text }], mine: [{ id, at }] }` |
-| GET | `/api/admin/users` | admin | `{ users: [{ id, username, role, created_at, games, kills, puzzles_solved }] }` |
-| DELETE | `/api/admin/users/:id/scores` | admin | `{ deleted }` (404 unknown user) |
-| PATCH | `/api/admin/users/:id/role` | admin | body `{ role: 'player'\|'admin' }` → `{ user: { id, username, role } }` (400 bad role or demoting yourself, 404 unknown user) |
+| GET | `/api/achievements` | login | `{ all: [{ id, name, text }], mine: [{ id, at }] }` (18 achievements) |
+
+### Admin (`server/routes/admin.js`, admins only)
+
+| Method | Path | Body | Response | Errors |
+|---|---|---|---|---|
+| GET | `/api/admin/users` | none | `{ users: [{ id, username, role, created_at, games, kills, puzzles_solved, … }] }` | |
+| GET | `/api/admin/audit?limit=` | none | `{ rows: [{ id, at, actor, action, target, reason, detail }] }` newest first (limit 1–200, default 50) | |
+| GET | `/api/admin/health` | none | `{ now: <status>, history: [{ at, online, ready, reserve, p50LatencyMs, successRate, circuit }] }` (a sample every 30 s, last 120) | |
+| DELETE | `/api/admin/users/:id/scores` | `{ reason }` | `{ deleted }` | 400 no reason, 404 unknown user |
+| PATCH | `/api/admin/users/:id/role` | `{ role: 'player'\|'admin', reason }` | `{ user: { id, username, role } }` | 400 bad role, no reason or demoting yourself, 404 unknown user |
+| POST | `/api/admin/users/:id/suspend` | `{ reason }` | `{ ok, ended }` | 400 no reason / yourself / an admin, 409 already |
+| POST | `/api/admin/users/:id/restore` | `{ reason }` | `{ ok }` | 400 no reason, 409 not suspended |
 
 Admin routes return `403 {"error":"Admins only"}` to players. The role is read from the database on every
-request, so a promotion or demotion applies at once.
+request, so a promotion or demotion applies at once. Every change needs a reason of 3–200 characters and writes
+a row to the audit log.
 
-Any other `/api/...` path returns `404 { error: "Not found" }`. A body that is not valid JSON returns 400.
+### Documentation and public (`server/routes/docs.js`, `server/routes/public.js`)
+
+| Method | Path | Access | Response |
+|---|---|---|---|
+| GET | `/api/openapi.json` | public | the OpenAPI 3 description |
+| GET | `/api/docs` | public | Swagger UI page |
+| GET | `/api/public/leaderboard?mode=&limit=` | public, CORS `*` | `{ game, mode, updated, rows }` (see above) |
+
+Any other `/api/...` path returns `404 { error: "Not found" }` (`server/middleware/notFound.js:5-7`). A body that is not valid JSON returns 400.
 Bodies over 4 KB are refused.
 
 ## Socket.io protocol (`server/realtime/rooms.js`)
@@ -177,31 +203,38 @@ waits up to 8 seconds and turns `{ error }` into an exception.
 
 | Event | Payload | Ack reply | Notes |
 |---|---|---|---|
-| `rooms:list` | none | `{ rooms: [{ code, host, players, teamMode, difficulty, state }] }` | public rooms that are not full |
-| `room:create` | `{ teamMode, isPublic, difficulty, parts }` | `{ room }` or `{ error: 'Unknown difficulty' }` | creator is host and ready; `difficulty` is `easy`, `medium` (default) or `hard` and sets the bots |
+| `rooms:list` | none | `{ rooms: [{ code, host, players, teamMode, difficulty, matchLength, killLimit, state }] }` | public rooms in the lobby that are not full |
+| `room:create` | `{ teamMode, isPublic, difficulty, matchLength, parts }` | `{ room }` or `{ error: 'Unknown difficulty' \| 'Unknown match length' }` | creator is host and ready; `difficulty` is `easy`, `medium` (default) or `hard` and sets the bots; `matchLength` is 30, 60, 120, 180 or 300 seconds (default 300) and sets the kill limit |
 | `room:join` | `{ code, parts }` | `{ room }` or `{ error }` | no room, full, or already started |
 | `room:leave` | none | none | a bot takes over your soldier if a match is running |
 | `room:ready` | `{ ready }` | none | lobby only |
 | `room:start` | none | `{ ok: true }` or `{ error }` | host only, everyone ready |
 | `input` | `{ left, right, jet, fire, aimX, aimY, reload, swap, grenade, melee, pickup }` | none | sent on change and at least every 50 ms |
 | `puzzle:get` | `{ purpose: 'respawn'\|'crate' }` | `{ puzzleId, image, purpose, source }` or `{ error }` | only when the server allows it (`canAsk`) |
-| `puzzle:answer` | `{ puzzleId, answer }` | `{ correct, solution, purpose }` or `{ error }` | only the player the puzzle was given to |
+| `puzzle:answer` | `{ puzzleId, answer }` | `{ correct, solution, purpose, ms, grade }` or `{ error }` | only the player the puzzle was given to; the server applies the reward |
 | `puzzle:cancel` | `{ purpose: 'crate' }` | none | leave the crate |
+| `power:choose` | `{ power }` (a power id or `'random'`) | `{ power }` or `{ error }` | after `power:offer`; a choice not offered counts as `random` |
+| `events:watch` | none | `{ ok, recent }` or `{ error: 'Admins only' }` | admins join the live event feed (`server/realtime/socket.js:31-36`) |
+| `events:stop` | none | none | leave the live event feed |
 
 ### Server → browser
 
 | Event | Payload | When |
 |---|---|---|
-| `room:update` | `{ code, host, teamMode, isPublic, difficulty, state, players: [{ userId, username, ready, team, connected }] }` | any change in your room |
+| `room:update` | `{ code, host, teamMode, isPublic, difficulty, state, matchLength, killLimit, players: [{ userId, username, ready, team, connected }] }` | any change in your room |
 | `rooms:changed` | none | a room was made, changed or closed (the lobby asks `rooms:list` again) |
-| `match:start` | `{ matchId, me, teamMode, roster: [{ id, name, team, human, avatar }] }` | the host started, or you reconnected |
+| `match:start` | `{ matchId, me, teamMode, map, difficulty, timeLimit, killLimit, roster: [{ id, name, team, human, avatar }] }` | the host started, or you reconnected |
 | `match:snapshot` | `{ t, time, timeLeft, teamKills, soldiers, bullets, rockets, flames, grenades, pickups, near, events }` | 30 times a second |
 | `match:end` | `{ matchId, reason, teamMode, teamKills, durationS, ranking }` | kill limit, time, or host ended it |
-| `puzzle:offer` | `{ purpose: 'crate' }` | you pressed E at a banana crate (your soldier is frozen and shielded) |
+| `puzzle:offer` | `{ purpose: 'crate', seconds }` | you pressed E at a banana crate (your soldier is frozen, shielded and shown in a banana bubble) |
+| `puzzle:closed` | `{ purpose: 'crate', reason: 'time' }` | the server ended a crate puzzle that was left open (crate time + 6 s) |
+| `power:offer` | `{ choices, seconds }` | you solved the crate puzzle; pick a Banana Power (more choices for a faster grade) |
 | `achievement:unlocked` | `{ id, name, text }` | an achievement unlocked during online play |
+| `server:event` | `{ id, kind, at, user, text }` | admins watching the live event feed |
 
 `events` inside a snapshot is a list of `[type, data]` pairs from that tick: `killed`, `damaged`, `respawned`,
-`pickup`, `fired`, `reloading`, `reloaded`, `empty`, `explosion`, `left`. `NetGame.js` turns them back into the
+`pickup`, `fired`, `reloading`, `reloaded`, `empty`, `explosion`, `fx` (power, landing, bounce and similar
+effects, carrying the original event name) and `left` (`server/realtime/match.js:51-76`). `NetGame.js` turns them back into the
 usual bus events. In a snapshot, a gun's `spare: -1` means unlimited (JSON has no `Infinity`).
 
 ## The external Banana API (`server/services/bananaApi.js`)

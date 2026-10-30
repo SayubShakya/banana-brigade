@@ -5,7 +5,8 @@ Banana Brigade is a distributed system with four parts:
 1. **The browser**: React screens, a canvas game engine and an event bus.
 2. **Our Node.js server**: Express for HTTP/JSON, Socket.io for WebSockets, sessions, puzzles, achievements
    and server-run online matches.
-3. **MongoDB**: players, scores, sessions, failed logins and the daily challenge.
+3. **MongoDB**: players, scores, sessions, login counters, reset links, the audit log, the daily challenge and
+   the saved reserve of Banana puzzles.
 4. **The Banana API** by Marc Conrad: a third-party service on another server that we do not control.
 
 The browser never talks to MongoDB or to the Banana API. Everything goes through our server.
@@ -27,20 +28,21 @@ The browser never talks to MongoDB or to the Banana API. Everything goes through
 | Event feed | `server/services/eventLog.js` | Server events for the admin Live events tab |
 | Storage | `server/repositories/*Repository.js`, `server/models/*.js` | One repository per aggregate (user, score, daily, rate limit, password reset, audit, reserve puzzle) behind `openDatabase` in `repositories/index.js`; one schema file per model |
 | Banana API client | `server/services/bananaApi.js` | The only file that calls the external API: timeout, up to 2 retries with backoff, parsing, call statistics |
-| Puzzle pool | `server/services/pool.js` | 3 ready puzzles, a reserve of 25, a 2.5 s deadline, at most 3 calls in flight, a circuit breaker, `/api/status` numbers |
-| Puzzle store | `server/services/puzzles.js` | Solutions by `puzzleId`; one answer each; 5-minute expiry |
+| Puzzle pool | `server/services/pool.js` | 3 ready puzzles, a reserve of the last 25 (saved in MongoDB and loaded at start-up), a 2.5 s deadline, at most 3 calls in flight, a circuit breaker, `/api/status` numbers |
+| Puzzle store | `server/services/puzzles.js` | Solutions by `puzzleId`; one answer each; 5-minute expiry; server-timed GOLD/SILVER/BRONZE grade |
 | Achievements | `server/services/achievements.js` | Rules that listen for game events and unlock badges |
 | Realtime | `server/realtime/socket.js`, `rooms.js`, `match.js` | Logged-in sockets only; rooms; matches run on the server |
-| Shared engine | `client/src/game/world.js`, `bots.js`, `map.js`, `config.js`, `campaign.js` | Used by the browser **and** the server (`match.js`, `routes/campaign.js`) |
+| Shared engine | `client/src/game/world.js`, `bots.js`, `map.js`, `config.js`, `meter.js`, `campaign.js` | Used by the browser **and** the server (`server/realtime/match.js`, `server/realtime/rooms.js`, `server/services/campaignService.js`) |
 | Views | `client/src/views/` | One React view per screen; folders for `Login/` and `Admin/` |
 | Controllers | `client/src/controllers/` | Hooks holding the app state and logic: `useNavigation` (screens, Back, hash and preview links), `useAccount`, `useSettings`, `useBattle`; `App.jsx` only composes them |
-| Shared UI | `client/src/components/` | Panel, Icon, Skeleton (`common.jsx`), Toasts, PuzzleModal, PowerPicker |
+| Shared UI | `client/src/components/` | Panel, Icon, Skeleton (`common.jsx`), Toasts, PuzzleModal, PowerPicker, BootCampCoach, Cutscene |
+| Boot Camp and HUD extras | `client/src/game/tutorial.js`, `meter.js`, `minimap.js`, `hud.js` | Tutorial steps driven by bus events; Banana Meter maths; minimap; live mini leaderboard and timer |
 | Sound and music | `client/src/game/sound.js`, `music.js` | Effects and procedural music on separate volume buses, driven by bus events |
 | Phone and accessibility | `client/src/services/fullscreen.js`, `a11y-*` classes in `styles/brigade.css` | Fullscreen, rotate hint, high contrast, large text, reduced motion |
 | Demo | `scripts/demo.js` | `npm run demo`: the server with an in-memory MongoDB |
 | Battle loop | `client/src/game/GameSession.js` | Fixed 1/60 s steps: input, bots, world, renderer, HUD |
 | Online view | `client/src/net/NetGame.js`, `net/socket.js` | Sends controls; draws server snapshots with blending |
-| Glue | `client/src/services/eventBus.js`, `hooks/useBus.js`, `services/puzzleBridge.js`, `services/api.js` | Event bus, React hook, puzzle window opener, HTTP calls |
+| Glue | `client/src/services/eventBus.js`, `hooks/useBus.js`, `services/puzzleBridge.js`, `powerBridge.js`, `cutsceneBridge.js`, `services/api.js` | Event bus, React hook, openers for the puzzle window, power picker and story clips, HTTP calls |
 
 ```mermaid
 flowchart TB
@@ -53,7 +55,7 @@ flowchart TB
     NG[NetGame] -->|relay server events| BUS
   end
   subgraph Server
-    APP[app.js + routes] --> POOL[pool.js] --> BAPI[bananaApi.js]
+    APP[app.js + routes, controllers, services] --> POOL[pool.js] --> BAPI[bananaApi.js]
     APP --> STORE[puzzles.js]
     APP --> ACH[achievements.js]
     ROOMS[realtime/rooms.js] --> MATCH[realtime/match.js] --> W2[world.js<br/>same file as browser]
@@ -67,9 +69,10 @@ flowchart TB
 
 ## Data flow
 
-- **Puzzles:** Banana API → `bananaApi.js` (parse, check) → `pool.js` (ready / reserve) → `puzzles.js` keeps the
-  solution → the browser gets `{ puzzleId, image }` → the browser sends `{ puzzleId, answer }` → the server
-  checks it, counts it in the session and fires `puzzle:answered` for achievements.
+- **Puzzles:** Banana API → `bananaApi.js` (parse, check) → `pool.js` (ready / reserve, each live puzzle also
+  saved to MongoDB) → `puzzles.js` keeps the solution and the time it was handed out → the browser gets
+  `{ puzzleId, image }` → the browser sends `{ puzzleId, answer }` → the server checks it, times it (grade),
+  counts it in the session and fires `puzzle:answered` for achievements.
 - **Identity:** login → bcrypt check → new session saved in MongoDB → `brigade.sid` cookie. Every HTTP request
   and the WebSocket handshake carry the cookie; the server reads `userId` from the session and loads the user
   (with their current role) from the database. Logging out everywhere, changing the password or deleting the
@@ -81,25 +84,32 @@ flowchart TB
 
 ## Sequence: login and session
 
+Code: `server/routes/auth.js:10` → `server/controllers/authController.js:14-18` →
+`server/services/authService.js:70-96`, with `server/services/rateLimiter.js:16-34` and
+`server/repositories/rateLimitRepository.js:5-19`.
+
 ```mermaid
 sequenceDiagram
   participant B as Browser (Login.jsx, api.js)
-  participant S as Server (routes/auth.js)
+  participant S as Server (authService.js, rateLimiter.js)
   participant D as MongoDB
-  B->>S: POST /api/auth/login {username, password}
-  S->>D: count failed logins in the last 10 min
-  alt 5 or more
-    S-->>B: 429 Too many failed attempts
+  B->>S: POST /api/auth/login {username, password, remember}
+  S->>D: $inc counter "login:name|ip" and counter "login-ip:ip" (atomic, TTL 10 min)
+  alt name+IP count over 5, or IP count over 20
+    S-->>B: 429 Too many failed attempts. Try again in n min
   end
   S->>D: find user (case-insensitive)
   S->>S: bcrypt.compare(password, hash or dummy hash)
-  alt wrong
-    S->>D: record failed login (TTL 10 min)
+  alt wrong (the try stays counted)
     S-->>B: 401 Wrong username or password (n tries left)
   else right
-    S->>D: clear failed logins, set lastLoginAt
+    S->>D: delete the name+IP counter, give back the per-IP try
+    alt account suspended
+      S-->>B: 403 This account is suspended
+    end
+    S->>D: set lastLoginAt
     S->>S: req.session.regenerate() (new id)
-    S->>D: save session {userId, username, role, puzzles, createdAt}
+    S->>D: save session {userId, username, role, puzzles, createdAt, device}
     S-->>B: 200 {user} + Set-Cookie brigade.sid (HttpOnly, SameSite=Lax; 2 h, or 30 days with remember me)
   end
   B->>S: GET /api/auth/me (cookie sent automatically)
@@ -115,9 +125,9 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-  participant R as React (App.jsx)
+  participant R as React (useBattle.js)
   participant P as PuzzleModal.jsx
-  participant S as Server (app.js)
+  participant S as Server (puzzleService.js)
   participant Pool as pool.js
   participant A as Banana API
   R->>P: askPuzzle('deploy') via puzzleBridge.js
@@ -131,14 +141,14 @@ sequenceDiagram
     Note over Pool: slower than 2.5 s, failed, or circuit open: use the reserve (source: reserve)
   end
   Pool->>A: refill to 3 in the background
-  S->>S: puzzleStore.add(solution) → puzzleId
+  S->>S: puzzleStore.add(solution, purpose) → puzzleId (start the clock)
   S-->>P: {puzzleId, image, purpose, source} (no solution)
   P->>P: show image, start timer
   P->>S: POST /api/puzzle/answer {puzzleId, answer}
-  S->>S: check once, delete puzzle, count in session
+  S->>S: check once, delete puzzle, time it (gold/silver/bronze), count in session
   S->>S: achievements.emit('puzzle:answered')
-  S-->>P: {correct, solution, purpose, unlocked}
-  P->>P: emit('banana:answered') on the bus
+  S-->>P: {correct, solution, purpose, ms, grade, unlocked}
+  P->>P: emit('banana:answered') on the bus (Banana Meter, stats, sound)
   P-->>R: 'solved' → startBattle()
 ```
 
