@@ -1,4 +1,7 @@
 // The Banana Brigade web server: accounts, Banana API puzzles, scores and the game files.
+// This file only puts the pieces together: middleware order, the routers (routes/),
+// the static React app, 404s and the error handler. The work is done in
+// controllers/ (HTTP), services/ (rules) and repositories/ (MongoDB).
 //
 //   Every path also works as /api/v1/... (the browser uses v1). The full list is the
 //   OpenAPI description (routes/openapi.js, docs/openapi.yaml, Swagger UI at /api/docs):
@@ -19,26 +22,28 @@ const path = require('node:path');
 const express = require('express');
 const { createPuzzleStore } = require('./services/puzzles');
 const { createPuzzlePool } = require('./services/pool');
-const { createDocsRouter } = require('./routes/docs');
-const { createPublicRouter } = require('./routes/public');
 const { createEventLog } = require('./services/eventLog');
-const { createAuthRouter } = require('./routes/auth');
-const { createScoresRouter } = require('./routes/scores');
-const { createAdminRouter } = require('./routes/admin');
-const { createDailyRouter } = require('./routes/daily');
-const { createCampaignRouter } = require('./routes/campaign');
 const { createAchievements } = require('./services/achievements');
-const { requireLogin } = require('./middleware/auth');
+const { createSessionManager } = require('./services/sessions');
+const { createServices } = require('./services');
+const { createControllers } = require('./controllers');
 const { apiVersion } = require('./middleware/apiVersion');
 const { lastSeen } = require('./middleware/lastSeen');
 const { apiNotFound, createPageNotFound } = require('./middleware/notFound');
 const { errorHandler } = require('./middleware/errorHandler');
 const { createSessionMiddleware, SESSION_COOKIE, MemoryStore } = require('./middleware/session');
-const { createSessionManager } = require('./services/sessions');
-const { createServices } = require('./services');
-const { createControllers } = require('./controllers');
+const { createDocsRouter } = require('./routes/docs');
+const { createPublicRouter } = require('./routes/public');
+const { createAuthRouter } = require('./routes/auth');
+const { createScoresRouter } = require('./routes/scores');
+const { createAdminRouter } = require('./routes/admin');
+const { createDailyRouter } = require('./routes/daily');
+const { createCampaignRouter } = require('./routes/campaign');
+const { createAchievementsRouter } = require('./routes/achievements');
+const { createPuzzleRouter } = require('./routes/puzzles');
+const { createStatusRouter } = require('./routes/status');
 
-const PURPOSES = ['deploy', 'respawn', 'crate'];
+const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');
 
 function createApp({
   db,
@@ -58,19 +63,19 @@ function createApp({
   const app = express();
   app.set('sessionCookieName', SESSION_COOKIE);
   if (trustProxy) app.set('trust proxy', trustProxy);
-  // API versioning: /api/v1/... is the current API. The old paths without /v1 keep
-  // working (they are the same handlers), so an older browser tab does not break.
+
+  // Services and controllers. The session manager asks app.locals for the Socket.io
+  // server, which realtime/socket.js attaches after the app is built.
+  const sessions = createSessionManager({ store: sessionStore, getIo: () => app.locals.io });
+  const services = createServices({ db, pool, puzzleStore, achievements, sessions, eventLog, sendResetLink, appUrl, pwnedCheck });
+  const controllers = createControllers(services);
+
   app.use(apiVersion);
   app.use(express.json({ limit: '4kb' }));
 
   // The API description and the public leaderboard need no session, so they come
-  // before the session middleware (routes/docs.js, routes/public.js).
-  app.use('/api', createDocsRouter());
-
-  const sessions = createSessionManager({ store: sessionStore, getIo: () => app.locals.io });
-  const services = createServices({ db, pool, achievements, sessions, eventLog, sendResetLink, appUrl, pwnedCheck });
-  const controllers = createControllers(services);
-
+  // before the session middleware.
+  app.use('/api', createDocsRouter(controllers));
   app.use('/api/public', createPublicRouter(controllers));
 
   const sessionMiddleware = createSessionMiddleware({ secret: sessionSecret, store: sessionStore, production });
@@ -82,57 +87,17 @@ function createApp({
 
   app.use('/api/auth', createAuthRouter(controllers));
   app.use('/api/scores', createScoresRouter(controllers));
-  app.use('/api/admin', createAdminRouter({ db, eventLog }));
+  app.use('/api/admin', createAdminRouter(controllers));
   app.use('/api/daily', createDailyRouter(controllers));
   app.use('/api/campaign', createCampaignRouter(controllers));
-
-  // Every achievement, and which ones this player has (with the date unlocked).
-  app.get('/api/achievements', requireLogin, async (req, res, next) => {
-    try {
-      const user = await db.findUserById(req.session.userId);
-      res.json({ all: achievements.list, mine: user?.achievements ?? [] });
-    } catch (err) { next(err); }
-  });
-
-  app.get('/api/puzzle', requireLogin, async (req, res) => {
-    const purpose = PURPOSES.includes(req.query.purpose) ? req.query.purpose : 'deploy';
-    try {
-      const { image, solution, source } = await pool.take();
-      const puzzleId = puzzleStore.add(solution, purpose);
-      res.set('Cache-Control', 'no-store');
-      res.json({ puzzleId, image, purpose, source });
-    } catch (err) {
-      console.error('Banana API error:', err.message);
-      res.status(502).json({ error: 'The Banana API is not responding. Try again in a moment.' });
-    }
-  });
-
-  app.post('/api/puzzle/answer', requireLogin, async (req, res, next) => {
-    const { puzzleId, answer } = req.body ?? {};
-    if (typeof puzzleId !== 'string' || !Number.isInteger(answer)) {
-      return res.status(400).json({ error: 'Send { puzzleId, answer } with a whole-number answer' });
-    }
-    const result = puzzleStore.answer(puzzleId, answer);
-    if (!result) return res.status(404).json({ error: 'That puzzle has expired or was already answered' });
-    // The server keeps the player's puzzle record, so it cannot be faked from the browser.
-    const p = req.session.puzzles ?? { solved: 0, attempted: 0 };
-    p.attempted += 1;
-    if (result.correct) p.solved += 1;
-    req.session.puzzles = p;
-    try {
-      const unlocked = await achievements.emit('puzzle:answered', req.session.userId, result);
-      res.json({ correct: result.correct, solution: result.solution, purpose: result.purpose, unlocked });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  app.get('/api/status', (req, res) => res.json(pool.status()));
-
+  app.use('/api/achievements', createAchievementsRouter(controllers));
+  app.use('/api/puzzle', createPuzzleRouter(controllers));
+  app.use('/api/status', createStatusRouter(controllers));
   app.use('/api', apiNotFound);
-  // The built React app (npm run build).
-  app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
-  app.use(createPageNotFound(path.join(__dirname, '..', 'client', 'dist', 'index.html')));
+
+  // The built React app (npm run build), then 404 for anything else.
+  app.use(express.static(CLIENT_DIST));
+  app.use(createPageNotFound(path.join(CLIENT_DIST, 'index.html')));
   app.use(errorHandler);
 
   return app;
