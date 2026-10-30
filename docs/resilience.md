@@ -1,6 +1,6 @@
 # Coping with a slow or broken Banana API
 
-<!-- Written with help from a generative AI coding assistant; reviewed by Sayub Shakya. -->
+<!-- Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. -->
 
 The Banana API "may be discontinued without notice". Single calls: `server/services/bananaApi.js`. Calls over time: `server/services/pool.js`.
 

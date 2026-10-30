@@ -6,6 +6,16 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`refactor/server-mvc`, `refactor/client-mvc`, `chore/strip-comments`, `docs/after-mvc`)
+- **Server in layers (MVC, SOLID):** routes only wire URLs → controllers handle HTTP → services hold the rules (no
+  req/res, dependencies passed in) → repositories do the queries (one per aggregate) → models are the schemas (one
+  file each). Middleware files for the v1 rewrite, session cookie, CORS, last-seen, 404 and errors; `AppError`
+  carries status codes. `app.js` only composes. Same URLs, responses and cookies as before.
+- **Client in MVC style:** `views/` (was `screens/`), `controllers/` (hooks: navigation, account, settings, battle,
+  game engine), `services/` (was `lib/`); `App.jsx` went from 269 to 77 lines and only composes.
+- **Comments removed** from all code; every file keeps one credit line naming Claude (Anthropic).
+- README layout and architecture tables describe the new layers; all file:line pointers in the docs remapped.
+
 ### Fixed (`fix/alignment-code`, from the alignment check)
 - **The puzzle reserve is saved in MongoDB** (the newest 25) and loaded when the server starts, so restarting with
   the Banana API down still gives puzzles: the "API down" demo works from a cold start.
@@ -377,4 +387,4 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 [1.1.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.1.0
 [1.0.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.0.0
 
-_Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+_Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

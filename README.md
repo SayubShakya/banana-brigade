@@ -31,12 +31,12 @@ only shows pictures and sends controls and answers.
   fill the empty places, and the host picks the bots' difficulty. The **server runs the match** 30 times a second; browsers only send controls.
 - **Daily Banana Challenge:** the same 5 puzzles for everyone each day, 20 seconds each, one attempt a day,
   points that double for every correct answer in a row, a day streak and a daily leaderboard.
-- **Achievements:** 17 badges (First Blood, Banana Brain, Speed Demon, Hard as Nails, Campaign Hero …),
+- **Achievements:** 18 badges (First Blood, Banana Brain, Speed Demon, Hard as Nails, Campaign Hero …),
   unlocked by server-side events and shown as pop-up toasts.
 - **Ranks and XP:** 10 ranks from Recruit to Banana Marshal. XP comes from the record saved on the server.
 - **Difficulty:** Easy, Medium or Hard before every battle. It changes how bots aim, react and fire, and how
   long each Banana puzzle lasts.
-- **Avatar:** headgear, uniform, skin, goggles and beard.
+- **Avatar:** headgear, uniform, skin, goggles and face (clean, stubble, beard, moustache).
 - **Profile and Scores:** totals, recent games, all-time and today's leaderboards, member since, last login and
   the number of active sessions.
 - **Settings** in four tabs:
@@ -215,27 +215,37 @@ Every file sits in the folder for its kind; the project root holds only config a
 (README, CHANGELOG, CONTRIBUTING, package files, `run.sh`, Vite and Playwright config).
 
 ```
-client/                 the browser app (React screens + canvas game)
+client/                 the browser app: React views + a canvas game engine (MVC style)
   index.html            page shell, battle canvas and HUD markup
-  public/               static files: logo, icons, screenshot, manifest, service worker (sw.js)
+  public/               static files: logo, icons, screenshot, trailer, manifest, service worker (sw.js)
   src/
-    App.jsx, main.jsx   screen state machine; start-up and service worker registration
-    screens/            one file per screen; a folder when it has parts (Login/, Admin/)
+    main.jsx, App.jsx   start-up; App only composes the controllers and shows the current view
+    views/              one file per screen (the "V"); folders for screens with parts (Login/, Admin/)
+    controllers/        React hooks holding app state and logic (the "C"): useNavigation, useAccount,
+                        useSettings, useBattle, gameEngine
     components/         shared UI: common.jsx (Panel, Icon, Skeleton…), Toasts, PuzzleModal, PowerPicker
-    game/               the engine (world, bots, maps, weapons in config, input, auto-fire, render, sound);
+    services/           non-React services: api.js (every HTTP call), eventBus, storage, rank, fullscreen, bridges
+    hooks/              useBus (React listens to the event bus)
+    game/               the engine (world, bots, maps, config, input, auto-fire, render, effects, sound);
                         world/bots/map/config/campaign also run on the server for online matches
     net/                Socket.io client and NetGame (draws online matches from snapshots)
-    hooks/              useBus (React listens to the event bus)
-    lib/                api.js (every HTTP call), eventBus.js, storage.js, rank.js, fullscreen.js, bridges
     styles/             brigade.css
-server/                 Node.js + Express + MongoDB
-  index.js, app.js      start-up; the Express app (middleware order, puzzle routes, static files, 404)
+server/                 Node.js + Express + MongoDB, layered: routes → controllers → services → repositories → models
+  index.js              start-up: settings, MongoDB, session store, puzzle pool, HTTP + Socket.io
+  app.js                composition only: middleware order, routers, static files, 404, error handler
   config/               every setting, read from .env in one place
-  routes/               one file per area: auth, scores, daily, campaign, admin, public, docs (+ openapi.js)
-  services/             bananaApi, pool + puzzles (ready/reserve puzzles, circuit breaker), pwned,
-                        rateLimiter, sessions, achievements, eventLog
-  models/               index.js (Mongoose schemas), db.js (every database query)
-  middleware/           auth.js (requireLogin, requireAdmin, suspended check)
+  routes/               URL wiring only, one file per area: auth, puzzles, scores, campaign, daily, admin,
+                        public, docs, status, achievements (+ openapi.js, the API description)
+  controllers/          HTTP layer: read the request, call a service, send JSON (one per area)
+  services/             business rules with no req/res: auth, account, puzzle, score, campaign, daily, admin,
+                        plus bananaApi, pool + puzzles (ready/reserve, circuit breaker), pwned, rateLimiter,
+                        sessions, achievements, eventLog
+  repositories/         data access, one per aggregate (user, score, daily, rateLimit, passwordReset, audit,
+                        reservePuzzle); index.js opens the database and returns them as one `db` object
+  models/               Mongoose schemas, one file per model
+  middleware/           auth (requireLogin, requireAdmin), apiVersion (/api/v1), session, cors, lastSeen,
+                        notFound, errorHandler
+  lib/                  small helpers: AppError, the HTTP session helpers, device names
   realtime/             socket.js (login check, admin feed), rooms.js, match.js (server-run match, 30 Hz)
 tests/
   unit/                 engine and service tests (no server)
@@ -284,34 +294,34 @@ verification.
 | Theme | What to look at | Where |
 |---|---|---|
 | Version control | Feature branches merged with `--no-ff`, small commits, CI | `git log --oneline --graph`, `CHANGELOG.md`, `CONTRIBUTING.md`, `.github/workflows/ci.yml` |
-| Version control | Annotated release tags for each milestone: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`, `v0.4-multiplayer`, `v0.5-campaign`, `v1.0.0` | `git tag -n` |
-| Version control | SQLite to MongoDB swap kept in history | commits `fadda7c` and `75afbbd`; `server/models/db.js:1-4` |
-| Event-driven | Browser event bus (observer pattern) | `client/src/lib/eventBus.js:9-13` |
-| Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:215`, `world.js:286`, `client/src/game/hud.js:52`, `client/src/game/sound.js:380` |
-| Event-driven | React subscribes with a hook | `client/src/hooks/useBus.js:11-15`, `client/src/App.jsx:136-141` |
-| Event-driven | Music crossfades on `game:state` | `client/src/game/music.js:131-136` |
-| Event-driven | DOM events to bus events | `client/src/game/input.js:67-75` |
-| Event-driven | Server `EventEmitter` achievements | `server/services/achievements.js:41-104` |
-| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/services/eventLog.js`, `server/realtime/socket.js`, `client/src/screens/Admin/LiveEvents.jsx` |
-| Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:143-180`, `server/realtime/match.js:150-152` |
-| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:91-109` (`createBananaApi` to `fetchPuzzle`) |
-| Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:43-58` |
-| Interoperability | Pool, reserve, deadline, circuit breaker | `server/services/pool.js:65-73`, `server/services/pool.js:136-170` |
-| Interoperability | API health in `/api/status` | `server/services/pool.js:173-186` |
-| Interoperability | Our own REST API for the browser | `server/app.js:106-139`, `client/src/lib/api.js:15-42` |
+| Version control | Annotated release tags for each milestone: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`, `v0.4-multiplayer`, `v0.5-campaign`, `v1.0.0` … `v1.3.2` | `git tag -n` |
+| Version control | SQLite to MongoDB swap kept in history | commits `fadda7c` and `75afbbd`; `server/repositories/index.js` |
+| Event-driven | Browser event bus (observer pattern) | `client/src/services/eventBus.js:5-8` |
+| Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:203`, `client/src/game/world.js:267`, `client/src/game/hud.js:48`, `client/src/game/sound.js:343` |
+| Event-driven | React subscribes with a hook | `client/src/hooks/useBus.js:6-9`, `client/src/controllers/useBattle.js:18-23` |
+| Event-driven | Music crossfades on `game:state` | `client/src/game/music.js:121-124` |
+| Event-driven | DOM events to bus events | `client/src/game/input.js:52-59` |
+| Event-driven | Server `EventEmitter` achievements | `server/services/achievements.js:32-95` |
+| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/services/eventLog.js`, `server/realtime/socket.js`, `client/src/views/Admin/LiveEvents.jsx` |
+| Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:121-154`, `server/realtime/match.js:166-168` |
+| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:62-79` (`createBananaApi` to `fetchPuzzle`) |
+| Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:18-32` |
+| Interoperability | Pool, reserve, deadline, circuit breaker | `server/services/pool.js:51-57`, `server/services/pool.js:116-144` |
+| Interoperability | API health in `/api/status` | `server/services/pool.js:148-159` |
+| Interoperability | Our own REST API for the browser | `server/services/puzzleService.js:8-33`, `server/controllers/puzzleController.js`, `client/src/services/api.js:7-29` |
 | Interoperability | API versioning, OpenAPI 3 + Swagger UI, public CORS leaderboard | `server/app.js` (v1 rewrite, `/api/public`), `server/routes/openapi.js`, `tests/integration/openapi.test.js` |
-| Interoperability | WebSocket protocol | `server/realtime/rooms.js:9-18`, `client/src/net/socket.js:28-33` |
-| Virtual identity | Session cookie settings | `server/app.js:68-80` |
-| Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:110-138`, `server/services/rateLimiter.js`, `server/models/db.js` (`bumpCounter`) |
-| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/services/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js` (`/sessions/:handle`, `/export`), `server/models/db.js` (`exportUser`) |
-| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/routes/auth.js:310-381`, `client/src/screens/Login/Login.jsx` |
-| Virtual identity | Session regeneration, remember me | `server/routes/auth.js:69-86` |
-| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/routes/auth.js:183-195`, `server/services/sessions.js:13-75` |
-| Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:13-17` |
+| Interoperability | WebSocket protocol | `docs/api.md` (Socket.io protocol), `server/realtime/rooms.js`, `client/src/net/socket.js:22-26` |
+| Virtual identity | Session cookie settings | `server/middleware/session.js:7-19` |
+| Virtual identity | Register, hash, login, per-IP limits, logout | `server/routes/auth.js:9-10`, `server/services/authService.js:35-39`, `:53-96`, `server/services/rateLimiter.js`, `server/repositories/index.js` (`bumpCounter`) |
+| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/services/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js` (`/sessions/:handle`, `/export`), `server/repositories/index.js` (`exportUser`) |
+| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/services/authService.js:166-203`, `client/src/views/Login/Login.jsx` |
+| Virtual identity | Session regeneration, remember me | `server/lib/httpSession.js:7-20` |
+| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/services/authService.js:103-107`, `server/services/sessions.js:5-67` |
+| Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:3-6` |
 | Virtual identity | Suspend/restore (sessions and sockets ended, login refused) and the audit log | `server/routes/admin.js`, `server/middleware/auth.js` (suspended check), `server/models/index.js` (`AuditLog`) |
-| Virtual identity | Admin roles | `server/routes/admin.js:65-85`, `client/src/screens/Admin/Admin.jsx` |
-| Virtual identity | Sessions in MongoDB | `server/index.js:37-39` |
-| Virtual identity | Login on the WebSocket | `server/realtime/socket.js:20-35` |
+| Virtual identity | Admin roles | `server/services/adminService.js:43-53`, `client/src/views/Admin/Admin.jsx` |
+| Virtual identity | Sessions in MongoDB | `server/index.js:31-32` |
+| Virtual identity | Login on the WebSocket | `server/realtime/socket.js:13-24` |
 
 Fuller notes: [docs/events.md](docs/events.md), [docs/api.md](docs/api.md),
 [docs/evaluation.md](docs/evaluation.md), [docs/VIDEO-GUIDE.md](docs/VIDEO-GUIDE.md).
@@ -328,7 +338,7 @@ back in, picks Quick Play and Medium, solves the deploy puzzle and checks the ba
 404 page. It runs against `tests/e2e/server.js` (in-memory MongoDB, a fake Banana API whose answer is 7).
 Locally it uses the installed Chrome; GitHub Actions runs it in a second CI job with Chromium.
 
-120 unit and integration tests run on Node's built-in test runner. Each test file starts a throw-away MongoDB
+140 unit and integration tests run on Node's built-in test runner. Each test file starts a throw-away MongoDB
 (mongodb-memory-server) and a fake Banana API, and talks to the real Express and Socket.io server over HTTP.
 They cover:
 
@@ -364,15 +374,16 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
 - **Banana API** by Marc Conrad, University of Bedfordshire: https://marcconrad.com/uob/banana/doc.php
 - **Fonts:** Black Ops One and Rubik from Google Fonts (SIL Open Font License).
 - **Libraries:** Express, express-session, connect-mongo, Mongoose and the MongoDB driver, bcryptjs, Socket.io
-  and socket.io-client, React and React DOM, Vite and @vitejs/plugin-react, mongodb-memory-server.
-- Gameplay and screen layout are inspired by Mini Militia Classic. All art, sounds and names in this project are
-  original (drawn in code and made with Web Audio).
+  and socket.io-client, React and React DOM, Vite and @vitejs/plugin-react, mongodb-memory-server, Playwright
+  (end-to-end tests) and Swagger UI (the `/api/docs` page, loaded from a CDN).
+- Gameplay and screen layout are inspired by Mini Militia Classic. The in-game art, sounds and names are original
+  (drawn in code and made with Web Audio); the only exception is the home-page trailer and its poster (below).
 - Ideas such as room codes, XP ranks and the daily challenge were compared with other students' Banana API games
   (see `docs/evaluation.md`); no code was copied from them.
 - The home page trailer (`client/public/media/trailer.mp4`, 20 s, compressed for the web) and its poster were
-  generated with Google Gemini (Veo) from the prompts in `VIDEO-PROMPTS.md`; they are in-game art only and not the
-  assessed video.
-- Code written with help from a generative AI coding assistant and reviewed by Sayub Shakya; every source file
-  says so in its header comment.
+  generated with Google Gemini (Veo) from my own prompts (kept outside the code submission); they are in-game art
+  only and not the assessed video.
+- Code written with help from Claude (Anthropic), an AI coding assistant, and reviewed by Sayub Shakya; every
+  source file says so in its one-line header comment.
 
-_Written with help from a generative AI coding assistant; reviewed by Sayub Shakya._
+_Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._
