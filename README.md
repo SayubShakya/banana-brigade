@@ -364,8 +364,9 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
   original (drawn in code and made with Web Audio).
 - Ideas such as room codes, XP ranks and the daily challenge were compared with other students' Banana API games
   (see `docs/evaluation.md`); no code was copied from them.
-- The home page trailer (`client/public/media/trailer.mp4`) was generated with Google Gemini (Veo) from the prompts in
-  `VIDEO-PROMPTS.md`; it is used as in-game art only and is not the assessed video.
+- The home page trailer (`client/public/media/trailer.mp4`, 20 s, compressed for the web) and its poster were
+  generated with Google Gemini (Veo) from the prompts in `VIDEO-PROMPTS.md`; they are in-game art only and not the
+  assessed video.
 - Code written with help from a generative AI coding assistant and reviewed by Sayub Shakya; every source file
   says so in its header comment.
 
