@@ -148,3 +148,15 @@ test('unknown pages are a 404: the React page for browsers, JSON under /api', as
     assert.deepEqual(await api.json(), { error: 'Not found' });
   } finally { await s.close(); }
 });
+
+test('the saved puzzle reserve keeps only the newest 25 in MongoDB', async () => {
+  const s = await startServer();
+  try {
+    for (let i = 0; i < 30; i++) await s.db.saveReservePuzzle({ image: `img-${i}`, solution: i % 10 });
+    const rows = await s.db.loadReservePuzzles(25);
+    assert.equal(rows.length, 25);
+    assert.equal(await s.db.models.ReservePuzzle.countDocuments(), 25);
+    assert.equal(rows[0].image, 'img-29');   // newest first
+    assert.ok(!rows.some((r) => r.image === 'img-0'));
+  } finally { await s.close(); }
+});

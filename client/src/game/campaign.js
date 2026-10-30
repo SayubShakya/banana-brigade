@@ -21,7 +21,7 @@ export const CHAPTERS = [
 export const MISSIONS = [
   { id: 1, chapter: 1, name: 'First Flight', map: 'jungle', text: 'Learn the jetpack against two rookies.', bots: 2, target: 5, timeLimit: 240, lives: 5 },
   { id: 2, chapter: 1, name: 'Jetpack Jump', map: 'jungle', text: 'Three bots, high platforms.', bots: 3, target: 8, timeLimit: 240, lives: 5 },
-  { id: 3, chapter: 1, name: 'Crate Run', map: 'jungle', text: 'Grab banana crates for power weapons.', bots: 3, target: 10, timeLimit: 240, lives: 4 },
+  { id: 3, chapter: 1, name: 'Crate Run', map: 'jungle', text: 'Open banana crates for Banana Powers.', bots: 3, target: 10, timeLimit: 240, lives: 4 },
   { id: 4, chapter: 2, name: 'Ambush', map: 'desert', text: 'Four sharper bots.', bots: 4, target: 10, timeLimit: 210, lives: 4 },
   { id: 5, chapter: 2, name: 'Crossfire', map: 'desert', text: 'Five bots, keep moving.', bots: 5, target: 12, timeLimit: 210, lives: 4 },
   { id: 6, chapter: 2, name: 'Hold the Ridge', map: 'desert', text: 'Fewer lives, more kills.', bots: 5, target: 15, timeLimit: 210, lives: 3 },

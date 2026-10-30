@@ -118,7 +118,6 @@ export const MODES = {
   online:   { name: 'Online',      size: 6, killLimit: 20, timeLimit: 300, respawn: 6 },   // humans first, bots fill up to size
 };
 
-// Banana crates open a Banana API puzzle; solving it gives a power weapon.
 // Banana crates: solve the puzzle, then choose one of `choices` random powers (or
 // take a random one for `randomBonus` extra seconds). A taken crate returns after `respawn` s.
 export const BANANA_CRATE = { respawn: 40, choices: 3, pickSeconds: 6, randomBonus: 3 };

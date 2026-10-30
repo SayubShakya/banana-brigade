@@ -1,12 +1,13 @@
 // The Banana Brigade web server: accounts, Banana API puzzles, scores and the game files.
 //
-//   POST /api/auth/register | login {remember} | logout | logout-all | password,  GET /api/auth/me
-//   DELETE /api/auth/account,  GET /api/auth/available?u=  |  sessions
-//   GET  /api/puzzle?purpose=deploy|respawn|crate   -> { puzzleId, image, purpose, source }   (login)
-//   POST /api/puzzle/answer  { puzzleId, answer }   -> { correct, solution, purpose }           (login)
-//   GET  /api/status                                -> Banana API state
-//   POST /api/scores, GET /api/scores/leaderboard?mode=, GET /api/scores/me
-//   GET  /api/admin/users, DELETE /api/admin/users/:id/scores, PATCH /api/admin/users/:id/role  (admin)
+//   Every path also works as /api/v1/... (the browser uses v1). The full list is the
+//   OpenAPI description (routes/openapi.js, docs/openapi.yaml, Swagger UI at /api/docs):
+//   /api/auth/...      register, login, logout(-all), password, account, guest, upgrade,
+//                      forgot, reset(/check), available, sessions(/:handle), export, me
+//   /api/puzzle, /api/puzzle/answer   Banana puzzles (login)        /api/status   API health
+//   /api/scores/..., /api/achievements, /api/campaign/..., /api/daily/...
+//   /api/admin/...     users, scores, role, suspend, restore, audit, health (admin)
+//   /api/public/leaderboard   read-only, CORS        /api/docs, /api/openapi.json
 //
 // The browser never calls the Banana API itself: the server fetches the puzzle,
 // keeps the solution and only sends the picture, so the answer cannot be read in

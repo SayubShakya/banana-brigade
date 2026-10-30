@@ -98,9 +98,10 @@ function endThisSession(req, res) {
   });
 }
 
-// appUrl: the address put in reset links. In production it must come from settings
-// (APP_URL), never from the request's Host header, which an attacker can change to
-// make the server hand out links to their own site.
+// appUrl: the address put in reset links, from APP_URL. In production the server
+// refuses to start without it (config/), because the request's Host header can be
+// changed by an attacker to make the server hand out links to their own site. Only
+// in development and tests, where APP_URL may be unset, is the Host header used.
 // pwnedCheck: the Have I Been Pwned check for new passwords (services/pwned.js).
 function createAuthRouter({ db, now = () => Date.now(), sendResetLink = logResetLink, appUrl = null, pwnedCheck = noPwnedCheck, eventLog = null }) {
   const log = (kind, user, text) => eventLog?.record(kind, user, text);

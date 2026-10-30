@@ -4,7 +4,9 @@
 //   opens instantly instead of waiting for the API.
 // - `reserve`: recently fetched puzzles kept for emergencies. The Banana API notes
 //   that it "may be discontinued without notice"; if it stops answering, the game
-//   keeps working from the reserve and the menu shows the API as offline.
+//   keeps working from the reserve and the menu shows the API as offline. With a
+//   `store`, the reserve is also saved in MongoDB and loaded when the server starts,
+//   so the game still has puzzles after a restart while the API is down.
 // - a deadline on take(): a slow API with retries could keep a player waiting for
 //   two timeouts plus backoff, so after a short wait a reserve puzzle is used instead
 //   (the live puzzle still arrives later and goes into `ready`).
@@ -36,6 +38,7 @@ function createPuzzlePool({
   failureThreshold = 3,
   coolDownMs = 30_000,
   now = () => Date.now(),
+  store = null,             // optional: { load(limit), save(puzzle) } keeps the reserve across restarts
 }) {
   const ready = [];
   const reserve = [];
@@ -52,9 +55,18 @@ function createPuzzlePool({
   let openedAt = 0;
   let probing = false;
 
-  function remember(puzzle) {
+  function remember(puzzle, { save = true } = {}) {
     reserve.push(puzzle);
     if (reserve.length > reserveSize) reserve.shift();
+    if (save && store) store.save({ image: puzzle.image, solution: puzzle.solution }).catch(() => {});   // best effort
+  }
+
+  // Loads the saved reserve (newest first in the store, oldest first here).
+  async function loadReserve() {
+    if (!store) return 0;
+    const saved = await store.load(reserveSize);
+    for (const p of saved.reverse()) remember({ image: p.image, solution: p.solution }, { save: false });
+    return saved.length;
   }
 
   function measure(ok, ms) {
@@ -207,6 +219,7 @@ function createPuzzlePool({
     // Returns { image, solution, source } where source is 'live' or 'reserve'.
     take,
     warmUp: refill,
+    loadReserve,
     status,
   };
 }

@@ -4,7 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 if ! command -v node >/dev/null 2>&1; then echo "Install Node.js 22 or later from https://nodejs.org" >&2; exit 1; fi
-if [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then echo "Node.js 22 or later is needed." >&2; exit 1; fi
+# Node 22.9 or later (needed for --env-file-if-exists).
+if ! node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 9) ? 0 : 1)'; then
+  echo "Node.js 22.9 or later is needed (you have $(node -v))." >&2; exit 1
+fi
 if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then npm install; touch node_modules; fi
 # First run: create .env with a random session secret (never committed).
 if [ ! -f .env ]; then
@@ -24,7 +27,8 @@ if ! grep -q '^MONGODB_URI=mongodb+srv' .env 2>/dev/null && command -v mongosh >
 fi
 # Restart: if the port is taken by an older Banana Brigade server, stop it first.
 # Anything else on the port is left alone (it could be another app), with a message.
-port=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+# The port the server will use: PORT from the command line (PORT=3105 ./run.sh) wins over .env.
+port=${PORT:-$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')}
 port=${port:-3100}
 if [ "${1:-}" != "--test" ] && command -v lsof >/dev/null 2>&1; then
   for pid in $(lsof -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
