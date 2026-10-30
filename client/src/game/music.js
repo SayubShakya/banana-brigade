@@ -34,7 +34,8 @@ const players = [];
 let timer = null;
 
 const freq = (midi) => 440 * 2 ** ((midi - 69) / 12);
-const level = () => (muted ? 0 : volume);
+const hidden = () => typeof document !== 'undefined' && document.hidden;
+const level = () => (muted || hidden() ? 0 : volume);
 
 function note(ctx, out, midi, time, length, { type, volume: v }) {
   const o = ctx.createOscillator();
@@ -119,6 +120,7 @@ export function setMusicMuted(value) { muted = !!value; applyLevel(); }
 export const currentTrack = () => players.find((p) => !p.stopAt)?.name ?? null;
 
 export function initMusic() {
+  document.addEventListener('visibilitychange', applyLevel);
   on('game:state', ({ state }) => {
     wanted = ['playing', 'puzzle', 'paused'].includes(state) ? 'battle' : 'menu';
     sync();
