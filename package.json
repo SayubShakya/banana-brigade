@@ -16,7 +16,7 @@
     "openapi": "node scripts/openapi-yaml.js"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.9"
   },
   "author": "Sayub Shakya",
   "license": "UNLICENSED",
@@ -33,7 +33,7 @@
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.47.2",
+    "@playwright/test": "^1.63.0",
     "@vitejs/plugin-react": "^6.1.2",
     "mongodb-memory-server": "^11.3.0",
     "vite": "^8.3.5"

@@ -11,8 +11,14 @@ const { execSync } = require('node:child_process');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 (async () => {
-  if (!process.env.MONGOMS_SYSTEM_BINARY && fs.existsSync('/opt/homebrew/bin/mongod')) {
-    process.env.MONGOMS_SYSTEM_BINARY = '/opt/homebrew/bin/mongod';   // use a local mongod if there is one
+  // Use a locally installed mongod if there is one (Apple silicon or Intel Homebrew,
+  // or Linux), and ask for its own version so there is no "version conflict" warning.
+  // Without one, mongodb-memory-server uses the copy it downloaded during npm install.
+  const local = ['/opt/homebrew/bin/mongod', '/usr/local/bin/mongod', '/usr/bin/mongod'].find((p) => fs.existsSync(p));
+  if (!process.env.MONGOMS_SYSTEM_BINARY && local) {
+    process.env.MONGOMS_SYSTEM_BINARY = local;
+    const version = /db version v(\d+\.\d+\.\d+)/.exec(execSync(`${local} --version`).toString())?.[1];
+    if (version && !process.env.MONGOMS_VERSION) process.env.MONGOMS_VERSION = version;
   }
   if (!fs.existsSync(path.join(__dirname, '..', 'client', 'dist', 'index.html'))) {
     console.log('Building the React app…');
