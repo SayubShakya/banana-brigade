@@ -154,6 +154,7 @@ export default function Settings({ settings, account, onToggle, onSet, onControl
       <div className="settings-list">
         {tab === 'game' && <>
           {OPTIONS.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
+          <Toggle label="Story clips" value={settings.storyClips !== false} onClick={() => onSet('storyClips', settings.storyClips === false)} />
           {canFullscreen && <Toggle label="Fullscreen" value={isFullscreen} onClick={toggleFullscreen} />}
           <div className="setting"><span>Controls</span><button className="toggle" onClick={onControls}>View</button></div>
           <div className="setting"><span>Banana API</span><span className="setting-note">{apiStatus.line}</span></div>
