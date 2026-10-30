@@ -113,9 +113,9 @@ export const POWERS = {
 };
 
 export const DIFFICULTY = {
-  easy:   { name: 'Easy',   accuracy: [0.10, 0.35], reaction: 1.2,  damage: 0.4,  burst: 0.5, pause: 1.1, grenades: 0.03, smarts: 0.25, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
-  medium: { name: 'Medium', accuracy: [0.30, 0.55], reaction: 0.75, damage: 0.65, burst: 0.7, pause: 0.7, grenades: 0.08, smarts: 0.6,  puzzle: { deploy: 30, respawn: 15, crate: 20 } },
-  hard:   { name: 'Hard',   accuracy: [0.55, 0.90], reaction: 0.35, damage: 1,    burst: 9,   pause: 0,   grenades: 0.25, smarts: 1,    puzzle: { deploy: 20, respawn: 10, crate: 12 } },
+  easy:   { name: 'Easy',   accuracy: [0.08, 0.28], reaction: 1.4,  damage: 0.3,  burst: 0.5, pause: 1.1, grenades: 0.03, smarts: 0.25, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
+  medium: { name: 'Medium', accuracy: [0.22, 0.45], reaction: 0.95, damage: 0.5,  burst: 0.7, pause: 0.7, grenades: 0.08, smarts: 0.6,  puzzle: { deploy: 30, respawn: 15, crate: 20 } },
+  hard:   { name: 'Hard',   accuracy: [0.45, 0.75], reaction: 0.5,  damage: 0.8,  burst: 1.2, pause: 0.4, grenades: 0.25, smarts: 1,    puzzle: { deploy: 20, respawn: 10, crate: 12 } },
 };
 
 export const BOT_TACTICS = {
