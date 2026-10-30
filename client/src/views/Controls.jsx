@@ -1,12 +1,13 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { Panel } from '../components/common.jsx';
+import '../styles/bootcamp.css';
 
 const KEYS = [
   [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim (auto-fires on enemies)'], [['Click'], 'Shoot'],
   [['Q'], 'Switch weapon'], [['R'], 'Reload'], [['G'], 'Grenade'], [['F'], 'Melee'], [['Z'], 'Zoom'],
   [['E'], 'Banana crate: solve, then pick a power', true], [['B'], 'Banana respawn', true], [['0', '9'], 'Answer a puzzle', true],
-  [['Tab'], 'Scoreboard'], [['Esc'], 'Pause'],
+  [['Tab'], 'Scoreboard'], [['H'], 'Show or hide this help in battle'], [['Esc'], 'Pause'],
 ];
 
 export default function Controls({ onBack }) {
@@ -30,6 +31,7 @@ export default function Controls({ onBack }) {
           </div>
         </div>
       </div>
+      <p className="controls-hint">New to the game? Boot Camp walks you through every control in about 90 seconds (Menu · How to play).</p>
     </Panel>
   );
 }
