@@ -72,7 +72,7 @@ test('login gives a new session id, so a planted id cannot be reused (session fi
   } finally { await s.close(); }
 });
 
-test('five wrong passwords lock the account for a while', async () => {
+test('five wrong passwords for one name from one IP are limited for a while', async () => {
   const s = await startServer();
   try {
     await client(s.base).post('/api/auth/register', { username: 'locked', password: 'bananas123' });
