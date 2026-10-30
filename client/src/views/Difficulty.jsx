@@ -38,9 +38,9 @@ export function LengthPicker({ mode, value, onChange }) {
 }
 
 const ABOUT = {
-  easy: ['Bots hold fire for the first 30 s', 'Bots aim badly and hit you softly', 'Light aim assist on your shots', 'Long puzzle timers'],
+  easy: ['Bots hold fire at the start (up to 30 s)', 'Bots aim badly and hit you softly', 'Light aim assist on your shots', 'Long puzzle timers'],
   medium: ['Fair bots that fire in bursts', 'Normal damage', 'Normal puzzle timers'],
-  hard: ['Sharp, fast bots that keep shooting', 'Full damage', 'Short puzzle timers', 'Win to unlock Hard as Nails'],
+  hard: ['Sharp, fast bots that fire in short bursts', 'Full damage', 'Short puzzle timers', 'Win to unlock Hard as Nails'],
 };
 
 export default function Difficulty({ mode, current, onPick, onBack, length: chosen, onLength }) {

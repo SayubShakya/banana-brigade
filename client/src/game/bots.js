@@ -7,7 +7,8 @@ import { RAMP } from './campaign.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 export const EASY_HESITATION = 30;
-export const hesitating = (world) => world.difficulty?.name === DIFFICULTY.easy.name && world.time < EASY_HESITATION;
+export const hesitationFor = (timeLimit) => Math.min(EASY_HESITATION, Number.isFinite(timeLimit) ? timeLimit * 0.2 : EASY_HESITATION);
+export const hesitating = (world) => world.difficulty?.name === DIFFICULTY.easy.name && world.time < hesitationFor(world.cfg?.timeLimit);
 export const aimSpread = (accuracy, d) => (1.2 - accuracy) * (Math.min(300, d * 0.26) + Math.min(80, Math.max(0, d - 500) * 0.1));
 const leaveAlone = (world, s) => s.shieldTimer > 0 || s.busy || world.time < (s.graceUntil ?? 0);
 
