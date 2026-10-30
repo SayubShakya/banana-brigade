@@ -32,7 +32,7 @@ function soldierState(s) {
   };
 }
 
-function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, crateTimings }) {
+function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, killLimit, crateTimings }) {
   const T = { ...CRATE_TIMINGS, ...crateTimings };
   const matchId = crypto.randomUUID();
   const outbox = [];
@@ -77,12 +77,11 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
 
   const mapId = randomMapId();
   const world = createWorld({
-    mode: 'online', teamMode, difficulty, emit, map: mapId,
+    mode: 'online', teamMode, difficulty, emit, map: mapId, timeLimit, killLimit,
     humans: players.map((p) => ({ id: sid(p.userId), name: p.username, avatar: { parts: p.parts }, team: p.team })),
     botAvatars: Array.from({ length: 8 }, (_, i) => ({ bot: i })),
     botNames: [...BOT_NAMES].sort(() => Math.random() - 0.5),
   });
-  if (timeLimit) world.timeLeft = timeLimit;
   const byUser = (userId) => world.soldiers.find((s) => s.id === sid(userId));
 
   const roster = () => world.soldiers.map((s) => ({ id: s.id, name: s.name, team: s.team, human: s.isPlayer, avatar: s.avatar }));
@@ -201,6 +200,8 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     mapId,
     roster,
     botLevel: world.difficulty.name,
+    timeLimit: world.cfg.timeLimit,
+    killLimit: world.cfg.killLimit,
     setControls,
     countPuzzle(userId, correct) {
       const p = puzzles.get(userId) ?? { solved: 0, attempted: 0 };

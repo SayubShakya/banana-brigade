@@ -87,6 +87,22 @@ export const MODES = {
   online:   { name: 'Online',      size: 6, killLimit: 20, timeLimit: 300, respawn: 6 },
 };
 
+export const MATCH_LENGTHS = [
+  { seconds: 30,  label: '30 s',  kills: { quick: 4,  team: 6,  online: 4 } },
+  { seconds: 60,  label: '1 min', kills: { quick: 6,  team: 9,  online: 6 } },
+  { seconds: 120, label: '2 min', kills: { quick: 10, team: 15, online: 10 } },
+  { seconds: 180, label: '3 min', kills: { quick: 15, team: 22, online: 15 } },
+  { seconds: 300, label: '5 min', kills: { quick: 20, team: 30, online: 20 } },
+];
+export const DEFAULT_MATCH_LENGTH = 300;
+export const TIMED_MODES = ['quick', 'team', 'online'];
+
+export function matchRules(mode, seconds = DEFAULT_MATCH_LENGTH) {
+  const length = MATCH_LENGTHS.find((l) => l.seconds === seconds);
+  const killLimit = length?.kills[mode];
+  return killLimit ? { timeLimit: length.seconds, killLimit, label: length.label } : null;
+}
+
 export const BANANA_CRATE = { respawn: 40, choices: 3, pickSeconds: 6, randomBonus: 3 };
 
 export const BANANA_METER = {

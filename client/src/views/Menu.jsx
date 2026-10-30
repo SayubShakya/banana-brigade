@@ -6,11 +6,16 @@ import { emit } from '../services/eventBus.js';
 import { readJson } from '../services/storage.js';
 import { rankFor, xpFor } from '../services/rank.js';
 import { Icon, AvatarCanvas, RankCard, Sky } from '../components/common.jsx';
+import { DEFAULT_MATCH_LENGTH, matchRules } from '../game/config.js';
 import '../styles/bootcamp.css';
 
+const quickText = () => {
+  const rules = matchRules('quick', readJson('settings', {}).matchLength ?? DEFAULT_MATCH_LENGTH) ?? matchRules('quick');
+  return `Free-for-all vs 5 bots · ${rules.label} · first to ${rules.killLimit} kills`;
+};
 const MAIN = [
   { action: 'campaign', icon: 'map', name: 'Campaign', text: '9 missions · earn stars · unlock chapters', tag: 'Missions', primary: true },
-  { action: 'quick', icon: 'cross', name: 'Quick Play', text: 'Free-for-all vs 5 bots · first to 20 kills', tag: 'Deploy' },
+  { action: 'quick', icon: 'cross', name: 'Quick Play', text: quickText, tag: 'Deploy' },
   { action: 'online', icon: 'globe', name: 'Play Online', text: 'Real players · share a room code', tag: 'Rooms' },
   { action: 'modes', icon: 'shield', name: 'More Modes', text: 'Survival · Team Battle · Training', tag: 'Choose' },
 ];
@@ -67,7 +72,7 @@ export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
         {MAIN.map((m) => (
           <button key={m.action} className={`mode-card big${m.primary ? ' primary' : ''}`} onClick={() => (m.action === 'modes' || m.action === 'campaign' ? onOpen(m.action) : onDeploy(m.action))}>
             <Icon id={m.icon} className="mode-ico" />
-            <span className="mode-text"><b>{m.name}</b><small>{m.text}</small></span>
+            <span className="mode-text"><b>{m.name}</b><small>{typeof m.text === 'function' ? m.text() : m.text}</small></span>
             <span className="mode-tag">{m.tag}</span>
           </button>
         ))}

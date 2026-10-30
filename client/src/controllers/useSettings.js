@@ -6,7 +6,7 @@ import { useBus } from '../hooks/useBus.js';
 import { game } from './gameEngine.js';
 
 const DEFAULT_SETTINGS = {
-  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, autoFire: true, difficulty: 'easy',
+  musicVolume: 60, sfxVolume: 80, muted: false, laser: true, banners: true, fps: false, autoFire: true, difficulty: 'easy', matchLength: 300,
   contrast: false, largeText: false, calm: false, bootCampDone: false, bootCampOffered: false, tipsSeen: {},
 };
 function loadSettings() {

@@ -4,10 +4,30 @@ import { on, emit } from '../services/eventBus.js';
 import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS, BANANA_METER } from './config.js';
 import { activeGun } from './world.js';
 import { drawAvatarPreview } from './characters.js';
+import '../styles/match.css';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtTime = (sec) => { const s = Math.ceil(sec); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const MINI_ROWS = 5;
+const LIVE_MODES = ['quick', 'team', 'online'];
+const calm = () => document.body.classList.contains('a11y-calm') || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+function miniRows(world) {
+  const p = world.player;
+  if (world.teamMode) {
+    return ['blue', 'red']
+      .map((team) => ({ id: `team-${team}`, name: team === 'blue' ? 'Blue' : 'Red', kills: world.teamKills[team], me: p?.team === team, team }))
+      .sort((a, b) => b.kills - a.kills || (a.team === 'blue' ? -1 : 1))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  }
+  const players = world.soldiers.filter((s) => !s.isDummy);
+  const ranked = players.sort((a, b) => b.kills - a.kills || (b === p) - (a === p) || a.deaths - b.deaths || (a.id < b.id ? -1 : 1))
+    .map((s) => ({ id: s.id, name: s.name, kills: s.kills, me: s === p, rank: players.filter((o) => o.kills > s.kills).length + 1 }));
+  const top = ranked.slice(0, MINI_ROWS);
+  const mine = ranked.find((r) => r.me);
+  return mine && !top.includes(mine) ? [...top, { ...mine, gap: true }] : top;
+}
 
 export function createHud() {
   const el = {
@@ -17,7 +37,10 @@ export function createHud() {
     grenades: $('grenades'), zoom: $('zoom-label'), msg: $('center-msg'), crate: $('crate-prompt'),
     board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'), buffs: $('buffs'), help: $('hud-help'),
     meter: $('banana-meter'), meterFill: $('meter-fill'), meterText: $('meter-text'), supply: $('supply-btn'),
+    mini: $('mini-board'),
   };
+  const miniEls = new Map();
+  let miniKey = '';
   let meterShown = -1;
   el.supply.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); emit('input:supply'); });
   let world = null;
@@ -93,6 +116,43 @@ export function createHud() {
   on('input:zoom', ({ level }) => { zoomLevel = level; });
   on('input:scoreboard', ({ show }) => { if (world) el.board.hidden = !show; });
 
+  function renderMini() {
+    if (!LIVE_MODES.includes(world.mode)) { el.mini.hidden = true; return; }
+    el.mini.hidden = false;
+    const rows = miniRows(world);
+    const key = rows.map((r) => `${r.id}:${r.name}:${r.kills}:${r.rank}`).join('|');
+    if (key === miniKey) return;
+    miniKey = key;
+    const animate = !calm();
+    const before = new Map();
+    if (animate) for (const [id, li] of miniEls) before.set(id, li.getBoundingClientRect().top);
+    const keep = new Set(rows.map((r) => r.id));
+    for (const [id, li] of miniEls) if (!keep.has(id)) { li.remove(); miniEls.delete(id); }
+    for (const r of rows) {
+      let li = miniEls.get(r.id);
+      const fresh = !li;
+      if (fresh) {
+        li = document.createElement('li');
+        li.innerHTML = '<span class="mb-rank"></span><span class="mb-name"></span><span class="mb-kills"></span>';
+        miniEls.set(r.id, li);
+      }
+      const [rank, name, kills] = li.children;
+      const scored = !fresh && Number(kills.textContent) < r.kills;
+      rank.textContent = r.rank;
+      name.textContent = r.name;
+      kills.textContent = r.kills;
+      li.className = ['mb-row', r.me && 'me', r.gap && 'gap', r.team && `mb-${r.team}`].filter(Boolean).join(' ');
+      el.mini.appendChild(li);
+      if (scored && animate) { li.classList.remove('scored'); void li.offsetWidth; li.classList.add('scored'); }
+    }
+    if (!animate) return;
+    for (const r of rows) {
+      const li = miniEls.get(r.id);
+      const dy = (before.get(r.id) ?? li.getBoundingClientRect().top) - li.getBoundingClientRect().top;
+      if (dy) li.animate?.([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.3,1)' });
+    }
+  }
+
   function renderBoard() {
     const rows = world.soldiers.filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
     el.boardBody.innerHTML = rows.map((s, i) => `<tr class="${s.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${nameTag(s)}</td><td>${s.kills}</td><td>${s.deaths}</td></tr>`).join('');
@@ -106,6 +166,10 @@ export function createHud() {
       el.hud.hidden = false;
       el.hud.dataset.mode = w.mode;
       el.zoom.textContent = '1x';
+      el.mini.replaceChildren();
+      miniEls.clear();
+      miniKey = '';
+      el.timer.classList.remove('final');
       meterShown = -1;
       zoomText = '1x';
       drawAvatarPreview(el.badge, w.player.avatar);
@@ -117,7 +181,7 @@ export function createHud() {
       toast(showing ? `Map: ${w.map.name} · ${showing}` : `Map: ${w.map.name}`);
     },
     setBanners(on) { banners = on; },
-    hide() { world = null; el.hud.hidden = true; el.board.hidden = true; el.help.hidden = true; },
+    hide() { world = null; el.hud.hidden = true; el.board.hidden = true; el.help.hidden = true; el.mini.hidden = true; el.timer.classList.remove('final'); },
     update() {
       if (!world) return;
       const p = world.player;
@@ -177,6 +241,10 @@ export function createHud() {
           el.rank.textContent = `#${better + 1} of ${players.length} · first to ${world.cfg.killLimit}`;
         }
       }
+
+      const timed = LIVE_MODES.includes(world.mode) || world.mode === 'campaign';
+      el.timer.classList.toggle('final', timed && world.timeLeft > 0 && world.timeLeft <= 10);
+      renderMini();
 
       if (!p.alive && !world.over) {
         const by = p.lastAttacker && p.lastAttacker !== p ? `Killed by ${esc(p.lastAttacker.name)}` : 'You went down';
