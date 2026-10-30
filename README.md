@@ -107,7 +107,7 @@ How the integration works:
 
 ## Setup
 
-You need **Node.js 22 or later** and **MongoDB**.
+You need **Node.js 22.9 or later** and **MongoDB**.
 
 MongoDB, either:
 
@@ -143,8 +143,13 @@ npm run create-admin -- <username> <password> # create an admin, or make a playe
 npm run dev:client                           # Vite with hot reload on :5173, forwards /api and the socket to :3100
 ```
 
-Settings live in `.env` (see `.env.example`): `PORT`, `SESSION_SECRET`, `NODE_ENV`, `MONGODB_URI`,
-`BANANA_API_URL` and `BANANA_API_TIMEOUT_MS`. To show the error handling, point the API at a broken address:
+Settings live in `.env` (see `.env.example`): `PORT`, `SESSION_SECRET`, `NODE_ENV`, `MONGODB_URI`, `APP_URL`
+(required in production), `BANANA_API_URL`, `BANANA_API_TIMEOUT_MS` and `PWNED_CHECK`. Every setting is read in
+`server/config/index.js`. A setting given on the command line wins over `.env` (e.g. `PORT=3105 ./run.sh`).
+
+To show the error handling, run the game normally once (it saves the last 25 Banana puzzles in MongoDB as a
+reserve), then restart it with the API pointed at a broken address. `/api/status` shows the API offline and the
+circuit breaker open, and every puzzle comes from the saved reserve, so the game stays playable:
 
 ```bash
 BANANA_API_URL=https://marcconrad.com/uob/banana/does-not-exist.php ./run.sh

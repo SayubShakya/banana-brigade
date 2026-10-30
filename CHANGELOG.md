@@ -6,6 +6,16 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Fixed (`fix/alignment-code`, from the alignment check)
+- **The puzzle reserve is saved in MongoDB** (the newest 25) and loaded when the server starts, so restarting with
+  the Banana API down still gives puzzles: the "API down" demo works from a cold start.
+- `run.sh` uses a `PORT` given on the command line; it checks for Node 22.9+ (needed for `--env-file-if-exists`),
+  and `engines` says the same. A busy port now prints a clear message instead of a stack trace.
+- Production refuses to start without `APP_URL`, so reset links never use the request's Host header.
+- `npm run demo` finds a local MongoDB on Apple silicon, Intel or Linux and uses its version (no warning).
+- Playwright updated to 1.63.0 (no npm audit findings); `vite.config.mjs` (no build warning).
+- Old "power weapon" wording in mission 3 and a config comment; the route summary at the top of `server/app.js`.
+
 ### Changed (`feature/gemini-trailer`)
 - New 20-second home page trailer from Google Gemini: one hero flies in, opens a banana crate, the five Banana Power
   orbs come out, then desert, night and blue-vs-red battles. Compressed for the web (2.8 MB, starts playing at once)
