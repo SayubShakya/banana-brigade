@@ -60,7 +60,7 @@ export default function App() {
       {screen === 'controls' && <Controls onBack={back} />}
       {screen === 'modes' && <Modes onDeploy={(m) => battle.deployFrom('modes', m)} onBack={back} />}
       {screen === 'campaign' && <Campaign onPlay={battle.playMission} onBack={back} />}
-      {screen === 'difficulty' && <Difficulty mode={battle.pendingMode} current={settings.difficulty} onPick={(d) => battle.deployWith(battle.pendingMode, d)} onBack={back} />}
+      {screen === 'difficulty' && <Difficulty mode={battle.pendingMode} current={settings.difficulty} onPick={(d, len, map) => battle.deployWith(battle.pendingMode, d, len, map)} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={battle.toMenu} />}
       {screen === 'pause' && <Pause sound={!settings.muted} online={battle.online} onResume={battle.resume}

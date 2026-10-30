@@ -80,10 +80,10 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   }, []);
   const deployFrom = (from, mode) => { setParent(from); deploy(mode); };
 
-  const deployWith = useCallback(async (mode, difficulty, length = lengthRef.current) => {
+  const deployWith = useCallback(async (mode, difficulty, length = lengthRef.current, map = undefined) => {
     setSetting('difficulty', difficulty);
     if (length !== undefined && length !== lengthRef.current) setSetting('matchLength', length);
-    game().prepare(mode, difficulty, null, length);
+    game().prepare(mode, difficulty, null, length, map);
     if (NO_DEPLOY_PUZZLE.includes(mode)) { startBattle(mode); return; }
     setScreen('menu');
     await playCutscene('intro');

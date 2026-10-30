@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { getSocket, request } from '../net/socket.js';
 import { Panel, Icon } from '../components/common.jsx';
 import { DIFFICULTY, MATCH_LENGTHS } from '../game/config.js';
-import { LengthPicker, savedLength } from './Difficulty.jsx';
+import { LengthPicker, MapPicker, savedLength, savedMap } from './Difficulty.jsx';
+import { mapName } from '../game/maps.js';
 import { emit } from '../services/eventBus.js';
 
 const botLevel = (key) => DIFFICULTY[key]?.name ?? 'Medium';
+const mapText = (r) => (r.map && r.map !== 'random' ? mapName(r.map) : 'Random map');
 const lengthText = (r) => `${MATCH_LENGTHS.find((l) => l.seconds === r.matchLength)?.label ?? '5 min'} · first to ${r.killLimit ?? 20}`;
 
 export default function Lobby({ account, parts, onBack }) {
@@ -18,6 +20,7 @@ export default function Lobby({ account, parts, onBack }) {
   const [isPublic, setIsPublic] = useState(true);
   const [difficulty, setDifficulty] = useState('medium');
   const [matchLength, setMatchLength] = useState(savedLength);
+  const [map, setMap] = useState(savedMap);
   const [error, setError] = useState('');
   const [online, setOnline] = useState(false);
 
@@ -47,7 +50,7 @@ export default function Lobby({ account, parts, onBack }) {
     setError('');
     try { await fn(); } catch (err) { setError(err.message); }
   };
-  const create = () => run(async () => setRoom((await request('room:create', { teamMode, isPublic, difficulty, matchLength, parts })).room));
+  const create = () => run(async () => setRoom((await request('room:create', { teamMode, isPublic, difficulty, matchLength, map, parts })).room));
   const join = (c) => run(async () => setRoom((await request('room:join', { code: c, parts })).room));
   const start = () => run(() => request('room:start'));
   const leave = () => { getSocket().emit('room:leave'); setRoom(null); };
@@ -76,6 +79,7 @@ export default function Lobby({ account, parts, onBack }) {
               ))}
             </div>
             <LengthPicker mode="online" value={matchLength} onChange={(s) => { setMatchLength(s); emit('settings:set', { key: 'matchLength', value: s }); }} />
+            <MapPicker value={map} onChange={(m) => { setMap(m); emit('settings:set', { key: 'mapChoice', value: m }); }} />
             <div className="setting"><span>Show in public list</span><button className="toggle" aria-pressed={isPublic} onClick={() => setIsPublic(!isPublic)}>{isPublic ? 'On' : 'Off'}</button></div>
             <button className="mbtn primary" onClick={create} disabled={!online}><Icon id="team" />Create room</button>
             <h3 className="sub-head">Join with a code</h3>
@@ -102,7 +106,7 @@ export default function Lobby({ account, parts, onBack }) {
         </div>
       ) : (
         <div className="room-view">
-          <div className="room-code">Room code <b>{room.code}</b><small>{room.teamMode ? 'Blue vs Red' : 'Free-for-all'} · {lengthText(room)} kills · {botLevel(room.difficulty)} bots fill empty places up to 6</small></div>
+          <div className="room-code">Room code <b>{room.code}</b><small>{room.teamMode ? 'Blue vs Red' : 'Free-for-all'} · {lengthText(room)} kills · {mapText(room)} · {botLevel(room.difficulty)} bots fill empty places up to 6</small></div>
           <table className="results compact">
             <thead><tr><th>Soldier</th>{room.teamMode && <th>Team</th>}<th>Status</th></tr></thead>
             <tbody>

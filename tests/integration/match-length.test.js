@@ -27,8 +27,14 @@ test('the host picks the match length; the server only accepts the listed length
     for (const bad of [45, '30', -30, 0, { $gt: 1 }, 99999]) {
       assert.equal((await call(a.socket, 'room:create', { matchLength: bad })).error, 'Unknown match length');
     }
+    for (const bad of ['moon', 5, { $ne: 1 }]) {
+      assert.equal((await call(a.socket, 'room:create', { map: bad })).error, 'Unknown map');
+    }
+    const snowy = (await call(a.socket, 'room:create', { map: 'snow' })).room;
+    assert.equal(snowy.map, 'snow');
     const plain = (await call(a.socket, 'room:create', {})).room;
     assert.equal(plain.matchLength, 300);
+    assert.equal(plain.map, 'random');
     assert.equal(plain.killLimit, 20);
 
     const { room } = await call(a.socket, 'room:create', { matchLength: 30 });

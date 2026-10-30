@@ -76,3 +76,14 @@ test('match length: a 30 s match ends by time and counts down the last 10 second
   const countdown = events.filter((e) => e.name === 'match:countdown').map((e) => e.payload.seconds);
   assert.deepEqual(countdown, [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
 });
+
+test('an online match uses the chosen map, or a random one', () => {
+  const { createMatch } = require('../../server/realtime/match.js');
+  const opts = { players: [{ userId: '1', username: 'a', parts: {}, team: 'blue' }], teamMode: false, send: () => {}, onEnd: () => {} };
+  const snow = createMatch({ ...opts, map: 'snow' });
+  assert.equal(snow.world.map.id, 'snow');
+  snow.stop();
+  const any = createMatch({ ...opts, map: 'nowhere' });
+  assert.ok(['jungle', 'desert', 'snow', 'night'].includes(any.world.map.id));
+  any.stop();
+});
