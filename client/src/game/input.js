@@ -1,8 +1,9 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { emit } from '../services/eventBus.js';
+import { emit, on } from '../services/eventBus.js';
 import { isAimedAtEnemy, assistAim } from './autoFire.js';
 import { tutorialTick } from './tutorial.js';
+import { activeGun } from './world.js';
 
 const MOVE_KEYS = {
   KeyA: 'left', ArrowLeft: 'left',
@@ -17,6 +18,58 @@ export function toggleHelp(el = document.getElementById('hud-help')) {
   el.hidden = false;
   el.classList.toggle('fade', showing);
   return !showing;
+}
+
+export const ZOOM_ENGAGED_LEVEL = 2;
+
+export function zoomLabel(engaged, sniper) {
+  if (!engaged) return '1x';
+  return sniper ? 'SCOPE' : 'FAR';
+}
+
+export function createZoom(onChange = () => {}) {
+  let toggled = false;
+  let holding = false;
+  let gun = null;
+  const engaged = () => toggled || holding;
+  const sniper = () => gun === 'sniper';
+  const state = () => ({
+    engaged: engaged(),
+    scoped: engaged() && sniper(),
+    zoomLabel: zoomLabel(engaged(), sniper()),
+    level: engaged() ? ZOOM_ENGAGED_LEVEL : 0,
+  });
+  const change = (fn) => {
+    const before = state();
+    fn();
+    const after = state();
+    if (before.engaged !== after.engaged || before.zoomLabel !== after.zoomLabel) onChange(after);
+  };
+  return {
+    get engaged() { return engaged(); },
+    get scoped() { return state().scoped; },
+    get zoomLabel() { return state().zoomLabel; },
+    get level() { return state().level; },
+    toggle() { change(() => { toggled = !engaged(); holding = false; }); },
+    hold(down) { change(() => { holding = !!down; }); },
+    wheel(deltaY) {
+      if (!deltaY) return;
+      const zoomIn = deltaY < 0;
+      change(() => {
+        const want = sniper() ? zoomIn : !zoomIn;
+        toggled = want;
+        if (!want) holding = false;
+      });
+    },
+    setGun(key) {
+      if (key === gun) return;
+      change(() => {
+        if (gun !== null) { toggled = false; holding = false; }
+        gun = key;
+      });
+    },
+    reset() { change(() => { toggled = false; holding = false; }); },
+  };
 }
 
 function joystick(base, onMove) {
@@ -51,20 +104,25 @@ export function createInput(canvas, renderer) {
   const mouse = { x: 640, y: 360 };
   const stickAim = { active: false, x: 0, y: 0 };
   const touchMove = { x: 0, y: 0 };
-  let zoom = 0;
   let enabled = false;
+  let me = null;
+  const zoom = createZoom((st) => emit('input:zoom', st));
   let autoFire = true;
   let lastDir = 0;
   let lastJet = false;
 
   const press = (action) => { if (enabled) pending[action] = true; };
-  const cycleZoom = () => { zoom = (zoom + 1) % 3; emit('input:zoom', { level: zoom }); };
+  const mine = (s) => s && s === me;
+  on('soldier:killed', ({ victim }) => { if (mine(victim)) zoom.reset(); });
+  on('weapon:reloading', ({ soldier }) => { if (mine(soldier)) zoom.reset(); });
+  on('weapon:switched', ({ soldier }) => { if (mine(soldier)) zoom.reset(); });
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') { emit('input:pause'); return; }
     if (!enabled || e.target.tagName === 'INPUT') return;
     if (e.code === 'Tab') { e.preventDefault(); emit('input:scoreboard', { show: true }); return; }
-    if (e.code === 'KeyZ' && !e.repeat) cycleZoom();
+    if (e.code === 'KeyZ' && !e.repeat) zoom.toggle();
+    if (e.code === 'KeyM' && !e.repeat) emit('input:minimap', { visible: renderer.toggleMinimap?.() });
     if (e.code === 'KeyB' && !e.repeat) emit('input:banana');
     if (e.code === 'KeyH' && !e.repeat) emit('input:help', { visible: toggleHelp() });
     if (MOVE_KEYS[e.code]) { held[MOVE_KEYS[e.code]] = true; e.preventDefault(); }
@@ -79,19 +137,22 @@ export function createInput(canvas, renderer) {
   canvas.addEventListener('mousedown', (e) => {
     if (!enabled) return;
     if (e.button === 0) held.fire = true;
-    if (e.button === 2) pending.grenade = true;
+    if (e.button === 2) zoom.hold(true);
   });
-  window.addEventListener('mouseup', (e) => { if (e.button === 0) held.fire = false; });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 0) held.fire = false;
+    if (e.button === 2) zoom.hold(false);
+  });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  canvas.addEventListener('wheel', (e) => { if (enabled) cycleZoom(); e.preventDefault(); }, { passive: false });
-  window.addEventListener('blur', () => { Object.keys(held).forEach((k) => { held[k] = false; }); });
+  canvas.addEventListener('wheel', (e) => { if (enabled) zoom.wheel(e.deltaY); e.preventDefault(); }, { passive: false });
+  window.addEventListener('blur', () => { Object.keys(held).forEach((k) => { held[k] = false; }); zoom.hold(false); });
 
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const a = btn.dataset.action;
-      if (a === 'zoom') { if (enabled) cycleZoom(); }
+      if (a === 'zoom') { if (enabled) zoom.toggle(); }
       else if (a === 'pause') emit('input:pause');
       else press(a);
     });
@@ -107,15 +168,19 @@ export function createInput(canvas, renderer) {
 
   return {
     mouse,
-    get zoom() { return zoom; },
-    resetZoom() { zoom = 0; emit('input:zoom', { level: 0 }); },
-    setEnabled(on) {
-      enabled = on;
-      if (!on) Object.keys(held).forEach((k) => { held[k] = false; });
+    get zoom() { return zoom.level; },
+    get scoped() { return zoom.scoped; },
+    get zoomLabel() { return zoom.zoomLabel; },
+    resetZoom() { zoom.reset(); emit('input:zoom', { level: 0, scoped: false, zoomLabel: zoom.zoomLabel }); },
+    setEnabled(isOn) {
+      enabled = isOn;
+      if (!isOn) { Object.keys(held).forEach((k) => { held[k] = false; }); zoom.hold(false); }
     },
     setAutoFire(on) { autoFire = on !== false; },
     apply(player, world) {
       const c = player.controls;
+      me = player;
+      zoom.setGun(activeGun(player).key);
       c.left = held.left || touchMove.x < -0.3;
       c.right = held.right || touchMove.x > 0.3;
       c.jet = held.jet || touchMove.y < -0.45;
