@@ -35,8 +35,9 @@ test('a correct answer is accepted and the puzzle cannot be reused', async () =>
   await withPlayer(fakeApi(7), async (c) => {
     const { puzzleId } = (await c.get('/api/puzzle')).body;
     const first = await c.post('/api/puzzle/answer', { puzzleId, answer: 7 });
-    const { unlocked, ...answer } = first.body;
-    assert.deepEqual(answer, { correct: true, solution: 7, purpose: 'deploy' });
+    const { unlocked, ms, ...answer } = first.body;
+    assert.deepEqual(answer, { correct: true, solution: 7, purpose: 'deploy', grade: 'gold' });
+    assert.ok(Number.isInteger(ms) && ms >= 0 && ms < 5000);
     assert.deepEqual(unlocked.map((a) => a.id), ['speed_demon']);
     assert.equal((await c.post('/api/puzzle/answer', { puzzleId, answer: 7 })).status, 404);
   });
@@ -46,8 +47,9 @@ test('a wrong answer is rejected and the solution is revealed', async () => {
   await withPlayer(fakeApi(3), async (c) => {
     const { puzzleId } = (await c.get('/api/puzzle?purpose=respawn')).body;
     const res = await c.post('/api/puzzle/answer', { puzzleId, answer: 5 });
-    const { unlocked, ...answer } = res.body;
-    assert.deepEqual(answer, { correct: false, solution: 3, purpose: 'respawn' });
+    const { unlocked, ms, ...answer } = res.body;
+    assert.deepEqual(answer, { correct: false, solution: 3, purpose: 'respawn', grade: null });
+    assert.ok(Number.isInteger(ms));
     assert.deepEqual(unlocked, []);
   });
 });

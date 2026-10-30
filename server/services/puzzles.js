@@ -2,6 +2,13 @@
 
 const crypto = require('node:crypto');
 
+const GRADES = [['gold', 5000], ['silver', 10000]];
+
+function gradeFor(ms, correct) {
+  if (!correct) return null;
+  return GRADES.find(([, limit]) => ms < limit)?.[0] ?? 'bronze';
+}
+
 function createPuzzleStore({ ttlMs = 5 * 60 * 1000, maxSize = 5000, now = () => Date.now() } = {}) {
   const puzzles = new Map();
 
@@ -23,10 +30,12 @@ function createPuzzleStore({ ttlMs = 5 * 60 * 1000, maxSize = 5000, now = () => 
       const p = puzzles.get(id);
       if (!p) return null;
       puzzles.delete(id);
-      return { correct: answer === p.solution, solution: p.solution, purpose: p.purpose, ms: now() - p.createdAt };
+      const correct = answer === p.solution;
+      const ms = Math.max(0, now() - p.createdAt);
+      return { correct, solution: p.solution, purpose: p.purpose, ms, grade: gradeFor(ms, correct) };
     },
     get size() { return puzzles.size; },
   };
 }
 
-module.exports = { createPuzzleStore };
+module.exports = { createPuzzleStore, gradeFor, GRADES };

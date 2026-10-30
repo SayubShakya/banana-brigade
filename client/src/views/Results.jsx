@@ -6,9 +6,45 @@ import { MODES } from '../game/config.js';
 import { Panel, Icon } from '../components/common.jsx';
 import { Stars } from './Campaign.jsx';
 import { missionById } from '../game/campaign.js';
+import '../styles/banana-meter.css';
 
 const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 const PURPOSES = [['deploy', 'Deploy'], ['respawn', 'Respawn'], ['crate', 'Crates']];
+const MEDALS = [['gold', 'GOLD'], ['silver', 'SILVER'], ['bronze', 'BRONZE']];
+
+export function bananaReport(s) {
+  const solved = s.solved ?? 0;
+  const attempts = s.attempts ?? 0;
+  const timed = s.timed ?? 0;
+  return {
+    solved, attempts,
+    accuracy: attempts ? `${Math.round((solved / attempts) * 100)}%` : '—',
+    average: timed ? `${(s.solveMs / timed / 1000).toFixed(1)} s` : '—',
+    best: s.best ?? 0,
+    grades: { gold: 0, silver: 0, bronze: 0, ...s.grades },
+    live: s.sources?.live ?? 0,
+    reserve: s.sources?.reserve ?? 0,
+    drops: s.drops ?? 0,
+  };
+}
+
+function BananaReport({ s }) {
+  const r = bananaReport(s);
+  return (
+    <section className="banana-report" aria-label="Banana report">
+      <h3>Banana report</h3>
+      <dl>
+        <div><dt>Puzzles solved</dt><dd>{r.solved} / {r.attempts}</dd></div>
+        <div><dt>Accuracy</dt><dd>{r.accuracy}</dd></div>
+        <div><dt>Average solve time</dt><dd>{r.average}</dd></div>
+        <div><dt>Best streak</dt><dd>{r.best}</dd></div>
+        <div><dt>Speed medals</dt><dd className="medals">{MEDALS.map(([k, label]) => <span key={k} className="grade-badge" data-grade={k}>{label} {r.grades[k]}</span>)}</dd></div>
+        <div><dt>Live / reserve puzzles</dt><dd>{r.live} / {r.reserve}</dd></div>
+        <div><dt>Supply drops called</dt><dd>{r.drops}</dd></div>
+      </dl>
+    </section>
+  );
+}
 
 export default function Results({ game, me, onMenu, onAgain, onMission, onMap }) {
   const mission = game.mission;
@@ -66,6 +102,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
       <div className="purpose-row" aria-label="Puzzles by type">
         {PURPOSES.map(([k, label]) => <div key={k}>{label}<b>{s.byPurpose[k].solved} / {s.byPurpose[k].attempts}</b></div>)}
       </div>
+      <BananaReport s={s} />
       {result.mode !== 'training' && <table className="results">
         <thead><tr><th>#</th><th>Soldier</th><th>Kills</th><th>Deaths</th></tr></thead>
         <tbody>

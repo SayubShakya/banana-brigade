@@ -788,6 +788,17 @@ paths:
                     type: "integer"
                   purpose:
                     type: "string"
+                  ms:
+                    type: "integer"
+                    description: "Server-timed milliseconds from issue to answer"
+                  grade:
+                    type: "string"
+                    enum:
+                      - "gold"
+                      - "silver"
+                      - "bronze"
+                    nullable: true
+                    description: "gold under 5 s, silver under 10 s, bronze slower, null when wrong"
                   unlocked:
                     "$ref": "#/components/schemas/Unlocked"
         "401":

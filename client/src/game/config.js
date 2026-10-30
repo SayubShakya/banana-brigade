@@ -89,6 +89,21 @@ export const MODES = {
 
 export const BANANA_CRATE = { respawn: 40, choices: 3, pickSeconds: 6, randomBonus: 3 };
 
+export const BANANA_METER = {
+  max: 100,
+  gain: { gold: 40, silver: 30, bronze: 20 },
+  streakStep: 3,
+  maxMultiplier: 2,
+  crateChoices: { gold: 4, silver: 3, bronze: 2 },
+  supplyChoices: 4,
+  goldShield: 4,
+  dropOffset: 60,
+  dropLife: 25,
+  key: 'KeyX',
+};
+
+export const PUZZLE_GRADES = { gold: { label: 'GOLD', under: 5 }, silver: { label: 'SILVER', under: 10 }, bronze: { label: 'BRONZE', under: Infinity } };
+
 export const POWERS = {
   rage:      { name: 'Banana Rage',   icon: '💥', color: '#ff5d3a', seconds: 8,  text: 'Double damage', damage: 2 },
   overdrive: { name: 'Jet Overdrive', icon: '🚀', color: '#4cc9f0', seconds: 10, text: 'Endless jet fuel and 40% more speed', speed: 1.4 },

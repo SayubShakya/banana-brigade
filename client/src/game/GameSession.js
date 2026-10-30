@@ -1,9 +1,10 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on, emit } from '../services/eventBus.js';
-import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY } from './config.js';
+import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY, BANANA_METER } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';
-import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices } from './world.js';
+import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices, bananaAnswered, fillBananaMeter, callSupplyDrop, openSupplyCrate } from './world.js';
+import { crateChoiceCount } from './meter.js';
 import { askPower, closePower } from '../services/powerBridge.js';
 import { updateBots } from './bots.js';
 import { getStage } from './stage.js';
@@ -17,6 +18,8 @@ const newStats = () => ({
   solved: 0, attempts: 0, streak: 0, best: 0, started: performance.now(),
   byPurpose: { deploy: { solved: 0, attempts: 0 }, respawn: { solved: 0, attempts: 0 }, crate: { solved: 0, attempts: 0 } },
   powers: new Set(),
+  grades: { gold: 0, silver: 0, bronze: 0 }, solveMs: 0, timed: 0,
+  sources: { live: 0, reserve: 0 }, drops: 0, deployGrade: null, deployStreak: 0,
 });
 
 export function outcome({ ranking, player, reason, mode, wave, teamKills, mission }) {
@@ -54,12 +57,37 @@ export function createGameSession() {
 
   const setState = (next) => { state = next; emit('game:state', { state }); };
 
-  on('banana:answered', ({ correct, purpose }) => {
+  let lastAnswer = { correct: false, grade: null };
+
+  on('banana:answered', ({ correct, purpose, grade = null, ms, source }) => {
+    lastAnswer = { correct, grade };
     if (!stats) return;
     const p = stats.byPurpose[purpose];
+    if (!p) return;
     p.attempts += 1;
     stats.attempts += 1;
-    if (correct) { p.solved += 1; stats.solved += 1; stats.streak += 1; stats.best = Math.max(stats.best, stats.streak); } else stats.streak = 0;
+    if (source === 'live' || source === 'reserve') stats.sources[source] += 1;
+    if (correct) {
+      p.solved += 1; stats.solved += 1; stats.streak += 1; stats.best = Math.max(stats.best, stats.streak);
+      if (stats.grades[grade] !== undefined) stats.grades[grade] += 1;
+      if (Number.isFinite(ms)) { stats.solveMs += ms; stats.timed += 1; }
+    } else stats.streak = 0;
+    if (purpose === 'deploy') {
+      if (correct) stats.deployGrade = grade ?? 'bronze';
+      stats.deployStreak = correct ? stats.deployStreak + 1 : Math.floor(stats.deployStreak / 2);
+    } else if (world && !world.over && world.player) bananaAnswered(world, world.player, { correct, grade });
+  });
+
+  on('banana:drop', ({ soldier }) => { if (stats && soldier === world?.player) stats.drops += 1; });
+
+  function supplyDrop() {
+    if (!world || world.over || state !== 'playing' || isPuzzleOpen()) return;
+    callSupplyDrop(world, world.player);
+  }
+  on('input:supply', supplyDrop);
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== BANANA_METER.key || e.repeat || e.target?.tagName === 'INPUT') return;
+    if (state === 'playing') emit('input:supply');
   });
 
   async function inGamePuzzle(purpose, options) {
@@ -83,7 +111,7 @@ export function createGameSession() {
     });
     if (!world || result === null) return;
     if (result !== 'solved' && !survival) world.player.bananaUsed = true;
-    if (result === 'solved') revive(world, world.player);
+    if (result === 'solved') revive(world, world.player, lastAnswer.grade);
     else if (survival) endMatchNow(world, 'down');
   }
   on('input:banana', bananaRespawn);
@@ -101,8 +129,25 @@ export function createGameSession() {
     else endMatchNow(world, 'out');
   }, 900));
 
+  async function pickPower(count) {
+    setState('puzzle');
+    input.setEnabled(false);
+    const choice = await askPower(powerChoices(count));
+    if (!world || world.over) return;
+    const power = rewardBananaCrate(world, world.player, choice);
+    stats?.powers.add(power);
+    setState('playing');
+    input.setEnabled(true);
+  }
+
   on('banana:crate', async ({ pickup }) => {
     if (!pickup.active) return;
+    if (pickup.supply) {
+      if (!world || world.over || state !== 'playing' || isPuzzleOpen()) return;
+      openSupplyCrate(pickup);
+      await pickPower(BANANA_METER.supplyChoices);
+      return;
+    }
     const result = await inGamePuzzle('crate', {
       title: 'Banana crate',
       subtitle: 'Solve it to choose a Banana Power for a few seconds.',
@@ -111,14 +156,7 @@ export function createGameSession() {
     if (!world || result === null || result === 'cancelled') return;
     closeBananaCrate(pickup);
     if (result !== 'solved' || world.over) return;
-    setState('puzzle');
-    input.setEnabled(false);
-    const choice = await askPower(powerChoices());
-    if (!world || world.over) return;
-    const power = rewardBananaCrate(world, world.player, choice);
-    stats?.powers.add(power);
-    setState('playing');
-    input.setEnabled(true);
+    await pickPower(crateChoiceCount(lastAnswer.grade));
   });
 
   on('input:pause', () => {
@@ -156,6 +194,13 @@ export function createGameSession() {
       world = createWorld({
         mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey, mission,
       });
+      if (stats.deployGrade === 'gold') {
+        world.player.bananaStreak = stats.deployStreak;
+        fillBananaMeter(world, world.player);
+      } else if (stats.deployGrade) {
+        world.player.bananaStreak = Math.max(0, stats.deployStreak - 1);
+        bananaAnswered(world, world.player, { correct: true, grade: stats.deployGrade });
+      }
       hud.attach(world);
       input.resetZoom();
       input.setEnabled(true);

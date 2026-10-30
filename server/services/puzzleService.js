@@ -23,7 +23,7 @@ function createPuzzleService({ pool, puzzleStore, achievements }) {
     if (!result) throw notFound('That puzzle has expired or was already answered');
     tally.record(result.correct);
     const unlocked = await achievements.emit('puzzle:answered', userId, result);
-    return { correct: result.correct, solution: result.solution, purpose: result.purpose, unlocked };
+    return { correct: result.correct, solution: result.solution, purpose: result.purpose, ms: result.ms, grade: result.grade, unlocked };
   }
 
   const status = () => pool.status();

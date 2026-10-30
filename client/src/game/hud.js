@@ -1,7 +1,7 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { on } from '../services/eventBus.js';
-import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS } from './config.js';
+import { on, emit } from '../services/eventBus.js';
+import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS, BANANA_METER } from './config.js';
 import { activeGun } from './world.js';
 import { drawAvatarPreview } from './characters.js';
 
@@ -16,11 +16,15 @@ export function createHud() {
     weapon: $('weapon-name'), ammo: $('ammo'), reload: $('reload-fill'), reloadBar: $('reload-bar'),
     grenades: $('grenades'), zoom: $('zoom-label'), msg: $('center-msg'), crate: $('crate-prompt'),
     board: $('scoreboard'), boardBody: $('scoreboard-body'), flash: $('hit-flash'), toast: $('hud-toast'), buffs: $('buffs'), help: $('hud-help'),
+    meter: $('banana-meter'), meterFill: $('meter-fill'), meterText: $('meter-text'), supply: $('supply-btn'),
   };
+  let meterShown = -1;
+  el.supply.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); emit('input:supply'); });
   let world = null;
   let banners = true;
   let helpTimer = 0;
   let crateNearUntil = 0;
+  let crateSupply = false;
   let pickupText = '';
   let pickupUntil = 0;
   let zoomLevel = 0;
@@ -57,8 +61,8 @@ export function createHud() {
     void el.flash.offsetWidth;
     el.flash.classList.add('on');
   });
-  on('pickup:available', ({ weapon, banana }) => {
-    if (banana) { crateNearUntil = performance.now() + 150; return; }
+  on('pickup:available', ({ weapon, banana, supply }) => {
+    if (banana) { crateNearUntil = performance.now() + 150; crateSupply = !!supply; return; }
     pickupText = `E · pick up ${WEAPONS[weapon].name}`;
     pickupUntil = performance.now() + 150;
   });
@@ -71,6 +75,12 @@ export function createHud() {
     else if (kind === 'banana') { }
     else toast(`Picked up ${WEAPONS[weapon].name}`);
   });
+  on('banana:meter', ({ soldier, gained, grade, full, streak }) => {
+    if (!soldier?.isPlayer || !world || soldier !== world.player) return;
+    if (gained > 0) toast(full ? `Banana Meter full! Press X for a supply drop` : `+${gained} Banana Meter${grade ? ` · ${grade.toUpperCase()}` : ''} · streak ${streak}`);
+    else if (full) toast('Banana Meter full! Press X for a supply drop');
+  });
+  on('banana:drop', ({ soldier }) => { if (soldier?.isPlayer) toast('Supply drop! Grab the banana crate (E) for a free power'); });
   on('survival:wave', ({ wave, count }) => toast(`Wave ${wave}: ${count} enemies incoming`));
   on('power:start', ({ soldier, power, seconds, random }) => {
     if (soldier?.isPlayer) toast(`${POWERS[power].icon} ${POWERS[power].name}${random ? ' (random +bonus)' : ''}: ${POWERS[power].text} for ${seconds} s!`);
@@ -96,6 +106,7 @@ export function createHud() {
       el.hud.hidden = false;
       el.hud.dataset.mode = w.mode;
       el.zoom.textContent = '1x';
+      meterShown = -1;
       zoomText = '1x';
       drawAvatarPreview(el.badge, w.player.avatar);
       el.help.hidden = false;
@@ -114,6 +125,15 @@ export function createHud() {
       el.hp.className = p.health > 50 ? 'fill good' : p.health > 25 ? 'fill warn' : 'fill bad';
       el.hpText.textContent = Math.ceil(p.health);
       el.fuel.style.width = `${(p.fuel / PHYSICS.fuelMax) * 100}%`;
+      const m = Math.round((p.meter / BANANA_METER.max) * 100);
+      if (m !== meterShown) {
+        meterShown = m;
+        el.meterFill.style.width = `${m}%`;
+        el.meter.setAttribute('aria-valuenow', String(m));
+        el.meter.classList.toggle('full', m >= 100);
+        el.meterText.textContent = m >= 100 ? 'FULL · PRESS X' : `BANANA ${m}%`;
+      }
+      el.supply.hidden = !(p.alive && p.meter >= BANANA_METER.max);
       const pw = p.power && POWERS[p.power.id];
       const buffs = `${pw ? `<span class="buff power" style="--power:${pw.color}">${pw.icon} ${pw.name.toUpperCase()} ${Math.ceil(p.power.timer)}s</span>` : ''}${p.armor > 0 ? `<span class="buff shield">SHIELD ${Math.ceil(p.armor)}</span>` : ''}${p.fuelBoost > 0 ? `<span class="buff fuel">JET ∞ ${Math.ceil(p.fuelBoost)}s</span>` : ''}`;
       if (buffs !== el.buffs.dataset.last) { el.buffs.innerHTML = buffs; el.buffs.dataset.last = buffs; }
@@ -171,7 +191,7 @@ export function createHud() {
       const now = performance.now();
       if (p.alive && now < crateNearUntil) {
         el.crate.hidden = false;
-        el.crate.innerHTML = '<svg class="ico"><use href="#i-banana"/></svg>Banana crate · <b>E</b> to open';
+        el.crate.innerHTML = crateSupply ? '<svg class="ico"><use href="#i-banana"/></svg>Supply drop · <b>E</b> free power, no puzzle' : '<svg class="ico"><use href="#i-banana"/></svg>Banana crate · <b>E</b> to open';
       } else if (p.alive && now < pickupUntil) {
         el.crate.hidden = false;
         el.crate.textContent = pickupText;
