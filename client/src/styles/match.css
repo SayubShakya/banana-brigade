@@ -1,8 +1,8 @@
 /* Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. */
 
 .length-row { display: flex; align-items: center; gap: 1.6cqh; margin: 0 0 1.8cqh; flex-wrap: wrap; }
-.length-row .length-head { font: 800 1.9cqh 'Rubik', sans-serif; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.15cqh; display: inline-flex; align-items: center; gap: 0.6cqh; }
-.length-row .length-head .ico { width: 2.2cqh; height: 2.2cqh; }
+.length-row .length-head, .map-row .length-head { font: 800 1.9cqh 'Rubik', sans-serif; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.15cqh; display: inline-flex; align-items: center; gap: 0.6cqh; }
+.length-row .length-head .ico, .map-row .length-head .ico { width: 2.2cqh; height: 2.2cqh; }
 .length-pills {
   --pad: 0.5cqh;
   position: relative; flex: 1; min-width: 60cqh; display: grid; grid-template-columns: repeat(var(--n, 5), 1fr);
@@ -55,3 +55,13 @@ body.a11y-calm .length-pill[aria-checked="true"], body.a11y-calm .mb-row.scored,
 }
 @media (max-width: 560px) { .mini-board { display: none; } }
 @media (max-height: 420px) { .mini-board .mb-row:nth-child(n + 4):not(.me) { display: none; } }
+.map-row { display: flex; align-items: center; gap: 1.6cqh; flex-wrap: wrap; margin: -0.6cqh 0 1.8cqh; }
+.map-row .length-head { min-width: 19cqh; }
+.panel .lobby-grid .map-row .length-head, .map-row.stack .length-head { min-width: 0; flex-basis: 100%; }
+.map-cards { display: flex; gap: 0.8cqh; flex-wrap: wrap; flex: 1; }
+.map-card { display: flex; align-items: center; gap: 0.8cqh; padding: 0.6cqh 1.2cqh 0.6cqh 0.6cqh; border-radius: 1cqh; border: 0.3cqh solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.25); color: var(--khaki, #c8c39b); font: 700 1.8cqh 'Rubik', sans-serif; cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
+.map-card:hover { transform: translateY(-0.2cqh); }
+.map-card.on { border-color: var(--banana, #ffe135); color: #fff; background: rgba(255, 225, 53, 0.12); }
+.map-swatch { width: 4.2cqh; height: 2.8cqh; border-radius: 0.6cqh; background: linear-gradient(var(--sky1), var(--sky2)); box-shadow: inset 0 -0.7cqh 0 rgba(60, 90, 40, 0.8); display: grid; place-items: center; font-weight: 900; }
+.map-swatch.random { background: repeating-linear-gradient(45deg, #4b5a2a 0 0.6cqh, #3b4a1e 0.6cqh 1.2cqh); box-shadow: none; color: var(--banana, #ffe135); }
+body.a11y-calm .map-card { transition: none; }

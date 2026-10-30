@@ -56,6 +56,7 @@ export function createGameSession() {
   let levelKey = 'medium';
   let mission = null;
   let rules = null;
+  let mapChoice = null;
 
   const setState = (next) => { state = next; emit('game:state', { state }); };
 
@@ -182,8 +183,9 @@ export function createGameSession() {
     get state() { return state; },
     get mode() { return mode; },
 
-    prepare(nextMode, difficulty = 'medium', nextMission = null, length = undefined) {
+    prepare(nextMode, difficulty = 'medium', nextMission = null, length = undefined, map = undefined) {
       mode = nextMode;
+      mapChoice = nextMission ? null : map;
       mission = nextMission;
       rules = nextMission ? null : matchRules(nextMode, length);
       levelKey = DIFFICULTY[difficulty] ? difficulty : 'medium';
@@ -199,7 +201,7 @@ export function createGameSession() {
       stats.started = performance.now();
       world = createWorld({
         mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey, mission,
-        timeLimit: rules?.timeLimit, killLimit: rules?.killLimit,
+        timeLimit: rules?.timeLimit, killLimit: rules?.killLimit, map: mapChoice,
       });
       if (stats.deployGrade === 'gold') {
         world.player.bananaStreak = stats.deployStreak;

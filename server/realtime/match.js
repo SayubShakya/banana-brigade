@@ -6,7 +6,7 @@ const { BANANA_CRATE, SOLDIER } = require('../../client/src/game/config.js');
 const { crateChoiceCount } = require('../../client/src/game/meter.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
-const { randomMapId } = require('../../client/src/game/map.js');
+const { randomMapId, MAP_IDS } = require('../../client/src/game/map.js');
 
 const TICK_HZ = 30;
 const SNAPSHOT_EVERY = 1;
@@ -32,7 +32,7 @@ function soldierState(s) {
   };
 }
 
-function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, killLimit, crateTimings }) {
+function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, killLimit, crateTimings, map = 'random' }) {
   const T = { ...CRATE_TIMINGS, ...crateTimings };
   const matchId = crypto.randomUUID();
   const outbox = [];
@@ -75,7 +75,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     }
   };
 
-  const mapId = randomMapId();
+  const mapId = MAP_IDS.includes(map) ? map : randomMapId();
   const world = createWorld({
     mode: 'online', teamMode, difficulty, emit, map: mapId, timeLimit, killLimit,
     humans: players.map((p) => ({ id: sid(p.userId), name: p.username, avatar: { parts: p.parts }, team: p.team })),

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DIFFICULTY, MODES, MATCH_LENGTHS, DEFAULT_MATCH_LENGTH, matchRules } from '../game/config.js';
+import { MAPS, MAP_IDS } from '../game/maps.js';
 import { Panel, Icon } from '../components/common.jsx';
 import { emit } from '../services/eventBus.js';
 import { readJson } from '../services/storage.js';
@@ -10,6 +11,29 @@ import '../styles/match.css';
 
 const LENGTH_MODES = ['quick', 'team'];
 export const savedLength = () => readJson('settings', {}).matchLength ?? DEFAULT_MATCH_LENGTH;
+const MAP_MODES = ['quick', 'team', 'survival', 'training'];
+const MAP_CHOICES = ['random', ...MAP_IDS];
+export const savedMap = () => { const m = readJson('settings', {}).mapChoice; return MAP_CHOICES.includes(m) ? m : 'random'; };
+
+export function MapPicker({ value, onChange }) {
+  return (
+    <div className="map-row">
+      <span className="length-head" id="map-head"><Icon id="target" />Map</span>
+      <div className="map-cards" role="radiogroup" aria-labelledby="map-head">
+        {MAP_CHOICES.map((id) => {
+          const sky = id === 'random' ? null : MAPS[id].theme.sky;
+          return (
+            <button key={id} type="button" role="radio" aria-checked={value === id} className={`map-card${value === id ? ' on' : ''}`}
+              style={sky ? { '--sky1': sky[0], '--sky2': sky[1] } : undefined} onClick={() => onChange(id)}>
+              <span className={`map-swatch${id === 'random' ? ' random' : ''}`} aria-hidden="true">{id === 'random' ? '?' : ''}</span>
+              {id === 'random' ? 'Random' : MAPS[id].name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function LengthPicker({ mode, value, onChange }) {
   const index = Math.max(0, MATCH_LENGTHS.findIndex((l) => l.seconds === value));
@@ -45,6 +69,8 @@ const ABOUT = {
 
 export default function Difficulty({ mode, current, onPick, onBack, length: chosen, onLength }) {
   const [stored, setStored] = useState(savedLength);
+  const [map, setMap] = useState(savedMap);
+  const pickMap = (id) => { setMap(id); emit('settings:set', { key: 'mapChoice', value: id }); };
   const length = chosen ?? stored;
   const timed = LENGTH_MODES.includes(mode) && matchRules(mode, length);
   const pickLength = (seconds) => {
@@ -57,9 +83,10 @@ export default function Difficulty({ mode, current, onPick, onBack, length: chos
       subtitle={mode === 'training' ? 'Training starts straight away, no puzzle.' : timed ? `${timed.label} match, first to ${timed.killLimit} kills. Then solve a Banana puzzle to deploy.` : 'Then solve a Banana puzzle to deploy.'}
       footer={<button className="mbtn primary" onClick={onBack}>Back</button>}>
       {LENGTH_MODES.includes(mode) && <LengthPicker mode={mode} value={length} onChange={pickLength} />}
+      {MAP_MODES.includes(mode) && <MapPicker value={map} onChange={pickMap} />}
       <div className="levels">
         {Object.entries(DIFFICULTY).map(([key, d]) => (
-          <button key={key} className={`level-card ${key}${key === current ? ' last' : ''}`} onClick={() => onPick(key, LENGTH_MODES.includes(mode) ? length : undefined)}>
+          <button key={key} className={`level-card ${key}${key === current ? ' last' : ''}`} onClick={() => onPick(key, LENGTH_MODES.includes(mode) ? length : undefined, MAP_MODES.includes(mode) ? map : undefined)}>
             <span className="level-stars" aria-hidden="true">{'★'.repeat(key === 'easy' ? 1 : key === 'medium' ? 2 : 3)}</span>
             <b>{d.name}</b>
             {key === 'easy' && <span className="recommended">Best for new players</span>}

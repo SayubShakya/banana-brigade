@@ -60,7 +60,7 @@ export function useStartRoute({ setScreen }, { restore }, { settings }, { startB
 
   function openPreview(hash) {
     const [name, arg] = hash.split('-');
-    if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick', settings.difficulty, null, settings.matchLength); startBattle(MODES[arg] ? arg : 'quick'); }
+    if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick', settings.difficulty, null, settings.matchLength, settings.mapChoice); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'difficulty') deploy('quick');
     else if (name === 'bootcamp') startBootCamp();
     else if (name === 'mission' && missionById(Number(arg))) {
