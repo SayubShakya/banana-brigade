@@ -3,6 +3,7 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './styles/brigade.css';
+import './styles/logo.css';
 
 createRoot(document.getElementById('ui')).render(<App />);
 
