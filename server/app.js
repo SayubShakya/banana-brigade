@@ -66,7 +66,12 @@ function createApp({
   // The API description and the public leaderboard need no session, so they come
   // before the session middleware (routes/docs.js, routes/public.js).
   app.use('/api', createDocsRouter());
-  app.use('/api/public', createPublicRouter({ db }));
+
+  const sessions = createSessionManager({ store: sessionStore, getIo: () => app.locals.io });
+  const services = createServices({ db, pool, achievements, sessions, eventLog, sendResetLink, appUrl, pwnedCheck });
+  const controllers = createControllers(services);
+
+  app.use('/api/public', createPublicRouter(controllers));
 
   const sessionMiddleware = createSessionMiddleware({ secret: sessionSecret, store: sessionStore, production });
   app.use(sessionMiddleware);
@@ -75,15 +80,11 @@ function createApp({
   Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements, eventLog });
   eventLog.watchAchievements(achievements.events, db);
 
-  const sessions = createSessionManager({ store: sessionStore, getIo: () => app.locals.io });
-  const services = createServices({ db, sessions, eventLog, sendResetLink, appUrl, pwnedCheck });
-  const controllers = createControllers(services);
-
   app.use('/api/auth', createAuthRouter(controllers));
-  app.use('/api/scores', createScoresRouter({ db, achievements }));
+  app.use('/api/scores', createScoresRouter(controllers));
   app.use('/api/admin', createAdminRouter({ db, eventLog }));
-  app.use('/api/daily', createDailyRouter({ db, pool, achievements }));
-  app.use('/api/campaign', createCampaignRouter({ db, achievements }));
+  app.use('/api/daily', createDailyRouter(controllers));
+  app.use('/api/campaign', createCampaignRouter(controllers));
 
   // Every achievement, and which ones this player has (with the date unlocked).
   app.get('/api/achievements', requireLogin, async (req, res, next) => {
