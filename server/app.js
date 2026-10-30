@@ -15,10 +15,8 @@
 //
 // Written with help from a generative AI coding assistant; reviewed by Sayub Shakya.
 
-const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
-const session = require('express-session');
 const { createPuzzleStore } = require('./services/puzzles');
 const { createPuzzlePool } = require('./services/pool');
 const { createDocsRouter } = require('./routes/docs');
@@ -31,15 +29,22 @@ const { createDailyRouter } = require('./routes/daily');
 const { createCampaignRouter } = require('./routes/campaign');
 const { createAchievements } = require('./services/achievements');
 const { requireLogin } = require('./middleware/auth');
+const { apiVersion } = require('./middleware/apiVersion');
+const { lastSeen } = require('./middleware/lastSeen');
+const { apiNotFound, createPageNotFound } = require('./middleware/notFound');
+const { errorHandler } = require('./middleware/errorHandler');
+const { createSessionMiddleware, SESSION_COOKIE, MemoryStore } = require('./middleware/session');
+const { createSessionManager } = require('./services/sessions');
+const { createServices } = require('./services');
+const { createControllers } = require('./controllers');
 
 const PURPOSES = ['deploy', 'respawn', 'crate'];
-const SESSION_COOKIE = 'brigade.sid';
 
 function createApp({
   db,
   bananaApi,
   sessionSecret,
-  sessionStore,               // MongoDB in the real server; in-memory in tests
+  sessionStore = new MemoryStore(),   // MongoDB in the real server; in-memory in tests
   production = false,
   puzzleStore = createPuzzleStore(),
   pool = createPuzzlePool({ fetchPuzzle: bananaApi.fetchPuzzle, apiStats: bananaApi.stats }),
@@ -55,10 +60,7 @@ function createApp({
   if (trustProxy) app.set('trust proxy', trustProxy);
   // API versioning: /api/v1/... is the current API. The old paths without /v1 keep
   // working (they are the same handlers), so an older browser tab does not break.
-  app.use((req, res, next) => {
-    if (req.url === '/api/v1' || req.url.startsWith('/api/v1/')) req.url = `/api${req.url.slice(7)}`;
-    next();
-  });
+  app.use(apiVersion);
   app.use(express.json({ limit: '4kb' }));
 
   // The API description and the public leaderboard need no session, so they come
@@ -66,31 +68,18 @@ function createApp({
   app.use('/api', createDocsRouter());
   app.use('/api/public', createPublicRouter({ db }));
 
-  const sessionMiddleware = session({
-    name: SESSION_COOKIE,
-    secret: sessionSecret,
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,     // no cookie until someone logs in
-    cookie: {
-      httpOnly: true,             // page JavaScript cannot read it (protects against XSS stealing it)
-      sameSite: 'lax',            // not sent with cross-site POSTs (CSRF protection)
-      secure: production,         // HTTPS only in production
-      maxAge: 2 * 60 * 60 * 1000, // 2 hours
-    },
-  });
+  const sessionMiddleware = createSessionMiddleware({ secret: sessionSecret, store: sessionStore, production });
   app.use(sessionMiddleware);
-  // "Last used" for the signed-in devices list, updated at most once a minute so most
-  // requests do not rewrite the session.
-  app.use((req, res, next) => {
-    if (req.session.userId && Date.now() - Date.parse(req.session.lastSeen ?? 0) > 60_000) req.session.lastSeen = new Date().toISOString();
-    next();
-  });
+  app.use(lastSeen);
   // The WebSocket server (realtime/) reuses the same sessions and puzzle store.
   Object.assign(app.locals, { sessionMiddleware, puzzleStore, pool, db, achievements, eventLog });
   eventLog.watchAchievements(achievements.events, db);
 
-  app.use('/api/auth', createAuthRouter({ db, sendResetLink, appUrl, pwnedCheck, eventLog }));
+  const sessions = createSessionManager({ store: sessionStore, getIo: () => app.locals.io });
+  const services = createServices({ db, sessions, eventLog, sendResetLink, appUrl, pwnedCheck });
+  const controllers = createControllers(services);
+
+  app.use('/api/auth', createAuthRouter(controllers));
   app.use('/api/scores', createScoresRouter({ db, achievements }));
   app.use('/api/admin', createAdminRouter({ db, eventLog }));
   app.use('/api/daily', createDailyRouter({ db, pool, achievements }));
@@ -139,24 +128,11 @@ function createApp({
 
   app.get('/api/status', (req, res) => res.json(pool.status()));
 
-  app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+  app.use('/api', apiNotFound);
   // The built React app (npm run build).
   app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
-
-  // Any other address is a 404. Browsers get the React page with status 404 (it shows
-  // the "page not found" screen); anything else gets plain text.
-  const indexHtml = path.join(__dirname, '..', 'client', 'dist', 'index.html');
-  app.use((req, res) => {
-    res.status(404);
-    if ((req.method === 'GET' || req.method === 'HEAD') && req.accepts('html') && fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
-    res.type('text').send('Not found');
-  });
-
-  app.use((err, req, res, next) => {
-    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON' });
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong' });
-  });
+  app.use(createPageNotFound(path.join(__dirname, '..', 'client', 'dist', 'index.html')));
+  app.use(errorHandler);
 
   return app;
 }

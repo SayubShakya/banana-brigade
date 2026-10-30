@@ -72,4 +72,24 @@ function disconnectSocketsFor(io, userId, { keepSid = null } = {}) {
   (keepSid ? target.except(`sid:${keepSid}`) : target).disconnectSockets(true);
 }
 
-module.exports = { endSessionsFor, countSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle, handleOf };
+// The functions above bound to one session store and the Socket.io server, so the
+// services can end a player's sessions without knowing about either. getIo is a
+// function because the Socket.io server is attached after the app is built.
+function createSessionManager({ store, getIo = () => undefined }) {
+  return {
+    list: (userId, currentSid) => listSessionsFor(store, userId, currentSid),
+    // Ends the sessions (keepSid spares the one that asked) and drops their live sockets.
+    async endAll(userId, { keepSid = null } = {}) {
+      const ended = await endSessionsFor(store, userId, { keepSid });
+      disconnectSocketsFor(getIo(), userId, { keepSid });
+      return ended;
+    },
+    async endByHandle(userId, handle) {
+      const sid = await endSessionByHandle(store, userId, handle);
+      if (sid) getIo()?.in(`sid:${sid}`).disconnectSockets(true);
+      return sid;
+    },
+  };
+}
+
+module.exports = { endSessionsFor, countSessionsFor, disconnectSocketsFor, listSessionsFor, endSessionByHandle, handleOf, createSessionManager };

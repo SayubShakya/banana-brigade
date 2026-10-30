@@ -5,7 +5,7 @@
 
 const bcrypt = require('bcryptjs');
 const { openDatabase } = require('../server/repositories');
-const { USERNAME, MIN_PASSWORD } = require('../server/routes/auth');
+const { USERNAME, MIN_PASSWORD } = require('../server/services/authService');
 
 const [username, password] = process.argv.slice(2);
 if (!username || !password || !USERNAME.test(username) || password.length < MIN_PASSWORD) {
