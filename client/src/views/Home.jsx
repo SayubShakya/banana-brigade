@@ -15,7 +15,7 @@ const PUZZLES = [
 
 const MODES = [
   ['map', 'Campaign', '9 missions in 3 chapters, up to 3 stars each.'],
-  ['target', 'Quick Play', 'Free-for-all against 5 bots, first to 20 kills.'],
+  ['target', 'Quick Play', 'Free-for-all against 5 bots. Pick a match from 30 s to 5 min; the kill target grows with it.'],
   ['shield', 'Survival', 'Waves of bots. A Banana puzzle is your only revive.'],
   ['team', 'Team Battle', '3 against 3, blue against red.'],
   ['globe', 'Online', 'Rooms of up to 6 players; the server runs the match.'],
