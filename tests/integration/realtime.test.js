@@ -226,3 +226,69 @@ test('an online match end saves one battle log with kills, puzzles, joins and th
     assert.ok(scores.every((row) => row.matchId === summary.matchId && row.multiplayer));
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
+
+test('an online tie is a draw for everyone, and the room difficulty and game time are saved', async () => {
+  const s = await startServer();
+  const a = await player(s, 'tiehost');
+  const b = await player(s, 'tiepal');
+  const scores = [];
+  const { addScore } = s.db;
+  s.db.addScore = async (row) => { scores.push(row); return addScore.call(s.db, row); };
+  try {
+    const { room } = await call(a.socket, 'room:create', { bots: false, difficulty: 'hard' });
+    await call(b.socket, 'room:join', { code: room.code });
+    b.socket.emit('room:ready', { ready: true });
+    await once(a.socket, 'room:update');
+    const started = once(a.socket, 'match:start');
+    await call(a.socket, 'room:start');
+    await started;
+    const match = s.realtime.rooms.room(room.code).match;
+    const ended = once(a.socket, 'match:end');
+    s.realtime.rooms.endMatch(room.code);
+    const summary = await ended;
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(summary.winner, null);
+    assert.equal(summary.durationS, Math.round(match.world.time));
+    assert.equal(summary.roster.length, 2);
+    assert.equal(scores.length, 2);
+    assert.ok(scores.every((row) => row.won === false && row.draw === true && row.difficulty === 'hard'));
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});
+
+test('a player who leaves keeps their real name in the log and roster, still gets the game, but cannot win it', async () => {
+  const { damage } = require('../../client/src/game/world.js');
+  const s = await startServer();
+  const a = await player(s, 'quitter');
+  const b = await player(s, 'keeper');
+  const scores = [];
+  const { addScore } = s.db;
+  s.db.addScore = async (row) => { scores.push(row); return addScore.call(s.db, row); };
+  try {
+    const { room } = await call(a.socket, 'room:create', { bots: false });
+    await call(b.socket, 'room:join', { code: room.code });
+    b.socket.emit('room:ready', { ready: true });
+    await once(a.socket, 'room:update');
+    const started = once(b.socket, 'match:start');
+    await call(a.socket, 'room:start');
+    await started;
+    const match = s.realtime.rooms.room(room.code).match;
+    const [quitter, keeper] = [a, b].map((p) => match.world.soldiers.find((x) => x.id === `u${p.me.id}`));
+    const left = once(b.socket, 'room:update');
+    a.socket.emit('room:leave');
+    await left;
+    keeper.shieldTimer = 0;
+    damage(match.world, keeper, 999, quitter, 'sniper');
+    const ended = once(b.socket, 'match:end');
+    match.end('host');
+    const summary = await ended;
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(summary.winner, 'quitter');
+    assert.deepEqual(summary.roster.map((r) => [r.name, r.bot]), [['quitter', false], ['keeper', false]]);
+    assert.ok(summary.log.some((e) => e.type === 'leave' && e.by === 'quitter'));
+    assert.ok(summary.log.some((e) => e.type === 'kill' && e.by === 'quitter' && e.target === 'keeper'));
+    assert.ok(!JSON.stringify(summary).includes('(bot)'));
+    const mine = scores.find((row) => row.userId === a.me.id);
+    assert.deepEqual([mine.kills, mine.won], [1, false]);
+    assert.equal(scores.find((row) => row.userId === b.me.id).won, false);
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});

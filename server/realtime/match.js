@@ -44,7 +44,6 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
   const offers = new Map();
   const puzzles = new Map();
   const pending = new Map();
-  const startedAt = Date.now();
   let tick = 0;
   let ended = false;
 
@@ -192,19 +191,19 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     const winners = teamMode
       ? (teamKills.blue === teamKills.red ? null : teamKills.blue > teamKills.red ? 'blue' : 'red')
       : ranking[0]?.id;
+    const tied = !teamMode && ranking[1] && ranking[1].kills === ranking[0].kills;
     const humans = ranking.filter((s) => s.id.startsWith('u') && players.some((p) => sid(p.userId) === s.id));
     const results = humans.map((s) => {
       const userId = s.id.slice(1);
       const p = puzzles.get(userId) ?? { solved: 0, attempted: 0 };
       return {
-        userId, kills: s.kills, deaths: s.deaths, won: teamMode ? s.team === winners : s.id === winners,
+        userId, kills: s.kills, deaths: s.deaths, won: s.isPlayer && !tied && (teamMode ? s.team === winners : s.id === winners),
         puzzlesSolved: p.solved, puzzlesAttempted: p.attempted,
       };
     });
-    const tied = !teamMode && ranking[1] && ranking[1].kills === ranking[0].kills;
     const roster = battle.roster();
     const summary = {
-      matchId, reason, teamMode, teamKills: { ...teamKills }, durationS: Math.round((Date.now() - startedAt) / 1000),
+      matchId, reason, teamMode, teamKills: { ...teamKills }, durationS: Math.round(world.time),
       ranking: ranking.map((s) => ({ id: s.id, name: s.name, team: s.team, kills: s.kills, deaths: s.deaths, human: s.id.startsWith('u') })),
       map: mapId, difficulty, winner: teamMode ? winners : tied ? null : ranking[0]?.name ?? null,
       roster: roster.map(({ userId, ...r }) => r), log: battle.entries(),
@@ -289,7 +288,6 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       if (solving) release(userId);
       battle.add('leave', { by: s.name });
       s.isPlayer = false;
-      s.name = `${s.name} (bot)`;
       pending.delete(userId);
       outbox.push(['left', { soldier: s.id }]);
     },
@@ -297,7 +295,6 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       const s = byUser(userId);
       if (!s || ended) return false;
       s.isPlayer = true;
-      s.name = s.name.replace(/ \(bot\)$/, '');
       battle.add('join', { by: s.name });
       return true;
     },
