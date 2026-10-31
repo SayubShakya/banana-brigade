@@ -24,7 +24,7 @@ export function resultLabel(r) {
 export function winnerLabel(match) {
   const w = match?.winner;
   if (match?.mode === 'campaign') return w ? 'Mission complete' : 'Mission failed';
-  if (!w) return match?.mode === 'survival' ? 'Survival run' : 'No winner';
+  if (!w) return match?.mode === 'survival' ? 'Survival run' : 'Draw';
   if (match.teamMode && (w === 'blue' || w === 'red')) return `${w === 'blue' ? 'Blue' : 'Red'} team won`;
   return `${w} won`;
 }
