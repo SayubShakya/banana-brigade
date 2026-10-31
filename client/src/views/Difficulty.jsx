@@ -5,6 +5,7 @@ import { DIFFICULTY, MODES, MATCH_LENGTHS, DEFAULT_MATCH_LENGTH, matchRules } fr
 import { MAPS, MAP_IDS } from '../game/maps.js';
 import { Panel, Icon } from '../components/common.jsx';
 import { emit } from '../services/eventBus.js';
+import LoopVideo from '../components/LoopVideo.jsx';
 import { readJson } from '../services/storage.js';
 import '../styles/bootcamp.css';
 import '../styles/match.css';
@@ -25,7 +26,9 @@ export function MapPicker({ value, onChange }) {
           return (
             <button key={id} type="button" role="radio" aria-checked={value === id} className={`map-card${value === id ? ' on' : ''}`}
               style={sky ? { '--sky1': sky[0], '--sky2': sky[1] } : undefined} onClick={() => onChange(id)}>
-              <span className={`map-swatch${id === 'random' ? ' random' : ''}`} aria-hidden="true">{id === 'random' ? '?' : ''}</span>
+              {id === 'random'
+                ? <span className="map-swatch random" aria-hidden="true">?</span>
+                : <LoopVideo name={`map-${id}`} className="map-swatch" />}
               {id === 'random' ? 'Random' : MAPS[id].name}
             </button>
           );

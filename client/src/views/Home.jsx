@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { Icon, Sky } from '../components/common.jsx';
+import { playCutscene } from '../services/cutsceneBridge.js';
 
 const PUZZLES = [
   ['Deploy', 'Solve one to drop into a battle. A GOLD solve starts you with a full Banana Meter.'],
@@ -53,6 +54,7 @@ function Trailer({ onClose }) {
 export default function Home({ onPlay, onGuest, onOpen }) {
   const apiLine = useApiLine();
   const [trailer, setTrailer] = useState(false);
+  useEffect(() => { const t = setTimeout(() => playCutscene('logo'), 400); return () => clearTimeout(t); }, []);
   return (
     <section className="screen home">
       <Sky />

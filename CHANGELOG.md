@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/clip-loops`)
+- Short muted loops of each Banana Power on the power cards, each map on the map picker, and the Brigade hero on
+  the Avatar screen (stills in reduced-motion mode); once-only logo, deploy and respawn story clips.
+
 ### Changed (`feature/veo-clips`)
 - New Banana-API-focused story clips (intro, crate, chapters, victory, daily, rank-up) and a 27-second home trailer:
   generated clips around a real recording of the deploy puzzle. A "Replay story clips" button in Settings.

@@ -4,6 +4,9 @@ import { store } from './storage.js';
 import { emit } from './eventBus.js';
 
 export const CUTSCENES = {
+  logo: 'Banana Brigade',
+  deploy: 'Puzzle solved: drop into battle',
+  respawn: 'Banana respawn: solve it and you are back',
   intro: 'The Banana Brigade flies in',
   crate: 'A banana crate bursts open with five powers',
   'chapter-1': 'Chapter 1: the campaign begins',

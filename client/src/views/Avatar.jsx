@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { PARTS, DEFAULT_AVATAR, makeAvatar, drawSoldier } from '../game/characters.js';
 import { WEAPONS } from '../game/config.js';
 import { Panel } from '../components/common.jsx';
+import LoopVideo from '../components/LoopVideo.jsx';
 
 const WEAPON_KEYS = Object.keys(WEAPONS);
 const randomOf = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -70,6 +71,7 @@ export default function Avatar({ name, parts, setParts, onBack }) {
     </>}>
       <div className="avatar-layout">
         <div className="avatar-stage">
+          <figure className="avatar-hero"><LoopVideo name="avatar" label="The Brigade hero turning on a pedestal" /><figcaption>Brigade hero</figcaption></figure>
           <div className="avatar-name">{name}</div>
           <Preview parts={parts} weaponLabel={weaponLabel} />
           <div className="avatar-weapon" ref={weaponLabel} />

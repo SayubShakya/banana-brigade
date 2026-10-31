@@ -856,3 +856,9 @@ body.touch .power-card kbd { display: none; }
 @keyframes cutscene-in { from { opacity: 0; } to { opacity: 1; } }
 body.a11y-calm .cutscene { animation: none; }
 @media (prefers-reduced-motion: reduce) { .cutscene { animation: none; } }
+.loop-video { display: block; object-fit: cover; background: #1d2112; }
+.power-card .power-loop { width: 100%; aspect-ratio: 16 / 9; border-radius: 0.8cqh; margin: 0.4cqh 0 0.6cqh; border: 0.25cqh solid rgba(0, 0, 0, 0.35); }
+.map-card .map-swatch.loop-video { width: 6.4cqh; height: 3.6cqh; padding: 0; box-shadow: none; }
+.avatar-hero { position: absolute; bottom: 1.2cqh; right: 1.2cqh; width: 24%; margin: 0; z-index: 1; }
+.avatar-hero .loop-video { width: 100%; aspect-ratio: 16 / 9; border-radius: 0.8cqh; border: 0.3cqh solid var(--banana); }
+.avatar-hero figcaption { font: 700 1.3cqh 'Rubik', sans-serif; color: #1d2112; background: var(--banana); border-radius: 0 0 0.6cqh 0.6cqh; text-align: center; margin-top: -0.4cqh; }

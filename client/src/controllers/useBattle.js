@@ -91,7 +91,9 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
       modeLabel: `${MODES[mode].name} · ${DIFFICULTY[difficulty].name}${game().rules ? ` · ${game().rules.label}` : ''}`, seconds: DIFFICULTY[difficulty].puzzle.deploy,
       title: 'Deploy', subtitle: 'Solve the Banana puzzle to drop into battle.',
     });
-    if (result === 'solved') startBattle(mode);
+    if (result !== 'solved') return;
+    await playCutscene('deploy');
+    startBattle(mode);
   }, [startBattle]);
 
   const playMission = useCallback(async (mission) => {
