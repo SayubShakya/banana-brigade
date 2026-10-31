@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { closeSocket } from '../net/socket.js';
 import { emit } from '../services/eventBus.js';
+import { resetSeenCutscenes, playCutscene } from '../services/cutsceneBridge.js';
 import { Panel, Skeleton } from '../components/common.jsx';
 import { toggleFullscreen, useFullscreen } from '../services/fullscreen.js';
 
@@ -155,6 +156,7 @@ export default function Settings({ settings, account, onToggle, onSet, onControl
         {tab === 'game' && <>
           {OPTIONS.map(([key, label]) => <Toggle key={key} label={label} value={settings[key]} onClick={() => onToggle(key)} />)}
           <Toggle label="Story clips" value={settings.storyClips !== false} onClick={() => onSet('storyClips', settings.storyClips === false)} />
+          <div className="setting"><span>Replay story clips</span><button className="toggle" onClick={() => { resetSeenCutscenes(); emit('toast:info', { text: 'Story clips will play again.' }); playCutscene('intro'); }}>Replay</button></div>
           {canFullscreen && <Toggle label="Fullscreen" value={isFullscreen} onClick={toggleFullscreen} />}
           <div className="setting"><span>Controls</span><button className="toggle" onClick={onControls}>View</button></div>
           <div className="setting"><span>Banana API</span><span className="setting-note">{apiStatus.line}</span></div>

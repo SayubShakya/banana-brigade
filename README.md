@@ -430,10 +430,11 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
   trailer, its poster and the story clips cut from it (below).
 - Ideas such as room codes, XP ranks and the daily challenge were compared with other students' Banana API games
   (see `docs/evaluation.md`); no code was copied from them.
-- The home page trailer (`client/public/media/trailer.mp4`, 20 s, compressed for the web) and its poster were
-  generated with Google Gemini (Veo) from my own prompts; they are in-game art only and not the assessed video.
-  The story clips in `client/public/media/clips/` (videos and poster frames) are short cuts from the same
-  generated trailers.
+- The home page trailer (`client/public/media/trailer.mp4`, 27 s) joins clips generated with Google Flow (Veo /
+  Omni) from my own prompts with a screen recording of the real game solving a Banana API puzzle; it is in-game art
+  only and not the assessed video.
+  The story clips in `client/public/media/clips/` (videos and poster frames) are short cuts from the clips
+  generated with Google Flow.
 - Code written with help from Claude (Anthropic), an AI coding assistant, and reviewed by Sayub Shakya; every
   source file says so in its one-line header comment.
 
