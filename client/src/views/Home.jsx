@@ -1,6 +1,6 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { Icon, Sky } from '../components/common.jsx';
 import { playCutscene } from '../services/cutsceneBridge.js';
@@ -37,6 +37,11 @@ export function useApiLine() {
 }
 
 function Trailer({ onClose }) {
+  const video = useRef(null);
+  const fullscreen = () => {
+    const v = video.current;
+    (v?.requestFullscreen ?? v?.webkitEnterFullscreen)?.call(v)?.catch?.(() => {});
+  };
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -46,8 +51,11 @@ function Trailer({ onClose }) {
   return (
     <div className="trailer" role="dialog" aria-label="Banana Brigade trailer" onClick={onClose}>
       <div className="trailer-box" onClick={(e) => e.stopPropagation()}>
-        <video src="/media/trailer.mp4" poster="/media/trailer-poster.jpg" controls autoPlay playsInline />
-        <button className="mbtn" onClick={onClose}>Close</button>
+        <video ref={video} src="/media/trailer.mp4" poster="/media/trailer-poster.jpg" controls autoPlay playsInline />
+        <div className="trailer-actions">
+          <button className="mbtn primary" onClick={fullscreen}>Fullscreen</button>
+          <button className="mbtn" onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );
