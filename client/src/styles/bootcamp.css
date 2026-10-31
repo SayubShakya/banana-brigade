@@ -69,3 +69,4 @@
 @keyframes coach-glow { 50% { box-shadow: 0 0.7cqh 0 var(--banana-dark), 0 0 3cqh rgba(255, 225, 53, 0.9); } }
 body.a11y-calm .coach-card, body.a11y-calm .coach-tip, body.a11y-calm .bootcamp-card.offer, body.a11y-calm .coach-progress i.now { animation: none; }
 body.a11y-large .coach-card { scale: 1.12; transform-origin: top center; }
+body[data-overlay] .coach-tips { display: none; }
