@@ -831,6 +831,11 @@ body.a11y-contrast .mode-card, body.a11y-contrast .tile, body.a11y-contrast .hom
   .results td, .results th, .event-list li, .devices li, .devices small, .daily-card small, .mode-card small,
   .xp-bar span, #puzzle-sub, .suspended-note, .status-line, .admin-msg, .room-code small, .live-bar, .link-btn { font-size: max(1.9cqh, 12px); }
   .toggle, .admin-actions .toggle, .menu-rail .tile, .auth-tabs button, .tabs button { font-size: max(1.9cqh, 11px); min-height: 32px; }
+  .menu.v2 { grid-template-columns: max(12cqh, 72px) 1fr 0.95fr; }
+  .menu-rail .tile { letter-spacing: 0; }
+  .daily-card { font-size: max(2cqh, 13px); }
+  .xp-bar { height: max(2.4cqh, 15px); }
+  .xp-bar span { line-height: max(2.4cqh, 15px); }
   .mbtn, .keypad button { font-size: max(2.4cqh, 13px); min-height: 36px; }
   .field input { font-size: max(2.4cqh, 14px); }
   .hud-btn { min-height: 34px; font-size: max(1.9cqh, 11px); }

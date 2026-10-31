@@ -42,7 +42,8 @@ export function outcome({ ranking, player, reason, mode, wave, teamKills, missio
   }
   const won = reason !== 'quit' && ranking[0] === player && player.kills > (ranking[1]?.kills ?? -1);
   if (reason === 'quit') return { won, title: 'Battle ended', line: `${why} You had ${player.kills} kill${player.kills === 1 ? '' : 's'}.` };
-  return { won, title: won ? 'Victory!' : `${ranking[0].name} wins`, line: why };
+  const tied = !won && player.kills === ranking[0].kills;
+  return { won, title: won ? 'Victory!' : tied ? 'Draw' : `${ranking[0].name} wins`, line: tied ? `${why} Tied on ${player.kills} kill${player.kills === 1 ? '' : 's'}.` : why };
 }
 
 export function createGameSession() {

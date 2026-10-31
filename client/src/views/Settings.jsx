@@ -70,6 +70,7 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
   const [next, setNext] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [msg, setMsg] = useState({ text: '', ok: false });
+  const [devicesKey, setDevicesKey] = useState(0);
 
   const show = (name) => { setOpen(open === name ? '' : name); setMsg({ text: '', ok: false }); setCurrent(''); setNext(''); setConfirmPw(''); };
   const fail = (err) => setMsg({ text: err.message, ok: false });
@@ -80,6 +81,7 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
     try {
       const { ended } = await api.changePassword(current, next);
       show('');
+      setDevicesKey((k) => k + 1);
       setMsg({ text: `Password changed. ${ended} other session${ended === 1 ? '' : 's'} logged out.`, ok: true });
     } catch (err) { fail(err); }
   }
@@ -104,7 +106,8 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
           {note}
         </form>
       )}
-      <Devices />
+      {!open && note}
+      <Devices key={devicesKey} />
       <div className="setting"><span>All devices</span><button className="toggle action" aria-pressed={open === 'all'} onClick={() => show('all')}>Log out everywhere</button></div>
       {open === 'all' && (
         <div className="account-form">
@@ -125,7 +128,6 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
         </form>
       )}
       {account.role === 'admin' && <div className="setting"><span>Admin tools</span><button className="toggle" onClick={onAdmin}>Open</button></div>}
-      {!open && note}
       <button className="mbtn ghost" onClick={onLogout}>Log out</button>
     </>
   );
