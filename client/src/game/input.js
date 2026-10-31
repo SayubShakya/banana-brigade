@@ -27,6 +27,12 @@ export function zoomLabel(engaged, sniper) {
   return sniper ? 'SCOPE' : 'FAR';
 }
 
+export function faceToward(mouse, center, dir) {
+  const dx = mouse.x - center.x;
+  if (!dir || Math.sign(dx) === dir) return mouse.x;
+  return center.x + dir * Math.max(Math.abs(dx), 160);
+}
+
 export function createZoom(onChange = () => {}) {
   let toggled = false;
   let holding = false;
@@ -185,6 +191,8 @@ export function createInput(canvas, renderer) {
       c.right = held.right || touchMove.x > 0.3;
       c.jet = held.jet || touchMove.y < -0.45;
       c.fire = held.fire || (stickAim.active && Math.hypot(stickAim.x, stickAim.y) > 0.75);
+      const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
+      if (dir && dir !== lastDir && !stickAim.active) mouse.x = faceToward(mouse, renderer.toViewFromWorld(player.x + player.w / 2, player.y + 25), dir);
       if (stickAim.active) {
         const cx = player.x + player.w / 2;
         const cy = player.y + 25;
@@ -200,7 +208,6 @@ export function createInput(canvas, renderer) {
       const assisted = assistAim(world, player, { x: c.aimX, y: c.aimY });
       c.aimX = assisted.x;
       c.aimY = assisted.y;
-      const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
       if (dir !== lastDir) { lastDir = dir; emit('input:move', { dir, time: world?.time ?? 0 }); }
       if (c.jet !== lastJet) { lastJet = c.jet; emit('input:jet', { on: c.jet, time: world?.time ?? 0 }); }
       tutorialTick(world);
