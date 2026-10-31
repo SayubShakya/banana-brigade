@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`feature/veo-clips`)
+- New Banana-API-focused story clips (intro, crate, chapters, victory, daily, rank-up) and a 27-second home trailer:
+  generated clips around a real recording of the deploy puzzle. A "Replay story clips" button in Settings.
+
 ### Added (`feature/map-picker`)
 - Choose the map (Random or one of the four) on the Difficulty screen and when creating an online room; the server
   checks the choice and the room shows it. The choice is saved like the match length.
