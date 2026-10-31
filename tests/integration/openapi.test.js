@@ -45,7 +45,9 @@ test('/api/v1 and the old /api paths both work; the spec and docs page are serve
     const doc = await c.get('/api/v1/openapi.json');
     assert.equal(doc.body.info.title, 'Banana Brigade API');
     const page = await fetch(`${s.base}/api/docs`);
-    assert.match(await page.text(), /swagger-ui-dist@5\.17\.14/);
+    const html = await page.text();
+    assert.match(html, /swagger-ui-dist@5\.17\.14/);
+    assert.match(html, /rel="icon"[^>]*href="\/favicon\.svg"/);
   } finally { await s.close(); }
 });
 

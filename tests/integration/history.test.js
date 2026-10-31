@@ -146,6 +146,7 @@ test('the leaderboard has one row per player, a career view, my own rank, and no
     assert.equal(best.by, 'best');
     assert.deepEqual(best.rows.map((r) => [r.rank, r.username, r.kills, r.games]), [[1, 'ace', 30, 3], [2, 'cat', 25, 1]]);
     assert.deepEqual([best.me.rank, best.me.username, best.me.kills], [4, 'dan', 1]);
+    for (const r of [...best.rows, best.me]) assert.ok(!('id' in r) && !('matchId' in r) && !('user' in r), 'leaderboard rows carry no ids');
 
     const all = (await client(s.base).get('/api/scores/leaderboard?mode=quick')).body;
     assert.deepEqual(all.rows.map((r) => r.username), ['ace', 'cat', 'bee', 'dan']);
@@ -261,5 +262,15 @@ test('download my data includes the match history and battle logs', async () => 
     assert.equal(data.matches[0].log.length, 4);
     assert.equal(data.matches[0].roster[0].me, true);
     assert.ok(!JSON.stringify(data).includes('userId'));
+  } finally { await s.close(); }
+});
+
+test('a lost solo battle names the best other soldier as winner, fewer deaths breaking a kill tie', async () => {
+  const s = await startServer();
+  try {
+    const { c } = await player(s, 'loser');
+    const roster = [{ name: 'loser', kills: 0, deaths: 0, me: true }, { name: 'Blaze', kills: 0, deaths: 1, bot: true }, { name: 'Viper', kills: 0, deaths: 0, bot: true }];
+    const saved = await c.post('/api/scores', { mode: 'quick', kills: 0, deaths: 0, durationS: 5, won: false, roster, log: LOG });
+    assert.equal((await c.get(`/api/matches/${saved.body.matchId}`)).body.match.winner, 'Viper');
   } finally { await s.close(); }
 });

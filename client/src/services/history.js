@@ -61,6 +61,13 @@ export function rankRoster(roster = []) {
   return [...roster].sort((a, b) => (b.kills ?? 0) - (a.kills ?? 0) || (a.deaths ?? 0) - (b.deaths ?? 0)).map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
+export function soloWinner(roster = [], won = false, draw = false) {
+  if (draw) return null;
+  const me = roster.find((r) => r.me);
+  if (won) return me?.name ?? null;
+  return rankRoster(roster.filter((r) => r !== me))[0]?.name ?? null;
+}
+
 export const kd = (k, d) => (d ? k / d : k).toFixed(2);
 
 export const ago = (iso, now = Date.now()) => {

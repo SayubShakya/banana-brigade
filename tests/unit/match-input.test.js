@@ -27,4 +27,5 @@ test('parseMatchInput refuses wrong types, never trusts a userId and only asks f
   assert.equal(input.wanted, true);
   assert.equal(input.map, 'docks');
   assert.deepEqual(input.roster, [{ name: 'me', kills: 0, deaths: 0, bot: false, me: true }]);
+  assert.deepEqual(parseMatchInput({ roster: [{ name: 'a', me: true }, { name: 'b', me: true, bot: true }] }).roster.map((r) => !!r.me), [true, false]);
 });

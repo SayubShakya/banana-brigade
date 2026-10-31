@@ -30,7 +30,10 @@ const careerRow = (r) => ({
   rank: r.rank, username: r.username, kills: r.kills, deaths: r.deaths, wave: r.wave, wins: r.wins, games: r.games,
   puzzles_solved: r.puzzlesSolved, puzzles_attempted: r.puzzlesAttempted,
 });
-const bestRow = (r) => ({ ...scoreRow(r.best), username: r.username, rank: r.rank, wins: r.wins, games: r.games });
+const bestRow = (r) => {
+  const { id, matchId, ...best } = scoreRow(r.best);
+  return { ...best, username: r.username, rank: r.rank, wins: r.wins, games: r.games };
+};
 
 function createScoreRepository(m) {
   return {
