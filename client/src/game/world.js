@@ -311,6 +311,7 @@ export function endMatchNow(world, reason) { endMatch(world, reason); }
 function endMatch(world, reason) {
   if (world.over) return;
   world.over = true;
+  world.endedAt = world.time;
   const ranking = [...world.soldiers].filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
   world.emit('match:ended', { reason, ranking, player: world.player, mode: world.mode, wave: world.wave, teamKills: { ...world.teamKills }, mission: world.mission, continues: world.continues });
 }
