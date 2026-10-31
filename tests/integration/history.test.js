@@ -146,6 +146,7 @@ test('the leaderboard has one row per player, a career view, my own rank, and no
     assert.equal(best.by, 'best');
     assert.deepEqual(best.rows.map((r) => [r.rank, r.username, r.kills, r.games]), [[1, 'ace', 30, 3], [2, 'cat', 25, 1]]);
     assert.deepEqual([best.me.rank, best.me.username, best.me.kills], [4, 'dan', 1]);
+    for (const r of [...best.rows, best.me]) assert.ok(!('id' in r) && !('matchId' in r) && !('user' in r), 'leaderboard rows carry no ids');
 
     const all = (await client(s.base).get('/api/scores/leaderboard?mode=quick')).body;
     assert.deepEqual(all.rows.map((r) => r.username), ['ace', 'cat', 'bee', 'dan']);
