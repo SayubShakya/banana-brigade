@@ -87,6 +87,7 @@ export function createNetGame() {
     const winner = summary.teamMode
       ? (summary.teamKills.blue === summary.teamKills.red ? null : summary.teamKills.blue > summary.teamKills.red ? 'blue' : 'red')
       : ranking[0];
+    if (summary.reason === 'time') emit('match:timeup');
     const why = summary.reason === 'time' ? 'Time is up.' : summary.reason === 'host' ? 'The host ended the match.' : 'Kill limit reached.';
     const outcome = summary.teamMode
       ? { won: winner === myTeam, title: winner ? `${winner === 'blue' ? 'Blue' : 'Red'} team wins!` : 'Draw', line: `Blue ${summary.teamKills.blue} – ${summary.teamKills.red} Red · ${why}` }

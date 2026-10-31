@@ -222,6 +222,24 @@ function buzzer() {
   tone(v, 156, 0.32, { volume: 0.08, type: 'square' });
 }
 
+function countdownTick(seconds) {
+  const v = ui(0.25, 0.9);
+  if (seconds <= 3) {
+    tone(v, 880, 0.16, { volume: 0.16, type: 'sine' });
+    tone(v, 1760, 0.08, { volume: 0.04, type: 'sine' });
+    return;
+  }
+  noise(v, { dur: 0.03, volume: 0.18, type: 'highpass', freq: 3000 });
+  tone(v, 1500, 0.04, { volume: 0.07, type: 'triangle' });
+}
+function timeUp() {
+  const v = ui(1.4);
+  [220, 277, 330].forEach((f) => tone(v, f, 1.1, { volume: 0.07, type: 'sawtooth', slideTo: f * 0.94, attack: 0.04 }));
+  tone(v, 110, 1.1, { volume: 0.1, type: 'square', slideTo: 100, attack: 0.04 });
+  tone(v, 2400, 0.25, { volume: 0.05, type: 'sine', slideTo: 2700, delay: 1.15 });
+  tone(v, 2400, 0.35, { volume: 0.05, type: 'sine', slideTo: 2200, delay: 1.45 });
+}
+
 const mid = (s) => (s ? { x: s.x + (s.w ?? 0) / 2, y: s.y + (s.h ?? 0) / 2 } : {});
 
 function explosion(x, y) {
@@ -297,6 +315,9 @@ function landing(soldier, speed) {
 export function initSound() {
   setInterval(() => { if (ctx && loops.size && performance.now() - lastUpdate > 250) reapLoops(-1); }, 250);
   on('banana:answered', ({ correct }) => (correct ? chime() : buzzer()));
+  on('match:countdown', ({ seconds }) => countdownTick(seconds));
+  on('match:ended', ({ reason }) => { if (reason === 'time') timeUp(); });
+  on('match:timeup', timeUp);
   on('weapon:fired', ({ soldier, weapon, x, y }) => {
     const gun = GUNS[weapon];
     if (!gun) return;
