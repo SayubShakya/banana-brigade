@@ -8,6 +8,7 @@ const { auditLogSchema } = require('./auditLog');
 const { dailySchema } = require('./daily');
 const { reservePuzzleSchema } = require('./reservePuzzle');
 const { dailyResultSchema } = require('./dailyResult');
+const { matchSchema } = require('./match');
 
 function registerModels(conn) {
   return {
@@ -19,6 +20,7 @@ function registerModels(conn) {
     Daily: conn.model('Daily', dailySchema),
     ReservePuzzle: conn.model('ReservePuzzle', reservePuzzleSchema),
     DailyResult: conn.model('DailyResult', dailyResultSchema),
+    Match: conn.model('Match', matchSchema),
   };
 }
 

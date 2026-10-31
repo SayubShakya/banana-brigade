@@ -12,6 +12,8 @@ const scoreSchema = new Schema({
   deaths: { type: Number, default: 0, min: 0 },
   wave: { type: Number, default: 0, min: 0 },
   won: { type: Boolean, default: false },
+  draw: { type: Boolean, default: false },
+  map: { type: String, default: '' },
   puzzlesSolved: { type: Number, default: 0 },
   puzzlesAttempted: { type: Number, default: 0 },
   durationS: { type: Number, default: 0 },
@@ -20,5 +22,6 @@ const scoreSchema = new Schema({
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 scoreSchema.index({ mode: 1, kills: -1 });
 scoreSchema.index({ user: 1, createdAt: -1 });
+scoreSchema.index({ matchId: 1, user: 1 });
 
 module.exports = { scoreSchema, MODES };
