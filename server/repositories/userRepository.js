@@ -1,9 +1,12 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const { CASE_INSENSITIVE } = require('../models/user');
-const { userRow, isId, oid } = require('./rows');
+const { userRow, scoreRow, isId, oid } = require('./rows');
+const { createMatchRepository } = require('./matchRepository');
 
 function createUserRepository(m) {
+  const { forgetPlayerInMatches, matchesForUser } = createMatchRepository(m);
+
   async function campaignProgress(userId) {
     const u = await m.User.findById(oid(userId), { campaign: 1 }).lean();
     return Object.fromEntries((u?.campaign ?? []).map((c) => [c.mission, { stars: c.stars, bestS: c.bestS }]));
@@ -35,6 +38,8 @@ function createUserRepository(m) {
     touchLogin: (id) => m.User.updateOne({ _id: oid(id) }, { lastLoginAt: new Date() }),
     async deleteUser(id) {
       if (!isId(id)) return false;
+      const u = await m.User.findById(oid(id), { username: 1 }).lean();
+      await forgetPlayerInMatches(id, u?.username);
       await m.Score.deleteMany({ user: oid(id) });
       await m.DailyResult.deleteMany({ user: oid(id) });
       await m.PasswordReset.deleteMany({ user: oid(id) });
@@ -83,14 +88,20 @@ function createUserRepository(m) {
       if (!isId(userId)) return null;
       const u = await m.User.findById(userId).lean();
       if (!u) return null;
-      const [scores, daily] = await Promise.all([
-        m.Score.find({ user: oid(userId) }).sort({ createdAt: -1 }).lean(),
+      const [scores, daily, matches] = await Promise.all([
+        m.Score.find({ user: oid(userId) }).sort({ createdAt: -1, _id: -1 }).lean(),
         m.DailyResult.find({ user: oid(userId) }).sort({ date: -1 }).lean(),
+        matchesForUser(userId),
       ]);
       const clean = ({ _id, __v, user, passwordHash, ...rest }) => rest;
       return {
         profile: { id: String(u._id), ...clean(u) },
         scores: scores.map(clean),
+        history: scores.filter((s) => s.mode !== 'training').map((s) => {
+          const { username, ...row } = scoreRow(s);
+          return row;
+        }),
+        matches,
         dailyResults: daily.map(clean),
       };
     },

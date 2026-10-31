@@ -9,6 +9,7 @@ const { createRateLimitRepository } = require('./rateLimitRepository');
 const { createPasswordResetRepository } = require('./passwordResetRepository');
 const { createAuditRepository } = require('./auditRepository');
 const { createReservePuzzleRepository } = require('./reservePuzzleRepository');
+const { createMatchRepository } = require('./matchRepository');
 
 async function openDatabase(uri) {
   const conn = await mongoose.createConnection(uri, { serverSelectionTimeoutMS: 5000 }).asPromise();
@@ -26,6 +27,7 @@ async function openDatabase(uri) {
     ...createPasswordResetRepository(m),
     ...createAuditRepository(m),
     ...createReservePuzzleRepository(m),
+    ...createMatchRepository(m),
   };
 }
 

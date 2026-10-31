@@ -13,6 +13,7 @@ const scoreRow = (s) => ({
   id: String(s._id), username: s.username, mode: s.mode, difficulty: s.difficulty ?? 'medium', kills: s.kills, deaths: s.deaths, wave: s.wave,
   won: s.won ? 1 : 0, puzzles_solved: s.puzzlesSolved, puzzles_attempted: s.puzzlesAttempted,
   duration_s: s.durationS, created_at: s.createdAt, multiplayer: !!s.multiplayer,
+  matchId: s.matchId ?? null, map: s.map ?? '', draw: !!s.draw,
 });
 
 const isId = (id) => mongoose.isValidObjectId(id);

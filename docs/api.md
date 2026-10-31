@@ -22,7 +22,7 @@ Errors always have the shape `{ "error": "message" }`.
 - **Public leaderboard** for other sites: `GET /api/v1/public/leaderboard?mode=quick&limit=10`. No login and no
   cookie; `Access-Control-Allow-Origin: *` (CORS, `server/middleware/cors.js`) and `OPTIONS` preflight;
   `Cache-Control: public, max-age=30`. `mode` is `quick`, `survival`, `team`, `online` or `campaign`; `limit` is
-  1–50 (default 10). It returns `{ game, mode, updated, rows }`, where each row has only
+  1–50 (default 10). It returns `{ game, mode, updated, rows }` with one row per player (their best game), where each row has only
   `rank, username, kills, deaths, wave, puzzlesSolved, at`. Try it from any page's console:
   `fetch('http://localhost:3100/api/v1/public/leaderboard').then(r => r.json()).then(console.log)`.
 
@@ -48,7 +48,7 @@ The table lists paths without `/v1`; both forms work.
 | GET | `/api/auth/available?u=name` | none | `{ available, valid }` | 429 more than 20 checks a minute |
 | GET | `/api/auth/sessions` (login) | none | `{ count, list: [{ handle, device, createdAt, lastSeen, expires, current }], current, memberSince, lastLogin }` | |
 | DELETE | `/api/auth/sessions/:handle` (login) | none | `{ ok: true }` | 400 this session (use logout), 404 not yours or ended |
-| GET | `/api/auth/export` (login) | none | JSON file: `{ exportedAt, profile, scores, dailyResults, sessions }` (no password hash) | |
+| GET | `/api/auth/export` (login) | none | JSON file: `{ exportedAt, profile, scores, history, matches, dailyResults, sessions }` (no password hash, no user ids in matches) | |
 | GET | `/api/auth/me` | none | `{ user, puzzles: { solved, attempted } }` or `{ user: null }` | |
 
 `user` is `{ id, username, role, guest }`.
@@ -61,7 +61,9 @@ the password is checked; a correct password clears its name+IP counter and gives
 every session of the account. `remember: true` keeps the cookie (and the stored session) for
 30 days instead of 2 hours. `logout-all` ends every session of the player and closes their WebSockets;
 `password` does the same for every other device (`ended` is how many sessions were ended). `account` deletes
-the user, their scores, daily results, failed-login records and sessions.
+the user, their scores, their solo matches, daily results, failed-login records and sessions; in online matches
+their name (roster, battle log and winner) becomes "Deleted soldier" and their user id is removed, so the other
+players keep a readable match.
 
 ```http
 POST /api/auth/login
@@ -122,23 +124,54 @@ on the browser's event bus by `api.js`.
 
 | Method | Path | Body / query | Response |
 |---|---|---|---|
-| POST | `/api/scores` (login) | `{ mode, difficulty, kills, deaths, wave, won, durationS, powers }` | `201 { id, puzzlesSolved, puzzlesAttempted, unlocked }` |
-| GET | `/api/scores/leaderboard` | `?mode=quick\|survival\|training\|team\|online&period=all\|today&limit=1..50` (default 20) | `{ mode, period, rows }` |
-| GET | `/api/scores/me` (login) | none | `{ totals, recent }` |
+| POST | `/api/scores` (login) | `{ mode, difficulty, kills, deaths, wave, won, draw, durationS, powers, map, roster, log }` | `201 { id, matchId, puzzlesSolved, puzzlesAttempted, unlocked }` |
+| GET | `/api/scores/leaderboard` | `?mode=quick\|survival\|training\|team\|online\|campaign&period=all\|today&by=best\|career&limit=1..50` (default 20) | `{ mode, period, by, rows, me }` |
+| GET | `/api/scores/me` (login) | none | `{ totals, recent }` (each recent row has `matchId` and `hasLog`) |
+| GET | `/api/scores/history` (login) | `?filter=all\|solo\|online\|quick\|survival\|team\|campaign&before=<cursor>&limit=1..50` (default 20) | `{ rows, next }` |
+| GET | `/api/matches/:matchId` (login) | none | `{ match }`; 404 if you did not play in it (admins can open any) |
 
 `mode` may be `quick`, `survival`, `training` or `team` (online and campaign scores are written by the server).
 Numbers must be whole and within limits (kills and deaths up to 500, wave up to 200, durationS up to 3600).
 Puzzle counts are **taken from the session**, not from the body. `powers` (optional) lists the Banana Powers used,
 for the Power Hungry achievement.
 
+**Battle log.** `map` (text), `draw` (true/false), `roster` and `log` are optional. If `roster` or `log` is sent
+(not for training), the server saves one `Match` (collection `matches`, `server/models/match.js`) and the score gets
+its `matchId`; otherwise `matchId` is `null`. A wrong type (`log` that is not a list, `map` that is not text, `draw`
+that is not a boolean) is a 400. Inside the lists the server cleans instead of trusting: at most 12 roster rows and
+300 log entries, unknown log types and rows without a name are dropped, text is trimmed to 40 characters with control
+characters removed, numbers are clamped (kills/deaths 0–999, `t` 0–3600 s, 1 decimal), unknown fields are dropped and a
+`userId` sent by the browser is ignored. With a log but no roster, the roster is your own row. These two routes accept
+bodies up to **96 KB**; every other route keeps the 4 KB limit (413 above it).
+
+- Log entry: `{ t, type: 'kill'|'puzzle'|'crate'|'power'|'drop'|'respawn'|'wave'|'join'|'leave'|'end', by?, target?, weapon?, ok?, detail? }`
+- Roster row: `{ name, team?: 'blue'|'red', kills, deaths, bot, me? }`
+- Match: `{ matchId, mode, multiplayer, map, difficulty, durationS, teamMode, winner, createdAt, roster, log }`. Your
+  row has `me: true`; user ids are stored for online players but never sent.
+
+**History.** Your games newest first (training is not listed). Each row is
+`{ id, matchId, mode, difficulty, map, kills, deaths, wave, won, draw, puzzles_solved, puzzles_attempted, duration_s, created_at, multiplayer, hasLog }`;
+`hasLog` is true when a saved match exists for it. `solo` means not multiplayer, `online` means multiplayer. Paging uses a
+cursor (`createdAt` + id of the last row), so new games saved meanwhile do not shift the pages; pass `next` as
+`before` until it is `null`.
+
+**Leaderboard.** Built with a MongoDB aggregation (`server/repositories/scoreRepository.js`). `by=best` (default)
+gives one row per player: their best game (most kills, then puzzles solved; survival by wave, then kills) with
+`games` and `wins` in that mode. `by=career` gives totals per player (kills, deaths, games, wins, best wave, puzzles),
+sorted by wins then kills; it also allows `mode=all`. Rows are `{ rank, username, kills, deaths, wave, wins, games, puzzles_solved, puzzles_attempted }`
+(best rows also carry the game's `id, mode, difficulty, won, duration_s, created_at, multiplayer, matchId`). Guests
+are left out. `me` is your own row with `rank` and `username` even outside the top list, or `null` when logged out,
+a guest, or without games. `period=today` counts only games since 00:00 UTC.
+
 ### Campaign (`server/routes/campaign.js`, login)
 
 | Method | Path | Body | Response | Errors |
 |---|---|---|---|---|
 | GET | `/api/campaign` | none | `{ chapters, missions, progress, stars }` | |
-| POST | `/api/campaign/result` | `{ mission, won, kills, deaths, continues, timeS, powers }` | `{ stars, best, progress, totalStars, unlockedNext, unlocked }` | 400 bad body, 403 mission locked |
+| POST | `/api/campaign/result` | `{ mission, won, kills, deaths, continues, timeS, powers, map, roster, log }` | `{ matchId, stars, best, progress, totalStars, unlockedNext, unlocked }` | 400 bad body, roster or log, 403 mission locked |
 
-A win only counts if `kills` reaches the mission target. Stars use the session's puzzle counts.
+A win only counts if `kills` reaches the mission target. Stars use the session's puzzle counts. `map`, `roster` and
+`log` work as for `/api/scores` (same checks, 96 KB body limit); `matchId` is `null` without them.
 
 ### Daily Banana Challenge (`server/routes/daily.js`, login)
 

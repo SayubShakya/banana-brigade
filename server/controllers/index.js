@@ -8,6 +8,7 @@ const { createDailyController } = require('./dailyController');
 const { createAdminController } = require('./adminController');
 const { createPuzzleController } = require('./puzzleController');
 const { createDocsController } = require('./docsController');
+const { createMatchesController } = require('./matchesController');
 
 function createControllers(services) {
   return {
@@ -18,6 +19,7 @@ function createControllers(services) {
     dailyController: createDailyController(services),
     adminController: createAdminController(services),
     puzzleController: createPuzzleController(services),
+    matchesController: createMatchesController(services),
     docsController: createDocsController(),
   };
 }
