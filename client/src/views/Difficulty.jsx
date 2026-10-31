@@ -90,6 +90,7 @@ export default function Difficulty({ mode, current, onPick, onBack, length: chos
       <div className="levels">
         {Object.entries(DIFFICULTY).map(([key, d]) => (
           <button key={key} className={`level-card ${key}${key === current ? ' last' : ''}`} onClick={() => onPick(key, LENGTH_MODES.includes(mode) ? length : undefined, MAP_MODES.includes(mode) ? map : undefined)}>
+            <span className="level-icon" aria-hidden="true">{key === 'easy' ? '🌿' : key === 'medium' ? '🔥' : '💀'}</span>
             <span className="level-stars" aria-hidden="true">{'★'.repeat(key === 'easy' ? 1 : key === 'medium' ? 2 : 3)}</span>
             <b>{d.name}</b>
             {key === 'easy' && <span className="recommended">Best for new players</span>}
