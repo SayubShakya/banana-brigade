@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { Icon, Sky } from '../components/common.jsx';
 import { playCutscene } from '../services/cutsceneBridge.js';
+import { emit } from '../services/eventBus.js';
 
 const PUZZLES = [
   ['Deploy', 'Solve one to drop into a battle. A GOLD solve starts you with a full Banana Meter.'],
@@ -39,7 +40,8 @@ function Trailer({ onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    emit('media:started', { id: 'trailer' });
+    return () => { window.removeEventListener('keydown', onKey); emit('media:ended', { id: 'trailer' }); };
   }, [onClose]);
   return (
     <div className="trailer" role="dialog" aria-label="Banana Brigade trailer" onClick={onClose}>
