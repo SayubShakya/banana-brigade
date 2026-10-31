@@ -6,6 +6,23 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/history-server`, `feature/battle-log-recording`, `feature/history-ui`)
+- Match history screen (menu tile, `#history`, Profile "See full history") with All / Solo / Online / per-mode
+  filters and Load more paging.
+- Battle log for solo and online games: kills, puzzles, crates, powers, supply drops, waves, joins and leaves, plus
+  the final scoreboard. Shown on Results and in a dialog from History and Profile. New `Match` model,
+  `GET /api/scores/history` and `GET /api/matches/:matchId` (only for players who were in the match).
+- Leaderboard ranks one row per player, with a Career view, a Campaign tab and your own rank pinned.
+- Deleting an account removes its solo logs and shows "Deleted soldier" in online logs; the data export includes
+  history and logs.
+
+### Fixed (`fix/qa-solo-history`, `fix/qa-online-history`, `fix/qa-regression`, `fix/preview-link-sticks`)
+- Tested by three testers (solo, online with real players, security and regression). Fixed: winners in survival,
+  failed missions and ties; puzzle counts carried over from an unsaved battle; Load more mixing filters; dialog
+  height and focus; online leavers saved as "(bot)"; online difficulty and match length; guest name kept in logs
+  after saving the account; ids in leaderboard rows; a second "you" row; the docs page icon.
+- A preview link such as `#difficulty` no longer reopens after Back and refresh.
+
 ### Final QA (`fix/final-qa-*`, `feature/ui-polish`, `feature/friends-rooms`)
 - Screen-by-screen test of every mode, map, screen, online play, accounts, admin and the API by three testers.
 - Fixed: mid-air supply drops, battle time on Results, tied matches shown as a win, stale device list, phone menu
