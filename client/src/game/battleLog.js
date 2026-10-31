@@ -32,6 +32,7 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
     switch (event) {
       case 'soldier:killed':
         if (p.victim?.isDummy) break;
+        known.add(p.victim);
         add('kill', { by: p.killer?.name ?? p.victim.name, target: p.victim.name, weapon: weaponName(p.weapon) });
         break;
       case 'soldier:respawned':
@@ -63,7 +64,7 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
     entries: () => (end ? [...list, end] : [...list]),
     roster(meName = null) {
       const isMe = (s) => s === world.player || (meName != null && s.name === meName);
-      const ranked = world.soldiers.filter((s) => !s.isDummy && !s.gone).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+      const ranked = [...new Set([...known, ...world.soldiers])].filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
       const top = ranked.slice(0, ROSTER_CAP);
       const mine = ranked.find(isMe);
       if (mine && !top.includes(mine)) top[ROSTER_CAP - 1] = mine;

@@ -118,3 +118,18 @@ test('soldiers that first appear with a new survival wave are not logged as resp
   w.emit('soldier:respawned', { soldier: fresh });
   assert.deepEqual(log.entries().map((e) => e.by), ['Bot Kiwi', 'Wave Bot']);
 });
+
+test('survival bots that were killed and removed still appear on the final scoreboard', () => {
+  const { w, me, bot } = fakeWorld();
+  const log = createBattleLog(w);
+  const wave2 = { id: 'b1', name: 'Bot Mango', isPlayer: false, team: 'b1', kills: 1, deaths: 0 };
+  w.soldiers.push(wave2);
+  w.emit('soldier:respawned', { soldier: wave2 });
+  me.kills = 2;
+  bot.deaths = 1;
+  wave2.deaths = 1;
+  w.emit('soldier:killed', { victim: bot, killer: me, weapon: 'smg' });
+  w.emit('soldier:killed', { victim: wave2, killer: me, weapon: 'smg' });
+  w.soldiers = [me];
+  assert.deepEqual(log.roster().map((r) => r.name), ['sayub', 'Bot Mango', 'Bot Kiwi']);
+});
