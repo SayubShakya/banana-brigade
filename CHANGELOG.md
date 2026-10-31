@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/puzzle-music`)
+- A calm "thinking" music track while any Banana puzzle is open (deploy, respawn, crate, continue, Daily);
+  the puzzle window and the Daily challenge emit `puzzle:shown` / `puzzle:hidden` on the event bus.
+
 ### Changed (`feature/theme-music`)
 - Background music is now two real tracks: the trailer theme on the menus and a calmer loop in battle, with a
   1.2 s cross-fade. All music stops while the trailer or a story clip plays.
