@@ -45,3 +45,27 @@ test('unknown pages show the 404 screen with status 404', async ({ page }) => {
   expect(res.status()).toBe(404);
   await expect(page.getByText('That page does not exist.')).toBeVisible();
 });
+
+test('a preview link opens once: Back then refresh stays on the menu', async ({ page }) => {
+  const name = `e2e_${Date.now().toString(36).slice(-6)}`;
+  const password = 'E2e-banana-run-2026';
+
+  await page.addInitScript(() => localStorage.setItem('brigade.clipsSeen', JSON.stringify(['logo', 'intro', 'deploy', 'respawn', 'crate', 'victory', 'daily', 'rankup', 'chapter-1', 'chapter-2', 'chapter-3'])));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.getByRole('tab', { name: 'Create account' }).click();
+  await page.getByLabel('Username').fill(name);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm password').fill(password);
+  await page.getByRole('button', { name: 'Create account' }).last().click();
+  await expect(page.locator('.name-tag')).toContainText(name);
+
+  await page.goto('/?v=1#difficulty');
+  await expect(page.getByText('Choose Difficulty')).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe('');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.locator('.name-tag')).toContainText(name);
+  await page.reload();
+  await expect(page.locator('.name-tag')).toContainText(name);
+  await expect(page.getByText('Choose Difficulty')).toBeHidden();
+});
