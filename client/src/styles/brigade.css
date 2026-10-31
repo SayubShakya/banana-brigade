@@ -410,10 +410,10 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .tile:focus-visible, .toggle:focus-visible, .tabs button:focus-visible { outline: 0.5cqh solid var(--banana); outline-offset: 0.4cqh; }
 
 .profile-layout { display: grid; grid-template-columns: 26cqh 1fr; gap: 2.4cqh; }
-.profile-card { display: flex; flex-direction: column; align-items: center; gap: 1cqh; padding: 1.6cqh; border-radius: 1.6cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); }
+.profile-card { display: flex; flex-direction: column; align-items: center; align-self: start; gap: 1cqh; padding: 1.6cqh; border-radius: 1.6cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); }
 .profile-card canvas { width: 18cqh; height: 24cqh; }
 .profile-card b { font: 400 3cqh 'Black Ops One', sans-serif; color: var(--paper); }
-.profile-card .mbtn { width: 100%; margin-top: auto; }
+.profile-card .mbtn { width: 100%; margin-top: 1cqh; }
 .profile-main { display: flex; flex-direction: column; gap: 1.4cqh; min-width: 0; }
 .record { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1cqh; margin: 0; }
 .record div { padding: 1.1cqh; border-radius: 1.2cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); }
