@@ -26,7 +26,7 @@ function createMatchService({ db }) {
     }
     const me = roster.find((r) => r.me);
     const teamMode = game.mode === 'team' || roster.some((r) => r.team);
-    const others = roster.filter((r) => r !== me).sort((a, b) => b.kills - a.kills);
+    const others = roster.filter((r) => r !== me).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
     let winner = null;
     if (teamMode && me?.team && !input.draw) winner = game.won ? me.team : (me.team === 'blue' ? 'red' : 'blue');
     else if (!teamMode && !input.draw) winner = game.won ? (me?.name ?? null) : (others[0]?.name ?? null);

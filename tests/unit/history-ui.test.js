@@ -63,3 +63,11 @@ test('history: filters cover every saved mode and labels are friendly', () => {
   assert.equal(h.mapLabel(null), '—');
   assert.equal(h.ago(new Date(Date.now() - 5 * 60000).toISOString()), '5 min ago');
 });
+
+test('history: a solo winner matches what the server saves (me if I won, else the best other soldier)', () => {
+  const roster = [{ name: 'me', kills: 0, deaths: 0, me: true }, { name: 'Blaze', kills: 0, deaths: 1, bot: true }, { name: 'Viper', kills: 0, deaths: 0, bot: true }];
+  assert.equal(h.soloWinner(roster, true), 'me');
+  assert.equal(h.soloWinner(roster, false), 'Viper');
+  assert.equal(h.soloWinner(roster, false, true), null);
+  assert.equal(h.soloWinner([], false), null);
+});

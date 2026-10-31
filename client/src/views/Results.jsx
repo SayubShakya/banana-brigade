@@ -7,6 +7,7 @@ import { Panel, Icon } from '../components/common.jsx';
 import { Stars } from './Campaign.jsx';
 import { missionById } from '../game/campaign.js';
 import BattleLog from '../components/BattleLog.jsx';
+import { soloWinner } from '../services/history.js';
 import '../styles/banana-meter.css';
 
 const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
@@ -51,7 +52,7 @@ export function resultMatch(game) {
   const teamMode = !!(result.teamMode || result.mode === 'team');
   const winner = teamMode
     ? (result.teamKills?.blue === result.teamKills?.red ? null : result.teamKills?.blue > result.teamKills?.red ? 'blue' : 'red')
-    : game.draw ? null : result.ranking?.[0]?.name ?? null;
+    : game.online || !b.roster?.length ? (game.draw ? null : result.ranking?.[0]?.name ?? null) : soloWinner(b.roster, !!game.outcome?.won, !!game.draw);
   return {
     matchId: game.matchId ?? null, mode: game.mission ? 'campaign' : result.mode, multiplayer: !!game.online, map: b.map ?? null,
     difficulty: game.difficulty ?? null, durationS, teamMode, winner: result.mode === 'survival' ? null : winner,
