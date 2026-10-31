@@ -39,3 +39,5 @@
   .bar.banana-meter.full, .supply-btn, .puzzle-burst::before, .streak-pop, .puzzle-card.bad.soft-shake { animation: none; }
 }
 body.a11y-calm .bar.banana-meter.full, body.a11y-calm .supply-btn, body.a11y-calm .puzzle-burst::before, body.a11y-calm .streak-pop, body.a11y-calm .puzzle-card.bad.soft-shake { animation: none; }
+.banana-report dl { grid-template-columns: auto auto auto auto; justify-content: space-between; }
+.banana-report .medals { flex-wrap: nowrap; }
