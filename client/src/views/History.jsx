@@ -1,6 +1,6 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { Panel, SkeletonRows } from '../components/common.jsx';
 import { BattleLogDialog } from '../components/BattleLog.jsx';
@@ -17,22 +17,27 @@ export default function History({ account, onBack }) {
   const [error, setError] = useState('');
   const [more, setMore] = useState(false);
   const [open, setOpen] = useState(null);
+  const view = useRef(0);
 
   useEffect(() => {
     let alive = true;
+    view.current += 1;
     setRows(null);
     setNext(null);
     setError('');
+    setMore(false);
     api.history(filter).then((d) => { if (alive) { setRows(d.rows ?? []); setNext(d.next ?? null); } })
       .catch((e) => { if (alive) { setRows([]); setError(e.offline ? 'Cannot reach the game server. Check your connection.' : 'Could not load your history. Try again in a moment.'); } });
     return () => { alive = false; };
   }, [filter]);
 
   const loadMore = () => {
+    const asked = view.current;
+    const same = () => view.current === asked;
     setMore(true);
-    api.history(filter, next).then((d) => { setRows((r) => [...r, ...(d.rows ?? [])]); setNext(d.next ?? null); })
-      .catch(() => setError('Could not load more battles. Try again.'))
-      .finally(() => setMore(false));
+    api.history(filter, next).then((d) => { if (same()) { setRows((r) => [...(r ?? []), ...(d.rows ?? [])]); setNext(d.next ?? null); } })
+      .catch(() => same() && setError('Could not load more battles. Try again.'))
+      .finally(() => same() && setMore(false));
   };
 
   return (
