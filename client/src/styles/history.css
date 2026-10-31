@@ -1,0 +1,87 @@
+/* Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. */
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.muted { color: var(--khaki); opacity: 0.7; }
+.mbtn.small { font-size: 1.6cqh; padding: 0.6cqh 1.2cqh; box-shadow: none; white-space: nowrap; }
+.bl-scroll-x { overflow-x: auto; min-width: 0; }
+
+.history-tabs { flex-wrap: wrap; }
+.history-tabs button { flex: 1 1 auto; font-size: 1.8cqh; padding: 0.9cqh 1.2cqh; }
+.history-table td { vertical-align: middle; white-space: nowrap; }
+.history-table td:last-child { text-align: right; }
+.res { font-weight: 800; }
+.res-won { color: var(--good); }
+.res-lost { color: var(--red); }
+.res-draw { color: var(--khaki); }
+.res-wave { color: var(--banana); }
+.empty-row.error td { color: var(--red); }
+.load-more { align-self: center; min-width: 24cqh; }
+.load-more:disabled { opacity: 0.6; cursor: progress; }
+
+.sub-head-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1cqh; }
+.sub-head-row .link-btn { padding: 0; color: var(--banana); }
+
+.scores-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2cqh; }
+.scores-bar .tabs { flex: 1 1 60%; }
+.leaderboard tfoot tr.pinned td { border-top: 0.3cqh dashed var(--banana); background: rgba(255, 225, 53, 0.08); }
+
+.bl-overlay { position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(10, 12, 6, 0.7); backdrop-filter: blur(0.4cqh); }
+.bl-dialog {
+  width: min(94%, 110cqh); max-height: 92%; display: flex; flex-direction: column; gap: 1.2cqh;
+  background: var(--panel); border: 0.4cqh solid var(--olive); border-top: 1.2cqh solid var(--banana); border-radius: 2cqh;
+  padding: 2cqh 3cqh; box-shadow: 0 2cqh 5cqh rgba(0, 0, 0, 0.45); animation: pop-in 0.22s ease-out;
+}
+.bl-head { display: flex; align-items: center; justify-content: space-between; gap: 1cqh; }
+.bl-head h2 { margin: 0; font: 400 4.4cqh 'Black Ops One', sans-serif; color: var(--banana); letter-spacing: 0.3cqh; }
+.bl-x { padding: 0.6cqh 1.4cqh; }
+.bl-body { overflow: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.bl-foot { display: flex; justify-content: flex-end; }
+
+.battle-log { display: flex; flex-direction: column; gap: 1.2cqh; min-width: 0; }
+.bl-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1cqh; margin: 0; }
+.bl-meta div { padding: 1cqh 1.2cqh; border-radius: 1.2cqh; background: rgba(255, 255, 255, 0.05); border: 0.25cqh solid var(--panel-line); min-width: 0; }
+.bl-meta dt { font-size: 1.5cqh; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.1cqh; }
+.bl-meta dd { margin: 0.3cqh 0 0; font: 800 2.2cqh 'Rubik', sans-serif; color: var(--paper); overflow-wrap: anywhere; }
+.bl-meta dd.team-blue { color: var(--blue); }
+.bl-meta dd.team-red { color: var(--red); }
+.bl-tag { margin-left: 0.8cqh; padding: 0.1cqh 0.7cqh; border-radius: 1cqh; font-size: 1.3cqh; text-transform: uppercase; background: rgba(255, 255, 255, 0.12); color: var(--khaki); font-weight: 600; }
+.bl-tag.you { background: var(--banana); color: var(--ink); }
+.team-dot { display: inline-flex; align-items: center; gap: 0.6cqh; font-weight: 800; }
+.team-dot::before { content: ''; width: 1.4cqh; height: 1.4cqh; border-radius: 50%; background: currentColor; }
+.team-dot.blue { color: var(--blue); }
+.team-dot.red { color: var(--red); }
+
+.bl-timeline { list-style: none; margin: 0; padding: 0.4cqh; max-height: 40cqh; overflow-y: auto; border-radius: 1.2cqh; background: rgba(0, 0, 0, 0.2); border: 0.25cqh solid var(--panel-line); }
+.bl-timeline:focus-visible { outline: 0.5cqh solid var(--banana); outline-offset: 0.2cqh; }
+.bl-timeline li { display: grid; grid-template-columns: 6cqh 2.6cqh 1fr; align-items: center; gap: 1cqh; padding: 0.6cqh 1cqh; font-size: 1.9cqh; border-bottom: 0.15cqh solid var(--panel-line); }
+.bl-timeline li:last-child { border-bottom: 0; }
+.bl-timeline time { font-variant-numeric: tabular-nums; color: var(--khaki); font-weight: 600; }
+.bl-timeline .bl-ico { width: 2.4cqh; height: 2.4cqh; color: var(--khaki); }
+.bl-timeline li[data-type="kill"] .bl-ico { color: var(--red); }
+.bl-timeline li[data-type="puzzle"] .bl-ico, .bl-timeline li[data-type="crate"] .bl-ico, .bl-timeline li[data-type="drop"] .bl-ico { color: var(--banana); }
+.bl-timeline li[data-type="power"] .bl-ico, .bl-timeline li[data-type="respawn"] .bl-ico { color: var(--good); }
+.bl-timeline li[data-type="wave"], .bl-timeline li[data-type="end"] { background: rgba(255, 225, 53, 0.08); font-weight: 800; }
+.bl-timeline li.miss span { color: var(--khaki); }
+.bl-empty { margin: 0; padding: 2cqh; text-align: center; color: var(--khaki); border-radius: 1.2cqh; background: rgba(255, 255, 255, 0.04); }
+
+body.a11y-contrast .bl-dialog { background: #000; border-color: #fff; }
+body.a11y-contrast .bl-overlay { background: rgba(0, 0, 0, 0.88); backdrop-filter: none; }
+body.a11y-contrast .bl-timeline, body.a11y-contrast .bl-meta div { background: #000; border-color: #fff; }
+body.a11y-contrast .bl-timeline time, body.a11y-contrast .bl-meta dt, body.a11y-contrast .bl-timeline .bl-ico, body.a11y-contrast .muted { color: #fff; opacity: 1; }
+body.a11y-contrast .bl-tag { background: #fff; color: #000; }
+body.a11y-contrast .leaderboard tfoot tr.pinned td { background: #000; border-top-color: #fff; }
+body.a11y-calm .bl-dialog { animation: none; }
+body.a11y-large .bl-timeline li, body.a11y-large .bl-meta, body.a11y-large .history-table { zoom: 1.12; }
+
+@media (max-height: 520px) {
+  .bl-timeline li, .bl-meta dd, .history-table td, .history-table th { font-size: max(1.9cqh, 12px); }
+  .bl-meta dt, .bl-tag, .mbtn.small { font-size: max(1.5cqh, 11px); }
+  .mbtn.small { min-height: 32px; }
+  .history-tabs button { font-size: max(1.8cqh, 11px); min-height: 32px; }
+  .bl-timeline li { grid-template-columns: max(6cqh, 38px) max(2.6cqh, 16px) 1fr; }
+  .bl-timeline .bl-ico { width: max(2.4cqh, 14px); height: max(2.4cqh, 14px); }
+  .bl-dialog { padding: 1.4cqh 2cqh; max-height: 96%; }
+  .bl-head h2 { font-size: max(3.4cqh, 16px); }
+  .bl-meta { grid-template-columns: repeat(2, 1fr); }
+  .bl-timeline { max-height: none; }
+}
