@@ -1,6 +1,6 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { Panel, SkeletonRows } from '../components/common.jsx';
 import { BattleLogDialog } from '../components/BattleLog.jsx';
@@ -17,9 +17,12 @@ export default function History({ account, onBack }) {
   const [error, setError] = useState('');
   const [more, setMore] = useState(false);
   const [open, setOpen] = useState(null);
+  const shown = useRef(filter);
+  shown.current = filter;
 
   useEffect(() => {
     let alive = true;
+    setMore(false);
     setRows(null);
     setNext(null);
     setError('');
@@ -29,10 +32,16 @@ export default function History({ account, onBack }) {
   }, [filter]);
 
   const loadMore = () => {
+    const asked = filter;
+    const still = () => shown.current === asked;
     setMore(true);
-    api.history(filter, next).then((d) => { setRows((r) => [...r, ...(d.rows ?? [])]); setNext(d.next ?? null); })
-      .catch(() => setError('Could not load more battles. Try again.'))
-      .finally(() => setMore(false));
+    api.history(asked, next).then((d) => {
+      if (!still()) return;
+      setRows((r) => { const have = new Set(r.map((x) => x.id)); return [...r, ...(d.rows ?? []).filter((x) => !have.has(x.id))]; });
+      setNext(d.next ?? null);
+    })
+      .catch(() => still() && setError('Could not load more battles. Try again.'))
+      .finally(() => still() && setMore(false));
   };
 
   return (
