@@ -90,7 +90,7 @@ export function createNetGame() {
     const why = summary.reason === 'time' ? 'Time is up.' : summary.reason === 'host' ? 'The host ended the match.' : 'Kill limit reached.';
     const outcome = summary.teamMode
       ? { won: winner === myTeam, title: winner ? `${winner === 'blue' ? 'Blue' : 'Red'} team wins!` : 'Draw', line: `Blue ${summary.teamKills.blue} – ${summary.teamKills.red} Red · ${why}` }
-      : { won: winner.isPlayer, title: winner.isPlayer ? 'Victory!' : `${winner.name} wins`, line: why };
+      : summary.winner === null ? { won: false, title: 'Draw', line: `Tied on kills · ${why}` } : { won: winner.isPlayer, title: winner.isPlayer ? 'Victory!' : `${winner.name} wins`, line: why };
     setTimeout(() => {
       hud.hide();
       view = null;
