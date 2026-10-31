@@ -432,7 +432,8 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
   (see `docs/evaluation.md`); no code was copied from them.
 - The home page trailer (`client/public/media/trailer.mp4`, about 1 minute, "Crack the Code") joins clips generated
   with Google Flow (Veo / Omni) from my own prompts, screen recordings of the real game (a Banana API puzzle and a
-  battle) and title cards made from the game's fonts and logo. Its sound is the clips' own generated audio plus
+  battle) and title cards made from the game's fonts and logo. Its music, "Goggles Down, Engines Up", was made with
+  Google Gemini (music generation) from my own prompt; the sound is the clips' own generated audio plus
   effects: the CC0/CC-BY gun shots above and click, chime, whoosh and impact sounds synthesised with ffmpeg. It is
   in-game art only and not the assessed video.
   The story clips in `client/public/media/clips/` (videos and poster frames) are short cuts from the clips
