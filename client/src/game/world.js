@@ -236,11 +236,21 @@ export function fillBananaMeter(world, s) {
 
 export const meterFull = (s) => s.meter >= BANANA_METER.max;
 
+function groundBelow(map, x, feet) {
+  for (let y = feet; y < feet + TILE * 30; y += TILE / 2) {
+    if (isSolid(map, x, y)) return Math.floor(y / TILE) * TILE;
+  }
+  return feet;
+}
+
 export function callSupplyDrop(world, s) {
   if (!s.alive || world.over || !meterFull(s)) return null;
   const c = center(s);
-  const side = isSolid(world.map, c.x + s.facing * BANANA_METER.dropOffset, c.y) ? 0 : s.facing * BANANA_METER.dropOffset;
-  const crate = { kind: 'banana', supply: true, x: c.x + side, y: s.y + s.h - 14, active: true, timer: 0, dropped: BANANA_METER.dropLife };
+  const feet = s.y + s.h;
+  const ground = groundBelow(world.map, c.x, feet);
+  const offset = c.x + s.facing * BANANA_METER.dropOffset;
+  const side = isSolid(world.map, offset, c.y) || groundBelow(world.map, offset, feet) !== ground ? 0 : s.facing * BANANA_METER.dropOffset;
+  const crate = { kind: 'banana', supply: true, x: c.x + side, y: ground - 14, active: true, timer: 0, dropped: BANANA_METER.dropLife };
   world.pickups.push(crate);
   s.meter = 0;
   s.drops += 1;
