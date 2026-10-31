@@ -54,6 +54,7 @@ export function useStartRoute({ setScreen }, { restore }, { settings }, { startB
       restore(user);
       setScreen('menu');
       openPreview(hash);
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     }).catch((err) => setScreen(err.offline ? 'offline' : 'home'));
   }, []);
   useEffect(start, [start]);
