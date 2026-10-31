@@ -13,6 +13,7 @@ export const CUTSCENES = {
   'chapter-2': 'Chapter 2: four battlefields',
   'chapter-3': 'Chapter 3: the final battle',
   victory: 'Victory! The golden banana is yours',
+  defeat: 'Good fight, soldier. The Brigade regroups.',
   rankup: 'Rank up!',
   daily: 'Daily challenge complete',
 };

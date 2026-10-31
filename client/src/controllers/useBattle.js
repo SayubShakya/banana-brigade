@@ -49,7 +49,8 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   });
   useBus('game:over', async (payload) => {
     if (payload.mission?.bootCamp) { finishBootCamp(false); return; }
-    if (payload.outcome?.won && !payload.online && payload.result?.mode !== 'training') await playCutscene('victory');
+    const ranked = !payload.online && payload.result?.mode !== 'training';
+    if (ranked && payload.result?.reason !== 'quit') await playCutscene(payload.outcome?.won ? 'victory' : 'defeat', { once: false });
     setOver(payload);
     setScreen('results');
   });
