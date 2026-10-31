@@ -15,7 +15,7 @@ const NEEDS_KEY = new Set(['banana', 'weapon']);
 const LOW_FUEL = 20;
 import { drawSoldier, drawWeaponPickup } from './characters.js';
 import { activeGun } from './world.js';
-import { raycast, KIND } from './map.js';
+import { isSolid, KIND } from './map.js';
 import { createEffects } from './effects.js';
 import { createMinimap } from './minimap.js';
 
@@ -627,21 +627,51 @@ export function createRenderer(canvas) {
     ctx.globalAlpha = 1;
   }
 
+  function laserEnd(world, p, x0, y0, ang, range) {
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+    for (let d = 0; d <= range; d += 8) {
+      const x = x0 + dx * d, y = y0 + dy * d;
+      if (isSolid(world.map, x, y)) return { x, y, hit: true };
+      for (const s of world.soldiers) {
+        if (s !== p && s.alive && x > s.x && x < s.x + s.w && y > s.y && y < s.y + s.h) return { x, y, hit: true };
+      }
+    }
+    return { x: x0 + dx * range, y: y0 + dy * range, hit: false };
+  }
+
   function drawLaser(mouse, world) {
     const p = world.player;
     if (!laser || !p.alive) return;
-    const gx = p.x + p.w / 2;
-    const gy = p.y + 25;
     const aim = toWorld(mouse.x, mouse.y);
-    const hit = raycast(world.map, gx, gy, aim.x, aim.y, 8);
-    const from = toViewFromWorld(gx, gy);
-    const to = hit ? toViewFromWorld(hit.x, hit.y) : mouse;
-    ctx.strokeStyle = 'rgba(230, 57, 70, 0.45)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+    const ang = Math.atan2(aim.y - (p.y + 25), aim.x - (p.x + p.w / 2));
+    const mx = p.x + p.w / 2 + Math.cos(ang) * 36;
+    const my = p.y + 25 + Math.sin(ang) * 36;
+    const end = laserEnd(world, p, mx, my, ang, activeGun(p).range ?? 1000);
+    const from = toViewFromWorld(mx, my);
+    const to = toViewFromWorld(end.x, end.y);
+    const fade = end.hit ? 0.35 : 0;
+    const beam = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+    beam.addColorStop(0, 'rgba(255,40,40,0.8)');
+    beam.addColorStop(1, `rgba(255,40,40,${fade})`);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = beam;
+    ctx.globalAlpha = 0.18;
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
     ctx.stroke();
+    if (end.hit) {
+      const flicker = effects.calm() ? 1 : 0.85 + Math.random() * 0.15;
+      const glow = ctx.createRadialGradient(to.x, to.y, 0, to.x, to.y, 7);
+      glow.addColorStop(0, `rgba(255,60,60,${0.7 * flicker})`);
+      glow.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(to.x, to.y, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffd6d6';
+      ctx.beginPath(); ctx.arc(to.x, to.y, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.lineCap = 'butt';
   }
 
   function drawFuelWarning(world, time) {
@@ -659,52 +689,78 @@ export function createRenderer(canvas) {
     ctx.fillRect(x - 20, y + 8, 40 * Math.max(0, p.fuel) / LOW_FUEL, 2);
   }
 
-  let lensTint = null;
   function drawScope(mouse) {
     if (scopeT < 0.01) return;
     const ease = 1 - (1 - scopeT) * (1 - scopeT);
-    if (!lensTint) {
-      const cx = VIEW.width / 2;
-      const cy = VIEW.height / 2;
-      lensTint = ctx.createRadialGradient(cx, cy, VIEW.height * 0.5, cx, cy, Math.hypot(cx, cy));
-      lensTint.addColorStop(0, 'rgba(6,10,14,0)');
-      lensTint.addColorStop(0.55, 'rgba(6,10,14,0.18)');
-      lensTint.addColorStop(1, 'rgba(6,10,14,0.35)');
-    }
-    ctx.globalAlpha = ease;
-    ctx.fillStyle = lensTint;
-    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
     const { x, y } = mouse;
-    const r = 34;
-    ctx.strokeStyle = 'rgba(10,14,18,0.75)';
+    const r = VIEW.height * 0.42 * (0.85 + 0.15 * ease);
+    ctx.globalAlpha = ease;
+    ctx.fillStyle = 'rgba(4,6,8,0.82)';
+    ctx.beginPath();
+    ctx.rect(0, 0, VIEW.width, VIEW.height);
+    ctx.arc(x, y, r, 0, Math.PI * 2, true);
+    ctx.fill();
+    const edge = ctx.createRadialGradient(x, y, r * 0.78, x, y, r);
+    edge.addColorStop(0, 'rgba(4,6,8,0)');
+    edge.addColorStop(1, 'rgba(4,6,8,0.6)');
+    ctx.fillStyle = edge;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(120,170,220,0.06)';
+    ctx.fill();
+    ctx.strokeStyle = '#05080b';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#05080b';
+    const post = 5, gap = r * 0.35;
+    ctx.fillRect(x - r, y - post / 2, r - gap, post); ctx.fillRect(x + gap, y - post / 2, r - gap, post);
+    ctx.fillRect(x - post / 2, y + gap, post, r - gap);
+    ctx.fillRect(x - post / 2, y - r, post, r - gap);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.moveTo(x - r - 46, y); ctx.lineTo(x - 20, y); ctx.moveTo(x + 20, y); ctx.lineTo(x + r + 46, y);
-    ctx.moveTo(x, y - r - 46); ctx.lineTo(x, y - 20); ctx.moveTo(x, y + 20); ctx.lineTo(x, y + r + 46);
+    ctx.moveTo(x - gap, y); ctx.lineTo(x + gap, y);
+    ctx.moveTo(x, y - gap); ctx.lineTo(x, y + gap);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(10,14,18,0.75)';
-    for (const d of [r * 0.45, r * 0.8]) {
-      ctx.fillRect(x - d - 1, y + 3, 2, 3); ctx.fillRect(x + d - 1, y + 3, 2, 3);
-      ctx.fillRect(x - 1, y + d - 1, 2, 2);
+    for (let i = 1; i <= 4; i++) {
+      const d = (gap / 5) * i;
+      for (const [px, py] of [[x - d, y], [x + d, y], [x, y - d], [x, y + d]]) { ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill(); }
     }
+    ctx.fillStyle = '#ff2a2a';
+    ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
+    const glint = ctx.createRadialGradient(x - r * 0.45, y - r * 0.5, 0, x - r * 0.45, y - r * 0.5, r * 0.5);
+    glint.addColorStop(0, 'rgba(255,255,255,0.08)');
+    glint.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glint;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 
   function drawCrosshair(mouse, world) {
+    if (scopeT > 0.5) return;
     const p = world.player;
-    const reloading = p.reloadTimer > 0;
-    ctx.strokeStyle = reloading ? '#f4a261' : '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(mouse.x, mouse.y, 11, 0, Math.PI * 2);
-    ctx.moveTo(mouse.x - 18, mouse.y); ctx.lineTo(mouse.x - 6, mouse.y);
-    ctx.moveTo(mouse.x + 6, mouse.y); ctx.lineTo(mouse.x + 18, mouse.y);
-    ctx.moveTo(mouse.x, mouse.y - 18); ctx.lineTo(mouse.x, mouse.y - 6);
-    ctx.moveTo(mouse.x, mouse.y + 6); ctx.lineTo(mouse.x, mouse.y + 18);
-    ctx.stroke();
-    ctx.fillStyle = '#e63946';
-    ctx.fillRect(mouse.x - 1.5, mouse.y - 1.5, 3, 3);
+    const g = activeGun(p);
+    const gap = 6 + Math.min(14, (g.spread ?? 0) * 70) + Math.min(1, effects.recoilOf(p)) * 6;
+    const len = 9;
+    const { x, y } = mouse;
+    const arms = () => {
+      ctx.beginPath();
+      ctx.moveTo(x - gap - len, y); ctx.lineTo(x - gap, y);
+      ctx.moveTo(x + gap, y); ctx.lineTo(x + gap + len, y);
+      ctx.moveTo(x, y - gap - len); ctx.lineTo(x, y - gap);
+      ctx.moveTo(x, y + gap); ctx.lineTo(x, y + gap + len);
+      ctx.stroke();
+    };
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = 3.5;
+    arms();
+    ctx.strokeStyle = p.reloadTimer > 0 ? '#f4a261' : '#ffffff';
+    ctx.lineWidth = 1.5;
+    arms();
+    ctx.lineCap = 'butt';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff3b3b';
+    ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill();
   }
 
   function render(world, mouse, dt, zoomTarget = 1) {
