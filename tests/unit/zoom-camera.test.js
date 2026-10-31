@@ -135,3 +135,13 @@ test('a lagging camera is pulled back so the player never leaves the hard box', 
   assert.ok(sx <= VIEW.width * HARD_BOX.right + 1e-6 && sx >= VIEW.width * HARD_BOX.left - 1e-6);
   assert.ok(sy <= VIEW.height * HARD_BOX.bottom + 1e-6 && sy >= VIEW.height * HARD_BOX.top - 1e-6);
 });
+
+test('pressing A or D turns the soldier to that side when the aim points the other way or straight up', () => {
+  const { faceToward } = require('../../client/src/game/input.js');
+  const me = { x: 600, y: 360 };
+  assert.equal(faceToward({ x: 600, y: 100 }, me, -1), 440);
+  assert.equal(faceToward({ x: 600, y: 100 }, me, 1), 760);
+  assert.equal(faceToward({ x: 900, y: 360 }, me, -1), 300);
+  assert.equal(faceToward({ x: 300, y: 360 }, me, -1), 300);
+  assert.equal(faceToward({ x: 300, y: 360 }, me, 0), 300);
+});
