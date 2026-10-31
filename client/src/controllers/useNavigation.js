@@ -72,7 +72,7 @@ export function useStartRoute({ setScreen }, { restore }, { settings }, { startB
     else if (name === 'power') askPower(powerChoices());
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
-    else if (['privacy', 'terms', 'profile', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
+    else if (['privacy', 'terms', 'profile', 'history', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
   }
 
   return start;

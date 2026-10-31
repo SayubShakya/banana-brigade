@@ -5,7 +5,13 @@ import { drawAvatarPreview, makeAvatar } from '../game/characters.js';
 
 export const Rank = ({ n }) => (n <= 3 ? <span className={`medal m${n}`}>{n}</span> : n);
 
-export const Icon = ({ id, className = 'ico' }) => <svg className={className} aria-hidden="true" focusable="false"><use href={`#i-${id}`} /></svg>;
+const INLINE = {
+  clock: <><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" /><path d="M12 7v5l3.5 2.5M3 4.5 5.5 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></>,
+};
+
+export const Icon = ({ id, className = 'ico' }) => (
+  <svg className={className} aria-hidden="true" focusable="false" viewBox={INLINE[id] ? '0 0 24 24' : undefined}>{INLINE[id] ?? <use href={`#i-${id}`} />}</svg>
+);
 
 export function AvatarCanvas({ parts, width = 180, height = 240, ...rest }) {
   const ref = useRef(null);

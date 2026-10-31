@@ -9,6 +9,7 @@ import Menu from './views/Menu.jsx';
 import Avatar from './views/Avatar.jsx';
 import Profile from './views/Profile.jsx';
 import Scores from './views/Scores.jsx';
+import History from './views/History.jsx';
 import Settings from './views/Settings.jsx';
 import Admin from './views/Admin/Admin.jsx';
 import Controls from './views/Controls.jsx';
@@ -52,8 +53,9 @@ export default function App() {
       {screen === 'login' && <Login key={nav.loginKey} onGuest={player.playAsGuest} onHome={nav.toHome} onLogin={player.onLogin} />}
       {screen === 'menu' && <Menu account={account} isNew={player.isNew} parts={parts} onDeploy={(m) => battle.deployFrom(null, m)} onOpen={nav.open} />}
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={player.setParts} onBack={back} />}
-      {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => openFrom('profile', 'avatar')} onBack={back} />}
+      {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => openFrom('profile', 'avatar')} onHistory={() => openFrom('profile', 'history')} onBack={back} />}
       {screen === 'scores' && <Scores me={account.username} onBack={back} />}
+      {screen === 'history' && <History account={account} onBack={back} />}
       {screen === 'settings' && <Settings settings={settings} account={account} onToggle={prefs.toggle} onSet={prefs.setSetting} onControls={() => openFrom('settings', 'controls')} onLogout={player.logout}
         onSignedOut={player.signedOut} onAdmin={() => openFrom('settings', 'admin')} onSave={() => openFrom('settings', 'save')} onPrivacy={() => openFrom('settings', 'privacy')} onBack={back} />}
       {screen === 'admin' && account?.role === 'admin' && <Admin account={account} onBack={back} />}
