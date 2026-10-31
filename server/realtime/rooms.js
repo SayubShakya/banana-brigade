@@ -93,7 +93,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     for (const r of summary.results) {
       try {
         await db.addScore({
-          userId: r.userId, mode: 'online', kills: r.kills, deaths: r.deaths, wave: 0, won: r.won,
+          userId: r.userId, mode: 'online', difficulty: summary.difficulty, kills: r.kills, deaths: r.deaths, wave: 0, won: r.won,
           puzzlesSolved: r.puzzlesSolved, puzzlesAttempted: r.puzzlesAttempted, durationS: Math.min(3600, summary.durationS),
           matchId, multiplayer: true, map: summary.map, draw: !summary.winner,
         });
