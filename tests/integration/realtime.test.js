@@ -173,3 +173,56 @@ test('opening the lobby again shows the room you are still in', async () => {
     assert.equal((await update).code, room.code);
   } finally { a.socket.close(); await s.close(); }
 });
+
+test('an online match end saves one battle log with kills, puzzles, joins and the full roster', async () => {
+  const { damage } = require('../../client/src/game/world.js');
+  const s = await startServer();
+  const a = await player(s, 'logger');
+  const b = await player(s, 'logpal');
+  const matches = [];
+  const scores = [];
+  const { addMatch, addScore } = s.db;
+  s.db.addMatch = async (m) => { matches.push(m); return addMatch ? addMatch.call(s.db, m) : m.matchId; };
+  s.db.addScore = async (row) => { scores.push(row); return addScore.call(s.db, row); };
+  try {
+    const { room } = await call(a.socket, 'room:create', { bots: true, teamMode: false });
+    await call(b.socket, 'room:join', { code: room.code });
+    b.socket.emit('room:ready', { ready: true });
+    await once(a.socket, 'room:update');
+    const started = once(a.socket, 'match:start');
+    await call(a.socket, 'room:start');
+    await started;
+    const match = s.realtime.rooms.room(room.code).match;
+    const [me, pal] = [`u${a.me.id}`, `u${b.me.id}`].map((id) => match.world.soldiers.find((x) => x.id === id));
+    const bot = match.world.soldiers.find((x) => !x.isPlayer);
+    for (const x of [me, pal, bot]) x.shieldTimer = 0;
+    damage(match.world, bot, 999, me, 'sniper');
+    damage(match.world, pal, 999, bot, 'rifle');
+    match.countPuzzle(b.me.id, false);
+    match.applyPuzzle(b.me.id, 'respawn', false);
+
+    const ended = once(a.socket, 'match:end');
+    s.realtime.rooms.endMatch(room.code);
+    const summary = await ended;
+    await new Promise((r) => setTimeout(r, 300));
+
+    const kills = summary.log.filter((e) => e.type === 'kill');
+    assert.deepEqual(kills[0], { t: kills[0].t, type: 'kill', by: 'logger', target: bot.name, weapon: 'Sniper' });
+    assert.deepEqual(kills[1], { t: kills[1].t, type: 'kill', by: bot.name, target: 'logpal', weapon: 'Assault Rifle' });
+    assert.deepEqual(summary.log.filter((e) => e.type === 'join').map((e) => e.by).sort(), ['logger', 'logpal']);
+    const puzzle = summary.log.find((e) => e.type === 'puzzle');
+    assert.deepEqual(puzzle, { t: puzzle.t, type: 'puzzle', by: 'logpal', ok: false, detail: 'respawn' });
+    assert.deepEqual(summary.log.at(-1), { t: summary.log.at(-1).t, type: 'end', detail: 'Host ended it' });
+    assert.equal(summary.roster.length, 6);
+    assert.equal(summary.roster.filter((r) => r.bot).length, 4);
+    assert.ok(summary.roster.every((r) => !('userId' in r)), 'the room never sees user ids');
+
+    assert.equal(matches.length, 1);
+    const [saved] = matches;
+    assert.deepEqual([saved.mode, saved.multiplayer, saved.owner, saved.matchId], ['online', true, null, summary.matchId]);
+    assert.deepEqual(saved.log, summary.log);
+    assert.deepEqual(saved.roster.filter((r) => r.userId).map((r) => r.userId).sort(), [a.me.id, b.me.id].map(String).sort());
+    assert.equal(scores.length, 2);
+    assert.ok(scores.every((row) => row.matchId === summary.matchId && row.multiplayer));
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});
