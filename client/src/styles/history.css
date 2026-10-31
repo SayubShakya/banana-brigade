@@ -84,4 +84,8 @@ body.a11y-large .bl-timeline li, body.a11y-large .bl-meta, body.a11y-large .hist
   .bl-head h2 { font-size: max(3.4cqh, 16px); }
   .bl-meta { grid-template-columns: repeat(2, 1fr); }
   .bl-timeline { max-height: none; }
+  .history-table td, .history-table th { padding-left: 0.6cqh; padding-right: 0.6cqh; }
+  .history-table td:first-child { white-space: normal; }
+  .history-table td:first-child .level-tag { display: inline-block; margin-left: 0; }
+  .history-table .mbtn.small { padding: 4px 8px; }
 }
