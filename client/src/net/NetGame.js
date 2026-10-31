@@ -1,7 +1,7 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 import { on, emit } from '../services/eventBus.js';
-import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS, DIFFICULTY } from '../game/config.js';
+import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS, DIFFICULTY, BANANA_METER } from '../game/config.js';
 import { BOT_AVATARS, makeAvatar } from '../game/characters.js';
 import { createMap, isSolid } from '../game/map.js';
 import { emptyControls, activeGun } from '../game/world.js';
@@ -13,7 +13,7 @@ import { getSocket, request } from './socket.js';
 
 const DELAY_MS = 60;
 const RESEND_MS = 50;
-const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup'];
+const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup', 'supply'];
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => a + Math.random() * (b - a);
 const fromGun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === -1 ? Infinity : g.spare };
@@ -52,7 +52,7 @@ export function createNetGame() {
         ...r, isPlayer: r.id === myId, isDummy: false, w: SOLDIER.width, h: SOLDIER.height,
         avatar: r.avatar?.parts ? makeAvatar(r.avatar.parts) : BOT_AVATARS[(r.avatar?.bot ?? 0) % BOT_AVATARS.length],
         x: 0, y: 0, alive: false, health: SOLDIER.maxHealth, kills: 0, deaths: 0, streak: 0, controls: emptyControls(),
-        sidearm: { key: 'magnum', ammo: 8, spare: Infinity }, primary: null, current: 'sidearm',
+        sidearm: { key: 'magnum', ammo: 8, spare: Infinity }, primary: null, current: 'sidearm', meter: 0,
       })),
     };
     me = soldierById(myId);
@@ -144,6 +144,10 @@ export function createNetGame() {
     if (result !== 'solved' && view && !me.alive) me.bananaUsed = true;
   }
   on('input:banana', bananaRespawn);
+  on('input:supply', () => { if (active && !paused && me?.alive && me.meter >= BANANA_METER.max && !isPuzzleOpen()) me.controls.supply = true; });
+  window.addEventListener('keydown', (e) => {
+    if (e.code === BANANA_METER.key && !e.repeat && active && e.target?.tagName !== 'INPUT') emit('input:supply');
+  });
   document.getElementById('center-msg').addEventListener('click', bananaRespawn);
 
   on('input:pause', () => {

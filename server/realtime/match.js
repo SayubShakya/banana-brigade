@@ -1,8 +1,8 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
 const crypto = require('node:crypto');
-const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls, powerChoices } = require('../../client/src/game/world.js');
-const { BANANA_CRATE, SOLDIER } = require('../../client/src/game/config.js');
+const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls, powerChoices, bananaAnswered, callSupplyDrop, openSupplyCrate } = require('../../client/src/game/world.js');
+const { BANANA_CRATE, BANANA_METER, SOLDIER } = require('../../client/src/game/config.js');
 const { crateChoiceCount } = require('../../client/src/game/meter.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
@@ -10,7 +10,7 @@ const { randomMapId, MAP_IDS } = require('../../client/src/game/map.js');
 
 const TICK_HZ = 30;
 const SNAPSHOT_EVERY = 1;
-const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup'];
+const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup', 'supply'];
 const round = (n) => Math.round(n * 10) / 10;
 
 const CRATE_TIMINGS = {
@@ -28,7 +28,7 @@ function soldierState(s) {
     hurtFlash: round(s.hurtFlash), shieldTimer: round(s.shieldTimer), armor: Math.round(s.armor), fuelBoost: round(s.fuelBoost), power: s.power ? { id: s.power.id, timer: round(s.power.timer) } : null, fireCooldown: round(s.fireCooldown), reloadTimer: round(s.reloadTimer),
     respawnTimer: s.alive ? 0 : round(Math.min(99, s.respawnTimer)), grenades: s.grenades, kills: s.kills, deaths: s.deaths, streak: s.streak,
     current: s.current, primary: gun(s.primary), sidearm: gun(s.sidearm), lastAttacker: s.lastAttacker?.id ?? null, busy: !!s.busy,
-    bananaUsed: !!s.bananaUsed,
+    bananaUsed: !!s.bananaUsed, meter: Math.round(s.meter ?? 0),
   };
 }
 
@@ -69,7 +69,9 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
         outbox.push(['fx', { name: event, soldier: p.soldier?.id ?? null, x: p.x == null ? undefined : round(p.x), y: p.y == null ? undefined : round(p.y), speed: p.speed }]);
         break;
       case 'pickup:available': if (p.banana) near.add(p.soldier.id); break;
-      case 'banana:crate': offerCrate(p.soldier, p.pickup); break;
+      case 'banana:crate': if (p.pickup.supply) offerSupply(p.soldier, p.pickup); else offerCrate(p.soldier, p.pickup); break;
+      case 'banana:meter': outbox.push(['fx', { name: event, soldier: p.soldier.id, gained: p.gained, grade: p.grade, full: p.full, streak: p.streak }]); break;
+      case 'banana:drop': outbox.push(['fx', { name: event, soldier: p.soldier.id, x: round(p.x), y: round(p.y) }]); break;
       case 'match:ended': finish(p); break;
       default: break;
     }
@@ -97,6 +99,17 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     const timer = setTimeout(() => expireCrate(userId), seconds * 1000 + T.extraMs);
     crates.set(userId, { pickup, timer });
     send('puzzle:offer', { purpose: 'crate', seconds }, userId);
+  }
+
+  function offerSupply(soldier, pickup) {
+    if (soldier.busy || !pickup.active || ended) return;
+    const userId = soldier.id.slice(1);
+    openSupplyCrate(pickup);
+    soldier.busy = true;
+    soldier.shieldTimer = 999;
+    const timer = setTimeout(() => api.choosePower(userId, 'random'), (BANANA_CRATE.pickSeconds + 1) * 1000);
+    offers.set(userId, { choices: powerChoices(BANANA_METER.supplyChoices), timer });
+    send('power:offer', { choices: offers.get(userId).choices, seconds: BANANA_CRATE.pickSeconds }, userId);
   }
 
   function expireCrate(userId) {
@@ -141,6 +154,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       if (!s || !s.isPlayer) continue;
       if (s.busy) Object.assign(s.controls, emptyControls(), { aimX: c.aimX, aimY: c.aimY });
       else Object.assign(s.controls, c);
+      if (c.supply && !s.busy) callSupplyDrop(world, s);
       for (const a of ACTIONS) c[a] = false;
     }
     near.clear();
@@ -223,6 +237,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     applyPuzzle(userId, purpose, correct, grade = null) {
       const s = byUser(userId);
       if (!s || ended) return;
+      bananaAnswered(world, s, { correct, grade });
       if (purpose === 'respawn' && correct) revive(world, s, grade);
       if (purpose === 'crate') {
         const crate = crates.get(userId);
