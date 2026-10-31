@@ -159,3 +159,12 @@ test('the saved puzzle reserve keeps only the newest 25 in MongoDB', async () =>
     assert.ok(!rows.some((r) => r.image === 'img-0'));
   } finally { await s.close(); }
 });
+
+test('an oversized body gets a 413 JSON error, not a 500', async () => {
+  const s = await startServer();
+  try {
+    const res = await client(s.base).post('/api/auth/login', { username: 'a'.repeat(5000), password: 'x' });
+    assert.equal(res.status, 413);
+    assert.deepEqual(res.body, { error: 'Request body is too large' });
+  } finally { await s.close(); }
+});

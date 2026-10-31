@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { createMatch } = require('../../server/realtime/match.js');
 const { damage, revive } = require('../../client/src/game/world.js');
 const { updateBots } = require('../../client/src/game/bots.js');
-const { SOLDIER, DIFFICULTY } = require('../../client/src/game/config.js');
+const { SOLDIER, DIFFICULTY, BANANA_METER } = require('../../client/src/game/config.js');
 
 function setup(t) {
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'setImmediate', 'Date'] });
@@ -150,4 +150,24 @@ test('two players cannot open the same crate at once', (t) => {
   const offers = sent.filter((m) => m.event === 'puzzle:offer');
   assert.deepEqual(offers.map((m) => m.userId), ['1']);
   assert.ok(!b.busy);
+});
+
+test('online answers fill the Banana Meter; a full meter calls a supply drop that offers a free power', (t) => {
+  const { match, world, me, sent, tick } = setup(t);
+  match.applyPuzzle('1', 'respawn', true, 'gold');
+  assert.ok(me.meter > 0, 'a gold answer adds to the meter');
+  me.meter = BANANA_METER.max;
+  me.alive = true;
+  match.setControls('1', { supply: true });
+  tick(40);
+  assert.equal(me.meter, 0, 'the drop empties the meter');
+  const drop = world.pickups.find((p) => p.supply);
+  assert.ok(drop, 'a supply crate lands');
+  world.emit('banana:crate', { soldier: me, pickup: drop });
+  const offer = sent.findLast((m) => m.event === 'power:offer');
+  assert.equal(offer.payload.choices.length, BANANA_METER.supplyChoices);
+  assert.equal(sent.some((m) => m.event === 'puzzle:offer'), false, 'no puzzle for a supply crate');
+  assert.equal(me.busy, true);
+  assert.ok(match.choosePower('1', offer.payload.choices[0]));
+  assert.equal(me.busy, false);
 });

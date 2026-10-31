@@ -82,7 +82,7 @@ function createAuthService({
     const ok = (await bcrypt.compare(password, hash)) && !user?.guest;
     if (!user || !ok) {
       log('security', name, 'typed a wrong password');
-      throw unauthorized(attempt.left > 0 ? `Wrong username or password (${attempt.left} tries left)` : 'Wrong username or password. Locked for 10 min on this network.');
+      throw unauthorized(attempt.left > 0 ? `Wrong username or password (${attempt.left} ${attempt.left === 1 ? 'try' : 'tries'} left)` : 'Wrong username or password. Locked for 10 min on this network.');
     }
     await attempt.succeeded();
     if (user.suspended) {

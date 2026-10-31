@@ -50,15 +50,17 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     return blue <= room.players.size - blue ? 'blue' : 'red';
   }
 
-  function leaveRoom(userId, sockets) {
+  function leaveRoom(userId, sockets, { keepSeat = false } = {}) {
     const code = roomOf.get(userId);
     const room = code && rooms.get(code);
-    roomOf.delete(userId);
+    const running = !!room?.match && !room.match.over;
+    if (!(keepSeat && running)) roomOf.delete(userId);
     if (!room) return;
     for (const s of sockets) s.leave(`room:${code}`);
-    if (room.match && !room.match.over) {
-      room.match.leave(userId);
-      room.players.get(userId).connected = false;
+    if (running) {
+      const p = room.players.get(userId);
+      if (p.connected) room.match.leave(userId);
+      p.connected = false;
     } else {
       room.players.delete(userId);
     }
@@ -66,6 +68,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     if (!connected.length) {
       room.match?.stop();
       rooms.delete(code);
+      for (const id of room.players.keys()) if (roomOf.get(id) === code) roomOf.delete(id);
     } else if (room.host === userId) {
       room.host = connected[0].userId;
     }
@@ -136,10 +139,14 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       if (existing.match?.rejoin(userId)) {
         socket.emit('match:start', { matchId: existing.match.matchId, me: `u${userId}`, teamMode: existing.teamMode, map: existing.match.mapId, difficulty: existing.difficulty, timeLimit: existing.match.timeLimit, killLimit: existing.match.killLimit, roster: existing.match.roster() });
       }
-      socket.emit('room:update', view(existing));
+      update(existing);
     }
 
-    socket.on('rooms:list', (cb) => ack(cb)({ rooms: publicList() }));
+    socket.on('rooms:list', (cb) => {
+      const mine = rooms.get(roomOf.get(userId));
+      if (mine) socket.emit('room:update', view(mine));
+      ack(cb)({ rooms: publicList() });
+    });
 
     socket.on('room:create', (opts, cb) => {
       const difficulty = opts?.difficulty ?? 'medium';
@@ -246,7 +253,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     });
 
     socket.on('disconnect', () => {
-      if (!userSockets().length) leaveRoom(userId, []);
+      if (!userSockets().length) leaveRoom(userId, [], { keepSeat: true });
     });
   });
 
