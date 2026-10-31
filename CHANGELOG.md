@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`feature/theme-music`)
+- Background music is now two real tracks: the trailer theme on the menus and a calmer loop in battle, with a
+  1.2 s cross-fade. All music stops while the trailer or a story clip plays.
+
 ### Changed (`feature/trailer-v2`)
 - New one-minute trailer with a story ("Crack the Code"): invasion, banana-coded orders, a real Banana API
   puzzle, real jetpack gameplay, crates and powers, supply drop, victory; captions and end card.

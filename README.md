@@ -418,6 +418,8 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
 ## Credits
 
 - **Banana API** by Marc Conrad, University of Bedfordshire: https://marcconrad.com/uob/banana/doc.php
+- **Music:** the menu theme "Goggles Down, Engines Up" and the battle track "Sunday Morning Maneuvers" were made
+  with Google Gemini (music generation) from my own prompts.
 - **Gun sounds:** pistol, rifle, SMG, shotgun and sniper shots are cut from "Gunshot Sounds" by Vincent Sevedge
   (Tabasco) on OpenGameArt.org (https://opengameart.org/content/gunshot-sounds), listed as CC0 and marked CC-BY 3.0
   in the download (credited here either way). Rocket, flamethrower and all other sounds are made in code with Web Audio.
