@@ -4,13 +4,15 @@ const { badRequest, notFound } = require('../lib/errors');
 const { cleanRoster, cleanLog, text } = require('../models/match');
 const { HISTORY_FILTERS } = require('../repositories/scoreRepository');
 
+const oneMe = (rows) => rows.map((r, i) => (r.me && rows.findIndex((x) => x.me) !== i ? (({ me, ...rest }) => rest)(r) : r));
+
 function parseMatchInput(b) {
   for (const k of ['roster', 'log']) if (b[k] !== undefined && b[k] !== null && !Array.isArray(b[k])) throw badRequest(`${k} must be a list`);
   if (b.map !== undefined && b.map !== null && typeof b.map !== 'string') throw badRequest('map must be text');
   if (b.draw !== undefined && typeof b.draw !== 'boolean') throw badRequest('draw must be true or false');
   return {
     wanted: Array.isArray(b.roster) || Array.isArray(b.log),
-    map: text(b.map) ?? '', draw: b.draw === true, roster: cleanRoster(b.roster).map(({ userId, ...r }) => r), log: cleanLog(b.log),
+    map: text(b.map) ?? '', draw: b.draw === true, roster: oneMe(cleanRoster(b.roster).map(({ userId, ...r }) => r)), log: cleanLog(b.log),
   };
 }
 
