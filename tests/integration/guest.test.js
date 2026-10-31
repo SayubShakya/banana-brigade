@@ -30,13 +30,20 @@ test('saving a guest keeps its id and scores, and it can then log in', async () 
     const c = client(s.base);
     const { id, username: guestName } = (await c.post('/api/auth/guest')).body.user;
     await c.post('/api/scores', { mode: 'quick', kills: 7, deaths: 1, durationS: 60 });
+    const roster = [{ name: guestName, kills: 7, deaths: 1, bot: false, me: true }, { name: 'Rex', kills: 2, deaths: 7, bot: true }];
+    const log = [{ t: 3, type: 'kill', by: guestName, target: 'Rex', weapon: 'Sniper' }, { t: 9, type: 'kill', by: 'Rex', target: guestName }];
+    const { matchId } = (await c.post('/api/scores', { mode: 'quick', kills: 7, deaths: 1, durationS: 60, won: true, roster, log })).body;
     const before = c.cookie;
 
     const saved = await c.post('/api/auth/upgrade', { username: 'kept_it', password: 'banana-keeper-1' });
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.body.user, { id, username: 'kept_it', role: 'player', guest: false });
     assert.notEqual(c.cookie, before);
-    assert.equal((await s.db.scoresForUser(id)).length, 1);
+    assert.equal((await s.db.scoresForUser(id)).length, 2);
+    const { match } = (await c.get(`/api/matches/${matchId}`)).body;
+    assert.deepEqual(match.roster.map((r) => [r.name, !!r.me]), [['kept_it', true], ['Rex', false]]);
+    assert.deepEqual(match.log.map((e) => [e.by, e.target]), [['kept_it', 'Rex'], ['Rex', 'kept_it']]);
+    assert.equal(match.winner, 'kept_it');
     assert.equal((await s.db.models.User.findById(id).lean()).guestExpiresAt, undefined);
 
     assert.equal((await client(s.base).post('/api/auth/login', { username: 'kept_it', password: 'banana-keeper-1' })).status, 200);
