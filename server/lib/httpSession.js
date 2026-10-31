@@ -45,16 +45,19 @@ const EMPTY = () => ({ solved: 0, attempted: 0 });
 function puzzleTally(req) {
   return {
     peek: () => req.session.puzzles ?? EMPTY(),
-    record(correct) {
-      const p = req.session.puzzles ?? EMPTY();
+    record(correct, purpose) {
+      let p = req.session.puzzles ?? EMPTY();
+      if (purpose === 'deploy' && p.attempted && (p.last !== 'deploy' || p.lastOk)) p = EMPTY();
       p.attempted += 1;
       if (correct) p.solved += 1;
+      p.last = purpose;
+      p.lastOk = !!correct;
       req.session.puzzles = p;
     },
     take() {
-      const p = req.session.puzzles ?? EMPTY();
+      const { solved = 0, attempted = 0 } = req.session.puzzles ?? {};
       req.session.puzzles = EMPTY();
-      return p;
+      return { solved, attempted };
     },
   };
 }
