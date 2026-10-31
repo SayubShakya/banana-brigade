@@ -46,9 +46,15 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
   const original = world.emit;
   world.emit = (event, payload) => { try { record(event, payload); } catch { } return original(event, payload); };
 
+  const puzzle = (by, ok, purpose) => add('puzzle', { by, ok: !!ok, detail: PURPOSE_TEXT[purpose] ?? purpose });
+
   return {
     add,
-    puzzle: (by, ok, purpose) => add('puzzle', { by, ok: !!ok, detail: PURPOSE_TEXT[purpose] ?? purpose }),
+    puzzle,
+    opening(by, { attempts = 0, solved = 0 } = {}) {
+      for (let i = 0; i < attempts; i++) puzzle(by, i >= attempts - solved, 'deploy');
+      if (world.mode === 'survival' && world.wave > 0) add('wave', { detail: `Wave ${world.wave}` });
+    },
     entries: () => (end ? [...list, end] : [...list]),
     roster(meName = null) {
       const isMe = (s) => s === world.player || (meName != null && s.name === meName);

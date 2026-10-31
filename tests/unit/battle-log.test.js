@@ -92,3 +92,18 @@ test('survival logs each wave', () => {
   w.emit('survival:wave', { wave: w.wave, count: 3 });
   assert.deepEqual(log.entries(), [{ t: 0, type: 'wave', detail: 'Wave 2' }]);
 });
+
+test('the opening logs the deploy puzzles and the first survival wave, which starts before the log exists', () => {
+  const w = createWorld({ mode: 'survival', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi'], emit: () => {} });
+  assert.equal(w.wave, 1);
+  const log = createBattleLog(w);
+  log.opening('sayub', { attempts: 2, solved: 1 });
+  assert.deepEqual(log.entries(), [
+    { t: 0, type: 'puzzle', by: 'sayub', ok: false, detail: 'deploy' },
+    { t: 0, type: 'puzzle', by: 'sayub', ok: true, detail: 'deploy' },
+    { t: 0, type: 'wave', detail: 'Wave 1' },
+  ]);
+  const quick = createBattleLog(createWorld({ mode: 'quick', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi'], emit: () => {} }));
+  quick.opening('sayub', { attempts: 1, solved: 1 });
+  assert.deepEqual(quick.entries().map((e) => e.type), ['puzzle']);
+});
