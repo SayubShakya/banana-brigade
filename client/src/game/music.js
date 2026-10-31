@@ -6,11 +6,14 @@ const FADE_MS = 1200;
 const TRACKS = {
   menu: '/media/music/theme.mp3',
   battle: '/media/music/battle.mp3',
+  puzzle: '/media/music/puzzle.mp3',
 };
 
 let volume = 0.4;
 let muted = false;
 let wanted = 'menu';
+let scene = 'menu';
+let puzzles = 0;
 let videoPlaying = 0;
 let started = false;
 const players = {};
@@ -25,7 +28,7 @@ function player(name) {
   a.loop = true;
   a.preload = 'auto';
   a.volume = 0;
-  a.addEventListener('error', () => { if (name === 'battle') TRACKS.battle = TRACKS.menu; });
+  a.addEventListener('error', () => { if (name !== 'menu') TRACKS[name] = TRACKS.menu; });
   players[name] = a;
   return a;
 }
@@ -56,11 +59,17 @@ export function setMusicMuted(value) { muted = !!value; fadeTo(); }
 export const currentTrack = () => (started ? wanted : null);
 
 export function initMusic() {
-  on('game:state', ({ state }) => {
-    const next = ['playing', 'puzzle', 'paused'].includes(state) ? 'battle' : 'menu';
-    if (next !== wanted) { wanted = next; if (players[wanted]) players[wanted].currentTime = 0; }
+  const choose = () => {
+    const next = puzzles > 0 ? 'puzzle' : scene;
+    if (next !== wanted) { wanted = next; if (players[wanted] && next !== 'battle') players[wanted].currentTime = 0; }
     fadeTo();
+  };
+  on('game:state', ({ state }) => {
+    scene = ['playing', 'puzzle', 'paused'].includes(state) ? 'battle' : 'menu';
+    choose();
   });
+  on('puzzle:shown', () => { puzzles += 1; choose(); });
+  on('puzzle:hidden', () => { puzzles = Math.max(0, puzzles - 1); choose(); });
   const pauseFor = (d) => () => { videoPlaying = Math.max(0, videoPlaying + d); fadeTo(); };
   on('cutscene:started', pauseFor(1));
   on('cutscene:ended', pauseFor(-1));

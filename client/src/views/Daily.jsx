@@ -73,6 +73,11 @@ export default function Daily({ me, onBack }) {
   }, [run, answer]);
 
   const playing = run && !run.finished;
+  useEffect(() => {
+    if (!playing) return undefined;
+    emit('puzzle:shown', { purpose: 'daily' });
+    return () => emit('puzzle:hidden', { purpose: 'daily' });
+  }, [playing]);
   return (
     <Panel wide title="Daily Banana Challenge" chip={<span className="mode-chip">{info?.date ?? 'Today'}</span>}
       subtitle="The same 5 Banana puzzles for everyone today. 20 seconds each, one attempt. Points double for every correct answer in a row."
