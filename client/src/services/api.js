@@ -65,5 +65,7 @@ export const api = {
   dailyCurrent: () => call('GET', '/api/daily/current'),
   dailyAnswer: (answer) => call('POST', '/api/daily/answer', { answer }),
   dailyBoard: () => call('GET', '/api/daily/leaderboard'),
-  leaderboard: (mode, period, limit = 10) => call('GET', `/api/scores/leaderboard?mode=${mode}&period=${period}&limit=${limit}`),
+  leaderboard: (mode, period, by = 'best', limit = 10) => call('GET', `/api/scores/leaderboard?mode=${encodeURIComponent(mode)}&period=${period}&by=${by}&limit=${limit}`),
+  history: (filter = 'all', before = null) => call('GET', `/api/scores/history?filter=${encodeURIComponent(filter)}&limit=20${before ? `&before=${encodeURIComponent(before)}` : ''}`),
+  match: (matchId) => call('GET', `/api/matches/${encodeURIComponent(matchId)}`),
 };
