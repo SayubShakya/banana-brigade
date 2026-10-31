@@ -5,6 +5,7 @@ import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY, BANANA_METER, match
 import { BOT_AVATARS, makeAvatar } from './characters.js';
 import { createWorld, updateWorld, center, activeGun, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, continueMission, powerChoices, bananaAnswered, fillBananaMeter, callSupplyDrop, openSupplyCrate } from './world.js';
 import { crateChoiceCount } from './meter.js';
+import { createBattleLog } from './battleLog.js';
 import { askPower, closePower } from '../services/powerBridge.js';
 import { playCutscene } from '../services/cutsceneBridge.js';
 import { updateBots } from './bots.js';
@@ -58,6 +59,7 @@ export function createGameSession() {
   let mission = null;
   let rules = null;
   let mapChoice = null;
+  let battleLog = null;
 
   const setState = (next) => { state = next; emit('game:state', { state }); };
 
@@ -65,6 +67,7 @@ export function createGameSession() {
 
   on('banana:answered', ({ correct, purpose, grade = null, ms, source }) => {
     lastAnswer = { correct, grade };
+    if (battleLog && world && purpose !== 'deploy') battleLog.puzzle(world.player.name, correct, purpose);
     if (!stats) return;
     const p = stats.byPurpose[purpose];
     if (!p) return;
@@ -179,7 +182,10 @@ export function createGameSession() {
     input.setEnabled(false);
     hud.hide();
     const s = stats ?? newStats();
-    emit('game:over', { result, outcome: outcome(result), session: s, difficulty: levelKey, mission, durationS: Math.round(world?.endedAt ?? world?.time ?? (performance.now() - s.started) / 1000) });
+    const ending = outcome(result);
+    const draw = /^Draw$/.test(ending.title);
+    const log = battleLog && { map: world.map.id, roster: battleLog.roster(), log: battleLog.entries() };
+    emit('game:over', { result, outcome: ending, draw, battleLog: log, session: s, difficulty: levelKey, mission, durationS: Math.round(world?.endedAt ?? world?.time ?? (performance.now() - s.started) / 1000) });
   }, 1500));
 
   const session = {
@@ -206,6 +212,9 @@ export function createGameSession() {
         mode, playerName, playerAvatar: makeAvatar(parts), botAvatars: shuffle(BOT_AVATARS), botNames: shuffle(BOT_NAMES), difficulty: levelKey, mission,
         timeLimit: rules?.timeLimit, killLimit: rules?.killLimit, map: mapChoice,
       });
+      battleLog = createBattleLog(world);
+      const deploy = stats.byPurpose.deploy;
+      for (let i = 0; i < deploy.attempts; i++) battleLog.puzzle(world.player.name, i >= deploy.attempts - deploy.solved, 'deploy');
       if (stats.deployGrade === 'gold') {
         world.player.bananaStreak = stats.deployStreak;
         fillBananaMeter(world, world.player);
@@ -224,6 +233,7 @@ export function createGameSession() {
     quit() {
       closePower();
       world = null;
+      battleLog = null;
       stats = null;
       input.setEnabled(false);
       hud.hide();
