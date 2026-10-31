@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { rankFor, xpFor, MODE_NAMES } from '../services/rank.js';
 import { Panel, AvatarCanvas, RankCard, Icon, Skeleton, SkeletonRows } from '../components/common.jsx';
+import { BattleLogDialog } from '../components/BattleLog.jsx';
+import { resultLabel } from '../services/history.js';
 
 const playTime = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`);
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
-export default function Profile({ account, parts, onCustomise, onBack }) {
+export default function Profile({ account, parts, onCustomise, onHistory, onBack }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [badges, setBadges] = useState(null);
   const [identity, setIdentity] = useState(null);
+  const [log, setLog] = useState(null);
   useEffect(() => {
     api.myRecord().then(setData).catch((e) => setError(e.message));
     api.sessions().then(setIdentity).catch(() => {});
@@ -61,20 +64,25 @@ export default function Profile({ account, parts, onCustomise, onBack }) {
               </div>
             ))}
           </div>
-          <h3 className="sub-head">Recent battles</h3>
+          <div className="sub-head-row">
+            <h3 className="sub-head">Recent battles</h3>
+            {onHistory && <button className="link-btn" onClick={onHistory}>See full history</button>}
+          </div>
           <table className="results compact">
-            <thead><tr><th>Mode</th><th>Kills</th><th>Deaths</th><th>Puzzles</th><th>Result</th><th>When</th></tr></thead>
+            <thead><tr><th>Mode</th><th>Kills</th><th>Deaths</th><th>Puzzles</th><th>Result</th><th>When</th><th><span className="sr-only">Battle log</span></th></tr></thead>
             <tbody>
-              {!data && !error && <SkeletonRows cols={6} />}
-              {data && !data.recent.length && <tr className="empty-row"><td colSpan={6}>No battles yet. Deploy to start your record.</td></tr>}
+              {!data && !error && <SkeletonRows cols={7} />}
+              {data && !data.recent.length && <tr className="empty-row"><td colSpan={7}>No battles yet. Deploy to start your record.</td></tr>}
               {data?.recent.slice(0, 4).map((r) => (
                 <tr key={r.id}>
                   <td>{MODE_NAMES[r.mode] ?? r.mode}{r.mode !== 'online' && <small className={`level-tag ${r.difficulty}`}>{r.difficulty}</small>}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.puzzles_solved} / {r.puzzles_attempted}</td>
-                  <td>{r.mode === 'survival' ? `Wave ${r.wave}` : r.won ? <span className="win">Won</span> : 'Lost'}</td><td>{when(r.created_at)}</td>
+                  <td>{resultLabel(r).kind === 'won' ? <span className="win">Won</span> : resultLabel(r).text}</td><td>{when(r.created_at)}</td>
+                  <td>{r.matchId && r.hasLog !== false && <button className="mbtn ghost small" onClick={() => setLog(r.matchId)}>Battle log</button>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {log && <BattleLogDialog matchId={log} onClose={() => setLog(null)} />}
         </div>
       </div>
     </Panel>
