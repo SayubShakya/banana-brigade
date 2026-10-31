@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`feature/trailer-v2`)
+- New one-minute trailer with a story ("Crack the Code"): invasion, banana-coded orders, a real Banana API
+  puzzle, real jetpack gameplay, crates and powers, supply drop, victory; captions and end card.
+
 ### Added (`feature/clip-loops`)
 - Short muted loops of each Banana Power on the power cards, each map on the map picker, and the Brigade hero on
   the Avatar screen (stills in reduced-motion mode); once-only logo, deploy and respawn story clips.
