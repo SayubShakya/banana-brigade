@@ -87,7 +87,7 @@ export function BattleLogDialog({ matchId, onClose }) {
     return () => { document.removeEventListener('keydown', onKey, true); before?.focus?.(); };
   }, []);
   return createPortal(
-    <div className="bl-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="bl-overlay" onMouseDown={(e) => { if (e.target !== e.currentTarget) return; e.preventDefault(); onClose(); }}>
       <div className="bl-dialog" role="dialog" aria-modal="true" aria-labelledby="bl-title" ref={box}>
         <header className="bl-head">
           <h2 id="bl-title">Battle log</h2>
