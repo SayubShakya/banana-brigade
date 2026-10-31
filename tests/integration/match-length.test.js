@@ -25,19 +25,19 @@ test('the host picks the match length; the server only accepts the listed length
   const b = await player(s, 'timelook');
   try {
     for (const bad of [45, '30', -30, 0, { $gt: 1 }, 99999]) {
-      assert.equal((await call(a.socket, 'room:create', { matchLength: bad })).error, 'Unknown match length');
+      assert.equal((await call(a.socket, 'room:create', { bots: true, matchLength: bad })).error, 'Unknown match length');
     }
     for (const bad of ['moon', 5, { $ne: 1 }]) {
-      assert.equal((await call(a.socket, 'room:create', { map: bad })).error, 'Unknown map');
+      assert.equal((await call(a.socket, 'room:create', { bots: true, map: bad })).error, 'Unknown map');
     }
-    const snowy = (await call(a.socket, 'room:create', { map: 'snow' })).room;
+    const snowy = (await call(a.socket, 'room:create', { bots: true, map: 'snow' })).room;
     assert.equal(snowy.map, 'snow');
-    const plain = (await call(a.socket, 'room:create', {})).room;
+    const plain = (await call(a.socket, 'room:create', { bots: true })).room;
     assert.equal(plain.matchLength, 300);
     assert.equal(plain.map, 'random');
     assert.equal(plain.killLimit, 20);
 
-    const { room } = await call(a.socket, 'room:create', { matchLength: 30 });
+    const { room } = await call(a.socket, 'room:create', { bots: true, matchLength: 30 });
     assert.equal(room.matchLength, 30);
     assert.equal(room.killLimit, 4);
     const listed = (await call(b.socket, 'rooms:list')).rooms.find((r) => r.code === room.code);
@@ -55,5 +55,24 @@ test('the host picks the match length; the server only accepts the listed length
     const snap = await once(a.socket, 'match:snapshot');
     assert.ok(snap.timeLeft <= 30 && snap.timeLeft > 25);
     s.realtime.rooms.endMatch(room.code);
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});
+
+test('friends-only rooms: no bots by default, need two players, and the match has only the players who joined', async () => {
+  const s = await startServer();
+  const a = await player(s, 'friend_a');
+  const b = await player(s, 'friend_b');
+  try {
+    const { room } = await call(a.socket, 'room:create', { matchLength: 30 });
+    assert.equal(room.bots, false);
+    assert.match((await call(a.socket, 'room:start')).error, /at least one friend/);
+    await call(b.socket, 'room:join', { code: room.code });
+    b.socket.emit('room:ready', { ready: true });
+    await new Promise((r) => setTimeout(r, 200));
+    const started = once(a.socket, 'match:start');
+    assert.equal((await call(a.socket, 'room:start')).ok, true);
+    const { roster } = await started;
+    assert.equal(roster.length, 2);
+    assert.ok(roster.every((r) => r.human));
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });

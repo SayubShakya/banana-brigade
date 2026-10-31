@@ -34,7 +34,7 @@ test('players meet in a room by code; only the host can start', async () => {
   const a = await player(s, 'hostie');
   const b = await player(s, 'guesty');
   try {
-    const { room } = await call(a.socket, 'room:create', { teamMode: true, isPublic: true });
+    const { room } = await call(a.socket, 'room:create', { bots: true, teamMode: true, isPublic: true });
     assert.match(room.code, /^[A-Z]{6}$/);
     assert.equal((await call(b.socket, 'rooms:list')).rooms[0].code, room.code);
     assert.equal((await call(b.socket, 'room:join', { code: 'NOPE00' })).error, 'No room with that code');
@@ -51,7 +51,7 @@ test('the server runs the match, ignores faked scores and saves the results itse
   const a = await player(s, 'alpha');
   const b = await player(s, 'bravo');
   try {
-    const { room } = await call(a.socket, 'room:create', { teamMode: false });
+    const { room } = await call(a.socket, 'room:create', { bots: true, teamMode: false });
     await call(b.socket, 'room:join', { code: room.code });
     b.socket.emit('room:ready', { ready: true });
     await once(a.socket, 'room:update');
@@ -90,11 +90,11 @@ test('the host picks the bot difficulty; the server checks it and passes it to t
   const a = await player(s, 'hardhost');
   const b = await player(s, 'looker');
   try {
-    assert.equal((await call(a.socket, 'room:create', { difficulty: 'insane' })).error, 'Unknown difficulty');
-    assert.equal((await call(a.socket, 'room:create', { difficulty: { $ne: 1 } })).error, 'Unknown difficulty');
-    assert.equal((await call(a.socket, 'room:create', {})).room.difficulty, 'medium');
+    assert.equal((await call(a.socket, 'room:create', { bots: true, difficulty: 'insane' })).error, 'Unknown difficulty');
+    assert.equal((await call(a.socket, 'room:create', { bots: true, difficulty: { $ne: 1 } })).error, 'Unknown difficulty');
+    assert.equal((await call(a.socket, 'room:create', { bots: true })).room.difficulty, 'medium');
 
-    const { room } = await call(a.socket, 'room:create', { difficulty: 'hard' });
+    const { room } = await call(a.socket, 'room:create', { bots: true, difficulty: 'hard' });
     assert.equal(room.difficulty, 'hard');
     assert.equal((await call(b.socket, 'rooms:list')).rooms.find((r) => r.code === room.code).difficulty, 'hard');
 
@@ -108,7 +108,7 @@ test('banana crates online: the room difficulty time, a server time limit, and o
   const s = await startServer({ matchOptions: { crateTimings: { extraMs: -11800 } } });
   const a = await player(s, 'crater');
   try {
-    const { room } = await call(a.socket, 'room:create', { difficulty: 'hard' });
+    const { room } = await call(a.socket, 'room:create', { bots: true, difficulty: 'hard' });
     const started = once(a.socket, 'match:start');
     await call(a.socket, 'room:start');
     assert.equal((await started).difficulty, 'hard');
@@ -140,7 +140,7 @@ test('a player who drops out mid-match gets their soldier back when they reconne
   const a = await player(s, 'stayer');
   const b = await player(s, 'dropper');
   try {
-    const { room } = await call(a.socket, 'room:create', { teamMode: false });
+    const { room } = await call(a.socket, 'room:create', { bots: true, teamMode: false });
     await call(b.socket, 'room:join', { code: room.code });
     b.socket.emit('room:ready', { ready: true });
     await once(a.socket, 'room:update');
@@ -166,7 +166,7 @@ test('opening the lobby again shows the room you are still in', async () => {
   const s = await startServer();
   const a = await player(s, 'roomhost');
   try {
-    const { room } = await call(a.socket, 'room:create', { teamMode: false });
+    const { room } = await call(a.socket, 'room:create', { bots: true, teamMode: false });
     await new Promise((r) => setTimeout(r, 100));
     const update = once(a.socket, 'room:update', 1000);
     await call(a.socket, 'rooms:list');

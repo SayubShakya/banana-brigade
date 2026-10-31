@@ -32,7 +32,7 @@ function soldierState(s) {
   };
 }
 
-function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, killLimit, crateTimings, map = 'random' }) {
+function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, killLimit, crateTimings, map = 'random', bots = true }) {
   const T = { ...CRATE_TIMINGS, ...crateTimings };
   const matchId = crypto.randomUUID();
   const outbox = [];
@@ -79,7 +79,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
 
   const mapId = MAP_IDS.includes(map) ? map : randomMapId();
   const world = createWorld({
-    mode: 'online', teamMode, difficulty, emit, map: mapId, timeLimit, killLimit,
+    mode: 'online', teamMode, difficulty, emit, map: mapId, timeLimit, killLimit, fillBots: bots,
     humans: players.map((p) => ({ id: sid(p.userId), name: p.username, avatar: { parts: p.parts }, team: p.team })),
     botAvatars: Array.from({ length: 8 }, (_, i) => ({ bot: i })),
     botNames: [...BOT_NAMES].sort(() => Math.random() - 0.5),

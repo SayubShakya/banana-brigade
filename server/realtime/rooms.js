@@ -35,7 +35,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
   const issued = new Map();
 
   const view = (room) => ({
-    code: room.code, host: room.host, teamMode: room.teamMode, isPublic: room.isPublic, difficulty: room.difficulty, state: room.state,
+    code: room.code, host: room.host, teamMode: room.teamMode, isPublic: room.isPublic, difficulty: room.difficulty, bots: room.bots, state: room.state,
     matchLength: room.rules.timeLimit, killLimit: room.rules.killLimit, map: room.map,
     players: [...room.players.values()].map((p) => ({ userId: p.userId, username: p.username, ready: p.ready, team: p.team, connected: p.connected })),
   });
@@ -43,7 +43,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
   const listChanged = () => io.emit('rooms:changed');
   const publicList = () => [...rooms.values()]
     .filter((r) => r.isPublic && r.state === 'lobby' && r.players.size < MAX_PLAYERS)
-    .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, difficulty: r.difficulty, matchLength: r.rules.timeLimit, killLimit: r.rules.killLimit, map: r.map, state: r.state }));
+    .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, difficulty: r.difficulty, bots: r.bots, matchLength: r.rules.timeLimit, killLimit: r.rules.killLimit, map: r.map, state: r.state }));
 
   function nextTeam(room) {
     const blue = [...room.players.values()].filter((p) => p.team === 'blue').length;
@@ -98,6 +98,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       timeLimit: room.rules.timeLimit,
       killLimit: room.rules.killLimit,
       map: room.map,
+      bots: room.bots,
       ...matchOptions,
       players,
       teamMode: room.teamMode,
@@ -159,7 +160,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       let code = makeCode();
       while (rooms.has(code)) code = makeCode();
       const room = {
-        code, host: userId, teamMode: !!opts?.teamMode, isPublic: opts?.isPublic !== false, difficulty, map, rules: { timeLimit: rules.timeLimit, killLimit: rules.killLimit }, state: 'lobby', match: null,
+        code, host: userId, teamMode: !!opts?.teamMode, isPublic: opts?.isPublic !== false, difficulty, bots: opts?.bots === true, map, rules: { timeLimit: rules.timeLimit, killLimit: rules.killLimit }, state: 'lobby', match: null,
         players: new Map([[userId, { userId, username, parts: cleanParts(opts?.parts), ready: true, team: 'blue', connected: true }]]),
       };
       rooms.set(code, room);
@@ -201,6 +202,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       if (room.host !== userId) return ack(cb)({ error: 'Only the host can start' });
       if (room.state !== 'lobby') return ack(cb)({ error: 'The match is already running' });
       if ([...room.players.values()].some((p) => !p.ready)) return ack(cb)({ error: 'Everyone must be ready' });
+      if (!room.bots && room.players.size < 2) return ack(cb)({ error: 'Invite at least one friend first (or turn on bots)' });
       startMatch(room);
       ack(cb)({ ok: true });
     });

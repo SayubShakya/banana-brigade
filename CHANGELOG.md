@@ -6,6 +6,15 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Final QA (`fix/final-qa-*`, `feature/ui-polish`, `feature/friends-rooms`)
+- Screen-by-screen test of every mode, map, screen, online play, accounts, admin and the API by three testers.
+- Fixed: mid-air supply drops, battle time on Results, tied matches shown as a win, stale device list, phone menu
+  layout, reload/rejoin mid-match online, Banana Meter online, lobby showing your room again, 413 for huge bodies.
+- Difficulty cards show a leaf, fire and skull icon; breached passwords are explained in plain words with a
+  "Suggest a strong password" button.
+- Online rooms are friends-only by default (just the players who joined); bots are an option. A Copy button next to
+  the room code.
+
 ### Added (`feature/puzzle-music`)
 - A calm "thinking" music track while any Banana puzzle is open (deploy, respawn, crate, continue, Daily);
   the puzzle window and the Daily challenge emit `puzzle:shown` / `puzzle:hidden` on the event bus.
