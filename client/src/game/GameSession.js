@@ -97,6 +97,8 @@ export function createGameSession() {
     if (!world || isPuzzleOpen() || state !== 'playing') return null;
     setState('puzzle');
     input.setEnabled(false);
+    if (purpose === 'respawn') await playCutscene('respawn');
+    if (!world || world.over) return null;
     const result = await askPuzzle(purpose, { modeLabel: `${MODES[mode].name} · ${level.name}`, seconds: level.puzzle[purpose], ...options });
     if (world && !world.over && state === 'puzzle') { setState('playing'); input.setEnabled(true); }
     return result;

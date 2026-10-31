@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { POWERS, BANANA_CRATE } from '../game/config.js';
 import { registerPowerOpener } from '../services/powerBridge.js';
+import LoopVideo from './LoopVideo.jsx';
 
 const RING = 2 * Math.PI * 26;
 
@@ -67,8 +68,8 @@ export default function PowerPicker() {
             return (
               <button key={id} className="power-card" style={{ '--power': p.color }} onClick={() => choose(id)}>
                 <kbd>{i + 1}</kbd>
-                <span className="power-icon" aria-hidden="true">{p.icon}</span>
-                <b>{p.name}</b>
+                <LoopVideo name={`power-${id}`} className="power-loop" />
+                <b><span className="power-icon" aria-hidden="true">{p.icon}</span> {p.name}</b>
                 <span>{p.text}</span>
                 <small>{p.seconds} seconds</small>
               </button>

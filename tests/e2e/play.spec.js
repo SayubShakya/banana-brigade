@@ -6,6 +6,7 @@ test('register, log in, start Quick Play and solve the deploy puzzle', async ({ 
   const name = `e2e_${Date.now().toString(36).slice(-6)}`;
   const password = 'E2e-banana-run-2026';
 
+  await page.addInitScript(() => localStorage.setItem('brigade.clipsSeen', JSON.stringify(['logo', 'intro', 'deploy', 'respawn', 'crate', 'victory', 'daily', 'rankup', 'chapter-1', 'chapter-2', 'chapter-3'])));
   await page.goto('/');
   await expect(page.getByText('How the Banana puzzles work')).toBeVisible();
   await page.getByRole('button', { name: 'Play', exact: true }).click();
