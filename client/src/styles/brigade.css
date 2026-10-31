@@ -868,3 +868,17 @@ body.a11y-calm .cutscene { animation: none; }
 .avatar-hero .loop-video { width: 100%; aspect-ratio: 16 / 9; border-radius: 0.8cqh; border: 0.3cqh solid var(--banana); }
 .avatar-hero figcaption { font: 700 1.3cqh 'Rubik', sans-serif; color: #1d2112; background: var(--banana); border-radius: 0 0 0.6cqh 0.6cqh; text-align: center; margin-top: -0.4cqh; }
 .trailer-actions { display: flex; gap: 1.2cqh; }
+
+.level-card { align-items: center; text-align: center; }
+.level-card ul { text-align: left; align-self: stretch; }
+.level-icon { font-size: 7cqh; line-height: 1; filter: drop-shadow(0 0 1.4cqh rgba(255, 225, 53, 0.45)); transition: transform 0.2s; }
+.level-card.easy .level-icon { filter: drop-shadow(0 0 1.4cqh rgba(140, 230, 110, 0.6)); }
+.level-card.medium .level-icon { filter: drop-shadow(0 0 1.6cqh rgba(255, 150, 40, 0.7)); }
+.level-card.hard .level-icon { filter: drop-shadow(0 0 1.6cqh rgba(255, 90, 70, 0.6)); }
+.level-card:hover .level-icon { transform: scale(1.12) rotate(-6deg); }
+body.a11y-calm .level-card:hover .level-icon { transform: none; }
+.suggest-btn { align-self: flex-start; margin-top: -0.6cqh; padding: 0.6cqh 1.4cqh; border-radius: 1cqh; border: 0.25cqh solid var(--banana); background: rgba(255, 225, 53, 0.1); color: var(--banana); font: 700 1.8cqh 'Rubik', sans-serif; cursor: pointer; }
+.suggest-btn:hover { background: rgba(255, 225, 53, 0.2); }
+.suggest-btn.pulse { animation: suggest-pulse 1s ease-in-out 3; }
+@keyframes suggest-pulse { 50% { box-shadow: 0 0 0 0.6cqh rgba(255, 225, 53, 0.35); } }
+body.a11y-calm .suggest-btn.pulse { animation: none; }

@@ -45,7 +45,7 @@ function createAuthService({
 
   async function refuseBreached(password) {
     const { pwned, count } = await pwnedCheck(password);
-    if (pwned) throw badRequest(`This password has appeared in ${count.toLocaleString('en-GB')} data breach${count === 1 ? '' : 'es'} (Have I Been Pwned). Please choose another one.`, { pwned: true });
+    if (pwned) throw badRequest(`Hackers already know this password: it is in ${count.toLocaleString('en-GB')} leaked password list${count === 1 ? '' : 's'} (checked safely with Have I Been Pwned). Pick a different one, or press "Suggest a strong password".`, { pwned: true });
   }
 
   const passwordMatches = async (user, password) => typeof password === 'string' && bcrypt.compare(password, user.password_hash);

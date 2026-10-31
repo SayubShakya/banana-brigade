@@ -10,11 +10,21 @@ const tokenFromHash = () => (location.hash.startsWith('#reset=') ? location.hash
 const SUBMIT = { login: 'Log in', register: 'Create account', forgot: 'Send reset link', reset: 'Save new password' };
 const TITLES = { forgot: 'Forgot your password?', reset: 'Choose a new password' };
 
+
+const WORDS = ['banana', 'jetpack', 'goggle', 'brigade', 'monkey', 'rocket', 'jungle', 'peel', 'puzzle', 'cactus', 'snowman', 'parrot', 'mango', 'thunder', 'pickle', 'falcon'];
+function suggestPassword() {
+  const n = new Uint32Array(4);
+  crypto.getRandomValues(n);
+  const word = (i) => { const w = WORDS[n[i] % WORDS.length]; return w[0].toUpperCase() + w.slice(1); };
+  return `${word(0)}-${word(1)}-${word(2)}-${10 + (n[3] % 90)}!`;
+}
 export default function Login({ onLogin, onHome, onGuest }) {
   const [resetToken] = useState(tokenFromHash);
   const [mode, setMode] = useState(resetToken ? 'reset' : 'login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [shown, setShown] = useState(false);
+  const [breached, setBreached] = useState(false);
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -52,6 +62,7 @@ export default function Login({ onLogin, onHome, onGuest }) {
       }
     } catch (err) {
       setError(err.message);
+      setBreached(!!err.pwned);
     } finally {
       setBusy(false);
     }
@@ -76,14 +87,19 @@ export default function Login({ onLogin, onHome, onGuest }) {
           </label>}
           {mode === 'register' && <span className="name-hint" data-ok={hint?.ok} aria-live="polite">{hint?.text ?? ''}</span>}
           {mode !== 'forgot' && <label className="field">{mode === 'reset' ? 'New password' : 'Password'}
-            <input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} maxLength={72}
-              value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input name="password" type={shown ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} maxLength={72}
+              value={password} onChange={(e) => { setPassword(e.target.value); setShown(false); setBreached(false); }} />
           </label>}
+          {(mode === 'register' || mode === 'reset') && (
+            <button type="button" className={`suggest-btn${breached ? ' pulse' : ''}`} onClick={() => { const p = suggestPassword(); setPassword(p); setConfirm(p); setShown(true); setBreached(false); setError(''); setInfo('Strong password filled in. Write it down or save it in your browser, then create the account.'); }}>
+              🔑 Suggest a strong password
+            </button>
+          )}
           <div className="register-only">
             <div className="meter" data-level={level}><i /><i /><i /><i /></div>
             {password && <span className="meter-text">{LEVELS[level]}</span>}
             <label className="field">Confirm password
-              <input type="password" autoComplete="new-password" maxLength={72} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+              <input type={shown ? 'text' : 'password'} autoComplete="new-password" maxLength={72} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </label>
           </div>
           {mode === 'login' && (
