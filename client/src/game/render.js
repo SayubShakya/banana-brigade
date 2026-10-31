@@ -646,10 +646,10 @@ export function createRenderer(canvas) {
     const ang = Math.atan2(aim.y - (p.y + 25), aim.x - (p.x + p.w / 2));
     const mx = p.x + p.w / 2 + Math.cos(ang) * 36;
     const my = p.y + 25 + Math.sin(ang) * 36;
-    const end = laserEnd(world, p, mx, my, ang, activeGun(p).range ?? 1000);
+    const end = laserEnd(world, p, mx, my, ang, Math.max(0, Math.hypot(aim.x - mx, aim.y - my)));
     const from = toViewFromWorld(mx, my);
     const to = toViewFromWorld(end.x, end.y);
-    const fade = end.hit ? 0.35 : 0;
+    const fade = 0.35;
     const beam = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
     beam.addColorStop(0, 'rgba(255,40,40,0.8)');
     beam.addColorStop(1, `rgba(255,40,40,${fade})`);
