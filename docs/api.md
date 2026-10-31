@@ -204,7 +204,7 @@ waits up to 8 seconds and turns `{ error }` into an exception.
 | Event | Payload | Ack reply | Notes |
 |---|---|---|---|
 | `rooms:list` | none | `{ rooms: [{ code, host, players, teamMode, difficulty, matchLength, killLimit, state }] }` | public rooms in the lobby that are not full |
-| `room:create` | `{ teamMode, isPublic, difficulty, matchLength, map, parts }` | `{ room }` or `{ error: 'Unknown difficulty' \| 'Unknown match length' \| 'Unknown map' }` | creator is host and ready; `difficulty` is `easy`, `medium` (default) or `hard` and sets the bots; `matchLength` is 30, 60, 120, 180 or 300 seconds (default 300) and sets the kill limit; `map` is `random` (default), `jungle`, `desert`, `snow` or `night` |
+| `room:create` | `{ teamMode, isPublic, difficulty, bots, matchLength, map, parts }` | `{ room }` or `{ error: 'Unknown difficulty' \| 'Unknown match length' \| 'Unknown map' }` | creator is host and ready; `difficulty` is `easy`, `medium` (default) or `hard` and sets the bots; `matchLength` is 30, 60, 120, 180 or 300 seconds (default 300) and sets the kill limit; `map` is `random` (default), `jungle`, `desert`, `snow` or `night`; `bots` (default false) fills empty places with bots, otherwise only joined players play and starting needs 2 players |
 | `room:join` | `{ code, parts }` | `{ room }` or `{ error }` | no room, full, or already started |
 | `room:leave` | none | none | a bot takes over your soldier if a match is running |
 | `room:ready` | `{ ready }` | none | lobby only |

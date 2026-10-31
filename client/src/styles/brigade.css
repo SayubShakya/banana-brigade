@@ -882,3 +882,5 @@ body.a11y-calm .level-card:hover .level-icon { transform: none; }
 .suggest-btn.pulse { animation: suggest-pulse 1s ease-in-out 3; }
 @keyframes suggest-pulse { 50% { box-shadow: 0 0 0 0.6cqh rgba(255, 225, 53, 0.35); } }
 body.a11y-calm .suggest-btn.pulse { animation: none; }
+.copy-code { margin: 0 0.6cqh; padding: 0.5cqh 1.2cqh; border-radius: 1cqh; border: 0.25cqh solid var(--banana); background: rgba(255, 225, 53, 0.12); color: var(--banana); font: 700 1.8cqh 'Rubik', sans-serif; cursor: pointer; vertical-align: middle; }
+.copy-code:hover { background: rgba(255, 225, 53, 0.25); }

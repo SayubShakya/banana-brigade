@@ -19,6 +19,11 @@ export default function Lobby({ account, parts, onBack }) {
   const [teamMode, setTeamMode] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
   const [difficulty, setDifficulty] = useState('medium');
+  const [bots, setBots] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyCode = (code) => {
+    navigator.clipboard?.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }).catch(() => {});
+  };
   const [matchLength, setMatchLength] = useState(savedLength);
   const [map, setMap] = useState(savedMap);
   const [error, setError] = useState('');
@@ -50,7 +55,7 @@ export default function Lobby({ account, parts, onBack }) {
     setError('');
     try { await fn(); } catch (err) { setError(err.message); }
   };
-  const create = () => run(async () => setRoom((await request('room:create', { teamMode, isPublic, difficulty, matchLength, map, parts })).room));
+  const create = () => run(async () => setRoom((await request('room:create', { teamMode, isPublic, difficulty, bots, matchLength, map, parts })).room));
   const join = (c) => run(async () => setRoom((await request('room:join', { code: c, parts })).room));
   const start = () => run(() => request('room:start'));
   const leave = () => { getSocket().emit('room:leave'); setRoom(null); };
@@ -73,11 +78,12 @@ export default function Lobby({ account, parts, onBack }) {
               <button role="tab" aria-selected={!teamMode} onClick={() => setTeamMode(false)}>Free-for-all</button>
               <button role="tab" aria-selected={teamMode} onClick={() => setTeamMode(true)}>Blue vs Red</button>
             </div>
-            <div className="tabs" role="tablist" aria-label="Bot difficulty">
+            <div className="setting"><span>Fill empty places with bots</span><button className="toggle" aria-pressed={bots} onClick={() => setBots(!bots)}>{bots ? 'On' : 'Off'}</button></div>
+            {bots && <div className="tabs" role="tablist" aria-label="Bot difficulty">
               {Object.entries(DIFFICULTY).map(([key, d]) => (
                 <button key={key} role="tab" aria-selected={difficulty === key} onClick={() => setDifficulty(key)}>{d.name} bots</button>
               ))}
-            </div>
+            </div>}
             <LengthPicker mode="online" value={matchLength} onChange={(s) => { setMatchLength(s); emit('settings:set', { key: 'matchLength', value: s }); }} />
             <MapPicker value={map} onChange={(m) => { setMap(m); emit('settings:set', { key: 'mapChoice', value: m }); }} />
             <div className="setting"><span>Show in public list</span><button className="toggle" aria-pressed={isPublic} onClick={() => setIsPublic(!isPublic)}>{isPublic ? 'On' : 'Off'}</button></div>
@@ -96,7 +102,7 @@ export default function Lobby({ account, parts, onBack }) {
                 {!rooms.length && <tr className="empty-row"><td colSpan={6}>No open rooms. Create one and share the code.</td></tr>}
                 {rooms.map((r) => (
                   <tr key={r.code}>
-                    <td>{r.host}</td><td>{r.teamMode ? 'Blue vs Red' : 'Free-for-all'}</td><td>{lengthText(r)}</td><td>{botLevel(r.difficulty)}</td><td>{r.players} / 6</td>
+                    <td>{r.host}</td><td>{r.teamMode ? 'Blue vs Red' : 'Free-for-all'}</td><td>{lengthText(r)}</td><td>{r.bots ? botLevel(r.difficulty) : 'Friends only'}</td><td>{r.players} / 6</td>
                     <td>{r.state === 'lobby' ? <button className="toggle" onClick={() => join(r.code)}>Join</button> : 'Playing'}</td>
                   </tr>
                 ))}
@@ -106,7 +112,9 @@ export default function Lobby({ account, parts, onBack }) {
         </div>
       ) : (
         <div className="room-view">
-          <div className="room-code">Room code <b>{room.code}</b><small>{room.teamMode ? 'Blue vs Red' : 'Free-for-all'} · {lengthText(room)} kills · {mapText(room)} · {botLevel(room.difficulty)} bots fill empty places up to 6</small></div>
+          <div className="room-code">Room code <b>{room.code}</b>
+            <button type="button" className="copy-code" onClick={() => copyCode(room.code)} aria-label="Copy room code">{copied ? '✓ Copied' : '📋 Copy'}</button>
+            <small>{room.teamMode ? 'Blue vs Red' : 'Free-for-all'} · {lengthText(room)} kills · {mapText(room)} · {room.bots ? `${botLevel(room.difficulty)} bots fill empty places up to 6` : 'Friends only: just the players who joined'}</small></div>
           <table className="results compact">
             <thead><tr><th>Soldier</th>{room.teamMode && <th>Team</th>}<th>Status</th></tr></thead>
             <tbody>
@@ -123,10 +131,11 @@ export default function Lobby({ account, parts, onBack }) {
             <div className="room-actions">
               <button className="mbtn ghost" onClick={leave}>Leave room</button>
               {isHost
-                ? <button className="mbtn primary" onClick={start} disabled={!allReady}>Start match</button>
+                ? <button className="mbtn primary" onClick={start} disabled={!allReady || (!room.bots && room.players.length < 2)}>Start match</button>
                 : <button className="mbtn primary" onClick={() => getSocket().emit('room:ready', { ready: !mine?.ready })}>{mine?.ready ? 'Not ready' : 'Ready'}</button>}
             </div>
           )}
+          {room.state === 'lobby' && isHost && !room.bots && room.players.length < 2 && <p className="status-line">Friends only: share the code <b>{room.code}</b> (press Copy) and start when at least one friend has joined.</p>}
           {room.state === 'lobby' && isHost && !allReady && <p className="status-line">Waiting for every player to press Ready. Share the code <b>{room.code}</b> to invite friends.</p>}
         </div>
       )}

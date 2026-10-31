@@ -66,7 +66,7 @@ function bulletHitsSoldier(x0, y0, x1, y1, s) {
   return Math.min(body, head);
 }
 
-export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null, map: mapId = null, timeLimit = null, killLimit = null }) {
+export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvatars, botNames, emit = busEmit, humans = null, teamMode = false, difficulty = 'medium', mission = null, map: mapId = null, timeLimit = null, killLimit = null, fillBots = true }) {
   const cfg = mode === 'campaign'
     ? { name: mission.name, bots: mission.bots, killLimit: mission.target, timeLimit: mission.timeLimit, respawn: 5, lives: mission.lives }
     : { ...MODES[mode], ...(timeLimit > 0 && { timeLimit }), ...(killLimit > 0 && { killLimit }) };
@@ -92,7 +92,7 @@ export function createWorld({ mode = 'quick', playerName, playerAvatar, botAvata
 
   if (mode === 'quick' || mode === 'campaign') for (let i = 0; i < cfg.bots; i++) addBot(world);
   if (mode === 'campaign') player.lives = cfg.lives;
-  if (online) {
+  if (online && fillBots) {
     for (let i = soldiers.length; i < cfg.size; i++) {
       const blue = soldiers.filter((s) => s.team === 'blue').length;
       const red = soldiers.filter((s) => s.team === 'red').length;
