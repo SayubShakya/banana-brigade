@@ -28,10 +28,16 @@ only shows pictures and sends controls and answers.
 - **Survival:** waves of bots. A Banana puzzle is your only revive.
 - **Team Battle:** 3 against 3, blue against red.
 - **Training:** target dummies, not ranked.
-- **Online multiplayer:** rooms with a 6-letter code or a public list, a ready check, up to 6 players, bots
-  fill the empty places, and the host picks the bots' difficulty. The **server runs the match** 30 times a second; browsers only send controls.
+- **Online multiplayer:** rooms with a 6-letter code or a public list, a ready check, up to 6 players. Rooms are
+  friends-only by default; the host can turn on bots to fill the empty places and pick their difficulty. The **server runs the match** 30 times a second; browsers only send controls.
 - **Daily Banana Challenge:** the same 5 puzzles for everyone each day, 20 seconds each, one attempt a day,
   points that double for every correct answer in a row, a day streak and a daily leaderboard.
+- **Match history:** every game you played (solo, campaign and online), newest first, with filters and paging.
+- **Battle log:** a timeline of each game (kills with the weapon, puzzles, crates, powers, supply drops, waves,
+  players joining and leaving) and the final scoreboard. Solo games are logged in the browser; online games are
+  logged by the server and saved once for every player in the match. Only players who were in a match can open it.
+- **Leaderboard:** one row per player (their best game) or a Career view (total wins, kills and games), today or
+  all time, per mode, with your own rank pinned below the top list.
 - **Achievements:** 18 badges (First Blood, Banana Brain, Speed Demon, Hard as Nails, Campaign Hero …),
   unlocked by server-side events and shown as pop-up toasts.
 - **Ranks and XP:** 10 ranks from Recruit to Banana Marshal. XP comes from the record saved on the server.
@@ -197,7 +203,7 @@ BANANA_API_URL=https://marcconrad.com/uob/banana/does-not-exist.php ./run.sh
 After logging in, a hash in the address opens a screen straight away (no deploy puzzle), which helps with
 screenshots and the demo: `#campaign`, `#difficulty`, `#battle-quick`, `#battle-team`, `#battle-survival`,
 `#battle-training`, `#bootcamp`, `#mission-3`, `#puzzle-deploy`, `#puzzle-respawn`, `#puzzle-crate`, `#power`,
-`#online`, `#daily`, `#profile`, `#scores`, `#settings`, `#avatar`, `#controls`, `#modes`, and `#admin` (admins
+`#online`, `#daily`, `#profile`, `#history`, `#scores`, `#settings`, `#avatar`, `#controls`, `#modes`, and `#admin` (admins
 only).
 
 ## Controls
