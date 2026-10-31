@@ -6,6 +6,7 @@ import { MODES } from '../game/config.js';
 import { Panel, Icon } from '../components/common.jsx';
 import { Stars } from './Campaign.jsx';
 import { missionById } from '../game/campaign.js';
+import BattleLog from '../components/BattleLog.jsx';
 import '../styles/banana-meter.css';
 
 const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
@@ -43,17 +44,34 @@ function BananaReport({ s }) {
   );
 }
 
+export function resultMatch(game) {
+  const b = game.battleLog;
+  if (!b?.log?.length && !b?.roster?.length) return null;
+  const { result, durationS } = game;
+  const teamMode = !!(result.teamMode || result.mode === 'team');
+  const winner = teamMode
+    ? (result.teamKills?.blue === result.teamKills?.red ? null : result.teamKills?.blue > result.teamKills?.red ? 'blue' : 'red')
+    : game.draw ? null : result.ranking?.[0]?.name ?? null;
+  return {
+    matchId: game.matchId ?? null, mode: game.mission ? 'campaign' : result.mode, multiplayer: !!game.online, map: b.map ?? null,
+    difficulty: game.difficulty ?? null, durationS, teamMode, winner: result.mode === 'survival' ? null : winner,
+    createdAt: new Date().toISOString(), roster: b.roster ?? [], log: b.log ?? [],
+  };
+}
+
 export default function Results({ game, me, onMenu, onAgain, onMission, onMap }) {
   const mission = game.mission;
   const [camp, setCamp] = useState(null);
   const { result, outcome, session: s, durationS } = game;
+  const record = game.battleLog ? { map: game.battleLog.map, roster: game.battleLog.roster, log: game.battleLog.log } : {};
+  const match = resultMatch(game);
   const [saved, setSaved] = useState(game.online
     ? { state: 'ok', text: 'Online match: the server saved every player\'s score.' }
     : { state: '', text: result.mode === 'training' ? '' : 'Saving your score…' });
 
   useEffect(() => {
     if (mission) {
-      api.campaignResult({ powers: [...(game.session?.powers ?? [])], mission: mission.id, won: outcome.won, kills: result.player.kills, deaths: result.player.deaths, continues: result.continues ?? 0, timeS: Math.min(3600, durationS) })
+      api.campaignResult({ powers: [...(game.session?.powers ?? [])], mission: mission.id, won: outcome.won, kills: result.player.kills, deaths: result.player.deaths, continues: result.continues ?? 0, timeS: Math.min(3600, durationS), ...record })
         .then((r) => { setCamp(r); setSaved({ state: 'ok', text: r.unlockedNext ? `Mission ${mission.id + 1} unlocked!` : 'Progress saved.' }); })
         .catch((err) => setSaved({ state: 'error', text: `Progress not saved: ${err.message}` }));
       return;
@@ -62,7 +80,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
     api.saveScore({
       mode: result.mode, kills: result.player.kills, deaths: result.player.deaths,
       wave: result.wave, won: outcome.won, durationS: Math.min(3600, durationS), difficulty: game.difficulty,
-      powers: [...(game.session?.powers ?? [])],
+      powers: [...(game.session?.powers ?? [])], draw: !!game.draw, ...record,
     })
       .then(() => setSaved({ state: 'ok', text: `Score saved to ${me}'s record.` }))
       .catch((err) => setSaved({ state: 'error', text: `Score not saved: ${err.message}` }));
@@ -110,6 +128,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
           ))}
         </tbody>
       </table>}
+      {match && result.mode !== 'training' && <details className="results-log"><summary>Battle log</summary><BattleLog match={match} /></details>}
       <p className="results-saved" data-state={saved.state}>{saved.text}</p>
     </Panel>
   );
