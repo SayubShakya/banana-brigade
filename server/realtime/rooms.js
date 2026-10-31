@@ -95,7 +95,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
         await db.addScore({
           userId: r.userId, mode: 'online', kills: r.kills, deaths: r.deaths, wave: 0, won: r.won,
           puzzlesSolved: r.puzzlesSolved, puzzlesAttempted: r.puzzlesAttempted, durationS: Math.min(3600, summary.durationS),
-          matchId, multiplayer: true,
+          matchId, multiplayer: true, map: summary.map, draw: !summary.winner,
         });
         await award(r.userId, 'score:saved', { mode: 'online', kills: r.kills, wave: 0, won: r.won, teamMode: summary.teamMode });
       } catch (err) {
