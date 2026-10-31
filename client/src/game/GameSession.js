@@ -178,7 +178,7 @@ export function createGameSession() {
     input.setEnabled(false);
     hud.hide();
     const s = stats ?? newStats();
-    emit('game:over', { result, outcome: outcome(result), session: s, difficulty: levelKey, mission, durationS: Math.round(world?.time ?? (performance.now() - s.started) / 1000) });
+    emit('game:over', { result, outcome: outcome(result), session: s, difficulty: levelKey, mission, durationS: Math.round(world?.endedAt ?? world?.time ?? (performance.now() - s.started) / 1000) });
   }, 1500));
 
   const session = {

@@ -60,6 +60,15 @@ test('a full meter calls a supply drop crate that opens without a puzzle', () =>
   assert.ok(!w.pickups.includes(crate), 'an opened supply crate is gone for good');
 });
 
+test('a supply drop called in mid-air lands on the ground below the soldier', () => {
+  const { w, p } = world();
+  const standing = p.y;
+  p.y -= 200;
+  fillBananaMeter(w, p);
+  const crate = callSupplyDrop(w, p);
+  assert.ok(Math.abs(crate.y - (standing + p.h / 2)) <= 36, 'the crate is within E reach once the soldier lands');
+});
+
 test('standing on a supply crate and pressing E asks for a free power', () => {
   const { w, p, events } = world();
   fillBananaMeter(w, p);

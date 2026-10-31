@@ -75,6 +75,8 @@ test('match length: a 30 s match ends by time and counts down the last 10 second
   assert.equal(events.find((e) => e.name === 'match:ended').payload.reason, 'time');
   const countdown = events.filter((e) => e.name === 'match:countdown').map((e) => e.payload.seconds);
   assert.deepEqual(countdown, [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+  for (let i = 0; i < 90; i++) updateWorld(world, STEP);
+  assert.ok(Math.abs(world.endedAt - 30) < 0.1, 'the battle time stops at the final whistle');
 });
 
 test('an online match uses the chosen map, or a random one', () => {
