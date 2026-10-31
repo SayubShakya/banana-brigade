@@ -134,3 +134,30 @@ test('banana crates online: the room difficulty time, a server time limit, and o
     s.realtime.rooms.endMatch(room.code);
   } finally { a.socket.close(); await s.close(); }
 });
+
+test('a player who drops out mid-match gets their soldier back when they reconnect', async () => {
+  const s = await startServer();
+  const a = await player(s, 'stayer');
+  const b = await player(s, 'dropper');
+  try {
+    const { room } = await call(a.socket, 'room:create', { teamMode: false });
+    await call(b.socket, 'room:join', { code: room.code });
+    b.socket.emit('room:ready', { ready: true });
+    await once(a.socket, 'room:update');
+    const started = once(b.socket, 'match:start');
+    await call(a.socket, 'room:start');
+    const first = await started;
+
+    const left = once(a.socket, 'room:update');
+    b.socket.close();
+    assert.equal((await left).players.find((p) => p.userId === b.me.id).connected, false);
+
+    const again = io(s.base, { transports: ['websocket'], extraHeaders: { Cookie: b.c.cookie }, forceNew: true });
+    try {
+      const back = await once(again, 'match:start');
+      assert.equal(back.matchId, first.matchId);
+      assert.equal(back.me, `u${b.me.id}`);
+      assert.equal(s.realtime.rooms.room(room.code).players.get(b.me.id).connected, true);
+    } finally { again.close(); }
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});
