@@ -49,12 +49,14 @@ export function resultMatch(game) {
   if (!b?.log?.length && !b?.roster?.length) return null;
   const { result, durationS } = game;
   const teamMode = !!(result.teamMode || result.mode === 'team');
-  const winner = teamMode
-    ? (result.teamKills?.blue === result.teamKills?.red ? null : result.teamKills?.blue > result.teamKills?.red ? 'blue' : 'red')
-    : game.draw ? null : result.ranking?.[0]?.name ?? null;
+  const top = result.ranking?.[0];
+  const winner = result.mode === 'survival' ? null
+    : game.mission ? (game.outcome?.won ? result.player?.name ?? null : null)
+      : teamMode ? (result.teamKills?.blue === result.teamKills?.red ? null : result.teamKills?.blue > result.teamKills?.red ? 'blue' : 'red')
+        : game.draw ? null : game.outcome?.won ? result.player?.name ?? top?.name ?? null : top?.kills > 0 ? top.name : null;
   return {
     matchId: game.matchId ?? null, mode: game.mission ? 'campaign' : result.mode, multiplayer: !!game.online, map: b.map ?? null,
-    difficulty: game.difficulty ?? null, durationS, teamMode, winner: result.mode === 'survival' ? null : winner,
+    difficulty: game.difficulty ?? null, durationS, teamMode, winner,
     createdAt: new Date().toISOString(), roster: b.roster ?? [], log: b.log ?? [],
   };
 }

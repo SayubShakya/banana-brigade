@@ -39,6 +39,8 @@ test('history: winner label handles teams, players and survival', () => {
   assert.equal(h.winnerLabel({ winner: 'sayub' }), 'sayub won');
   assert.equal(h.winnerLabel({ mode: 'survival', winner: null }), 'Survival run');
   assert.equal(h.winnerLabel({ mode: 'online', winner: null }), 'No winner');
+  assert.equal(h.winnerLabel({ mode: 'campaign', winner: 'sayub' }), 'Mission complete');
+  assert.equal(h.winnerLabel({ mode: 'campaign', winner: null }), 'Mission failed');
 });
 
 test('history: roster is ranked by kills then fewest deaths', () => {
