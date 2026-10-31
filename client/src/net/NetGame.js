@@ -96,7 +96,8 @@ export function createNetGame() {
       view = null;
       emit('game:state', { state: 'over', online: true });
       emit('game:over', {
-        online: true, outcome, session: stats, durationS: summary.durationS,
+        online: true, outcome, session: stats, durationS: summary.durationS, matchId: summary.matchId,
+        draw: summary.teamMode ? !winner : summary.winner === null, battleLog: summary.log && { map: summary.map, log: summary.log, roster: (summary.roster ?? []).map((r) => (r.name === me.name ? { ...r, me: true } : r)) },
         result: { mode: 'online', teamMode: summary.teamMode, ranking, teamKills: summary.teamKills },
       });
     }, 1500);

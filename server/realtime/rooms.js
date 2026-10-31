@@ -76,13 +76,26 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     listChanged();
   }
 
+  async function saveMatch(summary) {
+    try {
+      return await db.addMatch({
+        matchId: summary.matchId, mode: 'online', multiplayer: true, map: summary.map, difficulty: summary.difficulty, durationS: Math.min(3600, summary.durationS),
+        teamMode: summary.teamMode, winner: summary.winner, roster: summary.roster, log: summary.log, owner: null,
+      }) ?? summary.matchId;
+    } catch (err) {
+      console.error('Could not save the online match log:', err.message);
+      return summary.matchId;
+    }
+  }
+
   async function saveResults(summary) {
+    const matchId = await saveMatch(summary);
     for (const r of summary.results) {
       try {
         await db.addScore({
           userId: r.userId, mode: 'online', kills: r.kills, deaths: r.deaths, wave: 0, won: r.won,
           puzzlesSolved: r.puzzlesSolved, puzzlesAttempted: r.puzzlesAttempted, durationS: Math.min(3600, summary.durationS),
-          matchId: summary.matchId, multiplayer: true,
+          matchId, multiplayer: true,
         });
         await award(r.userId, 'score:saved', { mode: 'online', kills: r.kills, wave: 0, won: r.won, teamMode: summary.teamMode });
       } catch (err) {

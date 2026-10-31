@@ -7,6 +7,7 @@ const { crateChoiceCount } = require('../../client/src/game/meter.js');
 const { updateBots } = require('../../client/src/game/bots.js');
 const { BOT_NAMES } = require('../../client/src/game/config.js');
 const { randomMapId, MAP_IDS } = require('../../client/src/game/map.js');
+const { createBattleLog } = require('../../client/src/game/battleLog.js');
 
 const TICK_HZ = 30;
 const SNAPSHOT_EVERY = 1;
@@ -85,6 +86,8 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     botNames: [...BOT_NAMES].sort(() => Math.random() - 0.5),
   });
   const byUser = (userId) => world.soldiers.find((s) => s.id === sid(userId));
+  const battle = createBattleLog(world);
+  for (const s of world.soldiers) if (s.isPlayer) battle.add('join', { by: s.name });
 
   const roster = () => world.soldiers.map((s) => ({ id: s.id, name: s.name, team: s.team, human: s.isPlayer, avatar: s.avatar }));
 
@@ -198,14 +201,18 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
         puzzlesSolved: p.solved, puzzlesAttempted: p.attempted,
       };
     });
+    const tied = !teamMode && ranking[1] && ranking[1].kills === ranking[0].kills;
+    const roster = battle.roster();
     const summary = {
       matchId, reason, teamMode, teamKills: { ...teamKills }, durationS: Math.round((Date.now() - startedAt) / 1000),
       ranking: ranking.map((s) => ({ id: s.id, name: s.name, team: s.team, kills: s.kills, deaths: s.deaths, human: s.id.startsWith('u') })),
+      map: mapId, difficulty, winner: teamMode ? winners : tied ? null : ranking[0]?.name ?? null,
+      roster: roster.map(({ userId, ...r }) => r), log: battle.entries(),
     };
     setImmediate(() => {
       sendSnapshot();
       send('match:end', summary);
-      onEnd({ ...summary, results });
+      onEnd({ ...summary, results, roster });
     });
   }
 
@@ -237,6 +244,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     applyPuzzle(userId, purpose, correct, grade = null) {
       const s = byUser(userId);
       if (!s || ended) return;
+      battle.puzzle(s.name, correct, purpose);
       bananaAnswered(world, s, { correct, grade });
       if (purpose === 'respawn' && correct) revive(world, s, grade);
       if (purpose === 'crate') {
@@ -279,6 +287,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       const solving = crates.has(userId) || holds.has(userId) || offers.has(userId);
       clearTimers(userId);
       if (solving) release(userId);
+      battle.add('leave', { by: s.name });
       s.isPlayer = false;
       s.name = `${s.name} (bot)`;
       pending.delete(userId);
@@ -289,6 +298,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       if (!s || ended) return false;
       s.isPlayer = true;
       s.name = s.name.replace(/ \(bot\)$/, '');
+      battle.add('join', { by: s.name });
       return true;
     },
     end(reason = 'host') { endMatchNow(world, reason); },

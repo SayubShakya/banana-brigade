@@ -429,7 +429,7 @@ function takePickup(world, s, p) {
     s.current = 'primary';
     s.reloadTimer = 0;
   }
-  world.emit('pickup:taken', { soldier: s, kind: p.kind, weapon: p.weapon });
+  world.emit('pickup:taken', { soldier: s, kind: p.kind, weapon: p.weapon, crate: !!p.crateSpot });
   if (p.dropped) p.gone = true;
   else { p.active = false; p.timer = p.kind === 'health' ? PICKUPS.healthRespawn : PICKUPS.weaponRespawn; }
   return true;
