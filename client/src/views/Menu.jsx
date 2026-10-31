@@ -19,7 +19,7 @@ const MAIN = [
   { action: 'online', icon: 'globe', name: 'Play Online', text: 'Real players · share a room code', tag: 'Rooms' },
   { action: 'modes', icon: 'shield', name: 'More Modes', text: 'Survival · Team Battle · Training', tag: 'Choose' },
 ];
-const RAIL = [['profile', 'user', 'Profile'], ['scores', 'trophy', 'Scores'], ['avatar', 'helmet', 'Avatar'], ['settings', 'gear', 'Settings']];
+const RAIL = [['profile', 'user', 'Profile'], ['history', 'clock', 'History'], ['scores', 'trophy', 'Scores'], ['avatar', 'helmet', 'Avatar'], ['settings', 'gear', 'Settings']];
 
 export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
   const [rank, setRank] = useState(rankFor(0));
