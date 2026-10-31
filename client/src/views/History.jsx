@@ -17,27 +17,31 @@ export default function History({ account, onBack }) {
   const [error, setError] = useState('');
   const [more, setMore] = useState(false);
   const [open, setOpen] = useState(null);
-  const view = useRef(0);
+  const shown = useRef(filter);
+  shown.current = filter;
 
   useEffect(() => {
     let alive = true;
-    view.current += 1;
+    setMore(false);
     setRows(null);
     setNext(null);
     setError('');
-    setMore(false);
     api.history(filter).then((d) => { if (alive) { setRows(d.rows ?? []); setNext(d.next ?? null); } })
       .catch((e) => { if (alive) { setRows([]); setError(e.offline ? 'Cannot reach the game server. Check your connection.' : 'Could not load your history. Try again in a moment.'); } });
     return () => { alive = false; };
   }, [filter]);
 
   const loadMore = () => {
-    const asked = view.current;
-    const same = () => view.current === asked;
+    const asked = filter;
+    const still = () => shown.current === asked;
     setMore(true);
-    api.history(filter, next).then((d) => { if (same()) { setRows((r) => [...(r ?? []), ...(d.rows ?? [])]); setNext(d.next ?? null); } })
-      .catch(() => same() && setError('Could not load more battles. Try again.'))
-      .finally(() => same() && setMore(false));
+    api.history(asked, next).then((d) => {
+      if (!still()) return;
+      setRows((r) => { const have = new Set(r.map((x) => x.id)); return [...r, ...(d.rows ?? []).filter((x) => !have.has(x.id))]; });
+      setNext(d.next ?? null);
+    })
+      .catch(() => still() && setError('Could not load more battles. Try again.'))
+      .finally(() => still() && setMore(false));
   };
 
   return (

@@ -25,7 +25,7 @@
 .scores-bar .tabs { flex: 1 1 60%; }
 .leaderboard tfoot tr.pinned td { border-top: 0.3cqh dashed var(--banana); background: rgba(255, 225, 53, 0.08); }
 
-.bl-overlay { position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(10, 12, 6, 0.7); backdrop-filter: blur(0.4cqh); }
+.bl-overlay { position: absolute; inset: 0; z-index: 60; display: grid; grid-template-rows: 100%; place-items: center; background: rgba(10, 12, 6, 0.7); backdrop-filter: blur(0.4cqh); }
 .bl-dialog {
   width: min(94%, 110cqh); max-height: 92%; display: flex; flex-direction: column; gap: 1.2cqh;
   background: var(--panel); border: 0.4cqh solid var(--olive); border-top: 1.2cqh solid var(--banana); border-radius: 2cqh;
@@ -84,4 +84,8 @@ body.a11y-large .bl-timeline li, body.a11y-large .bl-meta, body.a11y-large .hist
   .bl-head h2 { font-size: max(3.4cqh, 16px); }
   .bl-meta { grid-template-columns: repeat(2, 1fr); }
   .bl-timeline { max-height: none; }
+  .history-table td, .history-table th { padding-left: 0.6cqh; padding-right: 0.6cqh; }
+  .history-table td:first-child { white-space: normal; }
+  .history-table td:first-child .level-tag { display: inline-block; margin-left: 0; }
+  .history-table .mbtn.small { padding: 4px 8px; }
 }

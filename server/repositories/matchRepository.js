@@ -42,6 +42,16 @@ function createMatchRepository(m) {
       const ids = await m.Score.distinct('matchId', { user: oid(userId), matchId: { $type: 'string' } });
       return (await m.Match.find({ matchId: { $in: ids } }).sort({ createdAt: -1 }).lean()).map((d) => publicMatch(d, userId));
     },
+    async renamePlayerInMatches(userId, from, to) {
+      if (!isId(userId) || !from || !to || from === to) return;
+      const uid = oid(userId);
+      await m.Match.updateMany({ 'roster.userId': uid, winner: from }, { $set: { winner: to } });
+      await m.Match.updateMany(
+        { 'roster.userId': uid },
+        { $set: { 'roster.$[r].name': to, 'log.$[a].by': to, 'log.$[b].target': to } },
+        { arrayFilters: [{ 'r.userId': uid }, { 'a.by': from }, { 'b.target': from }] },
+      );
+    },
     async forgetPlayerInMatches(userId, username) {
       if (!isId(userId)) return;
       const uid = oid(userId);

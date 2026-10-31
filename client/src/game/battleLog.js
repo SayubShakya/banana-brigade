@@ -15,6 +15,7 @@ const isHuman = (s) => !!s.isPlayer || String(s.id).startsWith('u');
 
 export function createBattleLog(world, { clock = () => world.time } = {}) {
   const list = [];
+  const known = new Set(world.soldiers);
   let end = null;
 
   function add(type, fields = {}) {
@@ -33,7 +34,11 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
         if (p.victim?.isDummy) break;
         add('kill', { by: p.killer?.name ?? p.victim.name, target: p.victim.name, weapon: weaponName(p.weapon) });
         break;
-      case 'soldier:respawned': if (!p.soldier?.isDummy) add('respawn', { by: p.soldier.name }); break;
+      case 'soldier:respawned':
+        if (!p.soldier || p.soldier.isDummy) break;
+        if (known.has(p.soldier)) add('respawn', { by: p.soldier.name });
+        else known.add(p.soldier);
+        break;
       case 'power:start': add('power', { by: p.soldier.name, detail: powerName(p.power) }); break;
       case 'pickup:taken': if (p.kind === 'weapon' && p.crate) add('crate', { by: p.soldier.name, detail: weaponName(p.weapon) }); break;
       case 'banana:drop': add('drop', { by: p.soldier.name, detail: 'Supply drop' }); break;
@@ -46,9 +51,15 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
   const original = world.emit;
   world.emit = (event, payload) => { try { record(event, payload); } catch { } return original(event, payload); };
 
+  const puzzle = (by, ok, purpose) => add('puzzle', { by, ok: !!ok, detail: PURPOSE_TEXT[purpose] ?? purpose });
+
   return {
     add,
-    puzzle: (by, ok, purpose) => add('puzzle', { by, ok: !!ok, detail: PURPOSE_TEXT[purpose] ?? purpose }),
+    puzzle,
+    opening(by, { attempts = 0, solved = 0 } = {}) {
+      for (let i = 0; i < attempts; i++) puzzle(by, i >= attempts - solved, 'deploy');
+      if (world.mode === 'survival' && world.wave > 0) add('wave', { detail: `Wave ${world.wave}` });
+    },
     entries: () => (end ? [...list, end] : [...list]),
     roster(meName = null) {
       const isMe = (s) => s === world.player || (meName != null && s.name === meName);

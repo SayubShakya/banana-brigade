@@ -269,8 +269,8 @@ test('a lost solo battle names the best other soldier as winner, fewer deaths br
   const s = await startServer();
   try {
     const { c } = await player(s, 'loser');
-    const roster = [{ name: 'loser', kills: 0, deaths: 0, me: true }, { name: 'Blaze', kills: 0, deaths: 1, bot: true }, { name: 'Viper', kills: 0, deaths: 0, bot: true }];
-    const saved = await c.post('/api/scores', { mode: 'quick', kills: 0, deaths: 0, durationS: 5, won: false, roster, log: LOG });
+    const roster = [{ name: 'loser', kills: 3, deaths: 0, me: true }, { name: 'Blaze', kills: 3, deaths: 1, bot: true }, { name: 'Viper', kills: 3, deaths: 0, bot: true }];
+    const saved = await c.post('/api/scores', { mode: 'quick', kills: 3, deaths: 0, durationS: 5, won: false, roster, log: LOG });
     assert.equal((await c.get(`/api/matches/${saved.body.matchId}`)).body.match.winner, 'Viper');
   } finally { await s.close(); }
 });

@@ -92,3 +92,29 @@ test('survival logs each wave', () => {
   w.emit('survival:wave', { wave: w.wave, count: 3 });
   assert.deepEqual(log.entries(), [{ t: 0, type: 'wave', detail: 'Wave 2' }]);
 });
+
+test('the opening logs the deploy puzzles and the first survival wave, which starts before the log exists', () => {
+  const w = createWorld({ mode: 'survival', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi'], emit: () => {} });
+  assert.equal(w.wave, 1);
+  const log = createBattleLog(w);
+  log.opening('sayub', { attempts: 2, solved: 1 });
+  assert.deepEqual(log.entries(), [
+    { t: 0, type: 'puzzle', by: 'sayub', ok: false, detail: 'deploy' },
+    { t: 0, type: 'puzzle', by: 'sayub', ok: true, detail: 'deploy' },
+    { t: 0, type: 'wave', detail: 'Wave 1' },
+  ]);
+  const quick = createBattleLog(createWorld({ mode: 'quick', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi'], emit: () => {} }));
+  quick.opening('sayub', { attempts: 1, solved: 1 });
+  assert.deepEqual(quick.entries().map((e) => e.type), ['puzzle']);
+});
+
+test('soldiers that first appear with a new survival wave are not logged as respawns', () => {
+  const { w, bot } = fakeWorld();
+  const log = createBattleLog(w);
+  const fresh = { id: 'b9', name: 'Wave Bot', isPlayer: false, kills: 0, deaths: 0 };
+  w.soldiers.push(fresh);
+  w.emit('soldier:respawned', { soldier: fresh });
+  w.emit('soldier:respawned', { soldier: bot });
+  w.emit('soldier:respawned', { soldier: fresh });
+  assert.deepEqual(log.entries().map((e) => e.by), ['Bot Kiwi', 'Wave Bot']);
+});

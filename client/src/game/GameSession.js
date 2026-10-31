@@ -214,7 +214,7 @@ export function createGameSession() {
       });
       battleLog = createBattleLog(world);
       const deploy = stats.byPurpose.deploy;
-      for (let i = 0; i < deploy.attempts; i++) battleLog.puzzle(world.player.name, i >= deploy.attempts - deploy.solved, 'deploy');
+      battleLog.opening(world.player.name, deploy);
       if (stats.deployGrade === 'gold') {
         world.player.bananaStreak = stats.deployStreak;
         fillBananaMeter(world, world.player);

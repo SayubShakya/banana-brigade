@@ -21,7 +21,7 @@ function createPuzzleService({ pool, puzzleStore, achievements }) {
     if (typeof puzzleId !== 'string' || !Number.isInteger(given)) throw badRequest('Send { puzzleId, answer } with a whole-number answer');
     const result = puzzleStore.answer(puzzleId, given);
     if (!result) throw notFound('That puzzle has expired or was already answered');
-    tally.record(result.correct);
+    tally.record(result.correct, result.purpose);
     const unlocked = await achievements.emit('puzzle:answered', userId, result);
     return { correct: result.correct, solution: result.solution, purpose: result.purpose, ms: result.ms, grade: result.grade, unlocked };
   }

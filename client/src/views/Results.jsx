@@ -7,7 +7,6 @@ import { Panel, Icon } from '../components/common.jsx';
 import { Stars } from './Campaign.jsx';
 import { missionById } from '../game/campaign.js';
 import BattleLog from '../components/BattleLog.jsx';
-import { soloWinner } from '../services/history.js';
 import '../styles/banana-meter.css';
 
 const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
@@ -50,12 +49,14 @@ export function resultMatch(game) {
   if (!b?.log?.length && !b?.roster?.length) return null;
   const { result, durationS } = game;
   const teamMode = !!(result.teamMode || result.mode === 'team');
-  const winner = teamMode
-    ? (result.teamKills?.blue === result.teamKills?.red ? null : result.teamKills?.blue > result.teamKills?.red ? 'blue' : 'red')
-    : game.online || !b.roster?.length ? (game.draw ? null : result.ranking?.[0]?.name ?? null) : soloWinner(b.roster, !!game.outcome?.won, !!game.draw);
+  const top = result.ranking?.[0];
+  const winner = result.mode === 'survival' ? null
+    : game.mission ? (game.outcome?.won ? result.player?.name ?? null : null)
+      : teamMode ? (result.teamKills?.blue === result.teamKills?.red ? null : result.teamKills?.blue > result.teamKills?.red ? 'blue' : 'red')
+        : game.draw ? null : game.outcome?.won ? result.player?.name ?? top?.name ?? null : top?.kills > 0 ? top.name : null;
   return {
     matchId: game.matchId ?? null, mode: game.mission ? 'campaign' : result.mode, multiplayer: !!game.online, map: b.map ?? null,
-    difficulty: game.difficulty ?? null, durationS, teamMode, winner: result.mode === 'survival' ? null : winner,
+    difficulty: game.difficulty ?? null, durationS, teamMode, winner,
     createdAt: new Date().toISOString(), roster: b.roster ?? [], log: b.log ?? [],
   };
 }

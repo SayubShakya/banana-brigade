@@ -158,6 +158,7 @@ function createAuthService({
       throw err;
     }
     if (!user) throw badRequest('This account is already saved');
+    await db.renamePlayerInMatches(user.id, guest.username, user.username);
     await session.start(user);
     log('auth', user.username, `saved guest ${guest.username} as a full account`);
     return user;

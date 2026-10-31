@@ -16,6 +16,21 @@ function parseMatchInput(b) {
   };
 }
 
+function soloWinner(game, roster, teamMode, draw) {
+  const me = roster.find((r) => r.me);
+  if (draw || game.mode === 'survival') return null;
+  if (game.mode === 'campaign') return game.won ? me?.name ?? null : null;
+  if (teamMode) {
+    const sum = (team) => roster.reduce((n, r) => n + (r.team === team ? r.kills : 0), 0);
+    const [blue, red] = [sum('blue'), sum('red')];
+    if (game.won && me?.team) return me.team;
+    return blue === red ? null : blue > red ? 'blue' : 'red';
+  }
+  if (game.won) return me?.name ?? null;
+  const top = roster.filter((r) => r !== me).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)[0];
+  return top?.kills > 0 ? top.name : null;
+}
+
 function createMatchService({ db }) {
   async function saveSolo(userId, game, input) {
     if (!input.wanted) return null;
@@ -24,15 +39,10 @@ function createMatchService({ db }) {
       const user = await db.findUserById(userId);
       roster = [{ name: user?.username ?? 'You', kills: game.kills, deaths: game.deaths, bot: false, me: true }];
     }
-    const me = roster.find((r) => r.me);
     const teamMode = game.mode === 'team' || roster.some((r) => r.team);
-    const others = roster.filter((r) => r !== me).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
-    let winner = null;
-    if (teamMode && me?.team && !input.draw) winner = game.won ? me.team : (me.team === 'blue' ? 'red' : 'blue');
-    else if (!teamMode && !input.draw) winner = game.won ? (me?.name ?? null) : (others[0]?.name ?? null);
     return db.addMatch({
       mode: game.mode, multiplayer: false, map: input.map, difficulty: game.difficulty, durationS: game.durationS,
-      teamMode, winner, roster, log: input.log, owner: userId,
+      teamMode, winner: soloWinner(game, roster, teamMode, input.draw), roster, log: input.log, owner: userId,
     });
   }
 
@@ -53,4 +63,4 @@ function createMatchService({ db }) {
   return { saveSolo, history, get };
 }
 
-module.exports = { createMatchService, parseMatchInput };
+module.exports = { createMatchService, parseMatchInput, soloWinner };

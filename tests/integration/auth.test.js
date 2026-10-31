@@ -98,7 +98,7 @@ test('puzzle counts on a saved score come from the server, not the browser', asy
   try {
     const c = client(s.base);
     await c.post('/api/auth/register', { username: 'solver', password: 'bananas123' });
-    for (const answer of [7, 3]) {
+    for (const answer of [3, 7]) {
       const { puzzleId } = (await c.get('/api/puzzle')).body;
       await c.post('/api/puzzle/answer', { puzzleId, answer });
     }
@@ -115,6 +115,30 @@ test('puzzle counts on a saved score come from the server, not the browser', asy
     const mine = await c.get('/api/scores/me');
     assert.equal(mine.body.totals.games, 1);
     assert.equal(mine.body.totals.seconds_played, 120);
+  } finally { await s.close(); }
+});
+
+test('a new deploy puzzle starts a new count, so puzzles from a battle that was never saved do not leak into the next one', async () => {
+  const s = await startServer();
+  try {
+    const c = client(s.base);
+    await c.post('/api/auth/register', { username: 'quitter', password: 'bananas123' });
+    const answer = async (purpose, given) => {
+      const { puzzleId } = (await c.get(`/api/puzzle?purpose=${purpose}`)).body;
+      await c.post('/api/puzzle/answer', { puzzleId, answer: given });
+    };
+    await answer('deploy', 7);
+    await answer('respawn', 3);
+    await answer('respawn', 7);
+    await answer('deploy', 3);
+    await answer('deploy', 7);
+    await answer('crate', 7);
+    const saved = (await c.post('/api/scores', { mode: 'quick', kills: 1, deaths: 0, durationS: 30 })).body;
+    assert.deepEqual([saved.puzzlesSolved, saved.puzzlesAttempted], [2, 3]);
+    await answer('respawn', 7);
+    await answer('deploy', 7);
+    const next = (await c.post('/api/scores', { mode: 'quick', kills: 1, deaths: 0, durationS: 30 })).body;
+    assert.deepEqual([next.puzzlesSolved, next.puzzlesAttempted], [1, 1]);
   } finally { await s.close(); }
 });
 
