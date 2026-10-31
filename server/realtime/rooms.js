@@ -142,7 +142,11 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       update(existing);
     }
 
-    socket.on('rooms:list', (cb) => ack(cb)({ rooms: publicList() }));
+    socket.on('rooms:list', (cb) => {
+      const mine = rooms.get(roomOf.get(userId));
+      if (mine) socket.emit('room:update', view(mine));
+      ack(cb)({ rooms: publicList() });
+    });
 
     socket.on('room:create', (opts, cb) => {
       const difficulty = opts?.difficulty ?? 'medium';

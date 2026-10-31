@@ -161,3 +161,15 @@ test('a player who drops out mid-match gets their soldier back when they reconne
     } finally { again.close(); }
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
+
+test('opening the lobby again shows the room you are still in', async () => {
+  const s = await startServer();
+  const a = await player(s, 'roomhost');
+  try {
+    const { room } = await call(a.socket, 'room:create', { teamMode: false });
+    await new Promise((r) => setTimeout(r, 100));
+    const update = once(a.socket, 'room:update', 1000);
+    await call(a.socket, 'rooms:list');
+    assert.equal((await update).code, room.code);
+  } finally { a.socket.close(); await s.close(); }
+});
