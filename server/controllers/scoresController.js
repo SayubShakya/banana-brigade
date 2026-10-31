@@ -2,14 +2,18 @@
 
 const { puzzleTally } = require('../lib/httpSession');
 
-function createScoresController({ scoreService }) {
+function createScoresController({ scoreService, matchService }) {
   return {
     async save(req, res) {
       res.status(201).json(await scoreService.save(req.session.userId, req.body ?? {}, puzzleTally(req)));
     },
 
     async leaderboard(req, res) {
-      res.json(await scoreService.leaderboard(req.query));
+      res.json(await scoreService.leaderboard(req.query, req.session.userId ?? null));
+    },
+
+    async history(req, res) {
+      res.json(await matchService.history(req.session.userId, req.query));
     },
 
     async mine(req, res) {

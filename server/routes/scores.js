@@ -9,6 +9,7 @@ function createScoresRouter({ scoresController: scores }) {
   router.post('/', requireLogin, scores.save);
   router.get('/leaderboard', scores.leaderboard);
   router.get('/me', requireLogin, scores.mine);
+  router.get('/history', requireLogin, scores.history);
 
   return router;
 }

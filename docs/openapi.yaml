@@ -86,17 +86,170 @@ components:
           type: "integer"
         won:
           type: "boolean"
+        draw:
+          type: "boolean"
         durationS:
           type: "integer"
         powers:
           type: "array"
           items:
             type: "string"
+        map:
+          type: "string"
+          maxLength: 40
+        roster:
+          "$ref": "#/components/schemas/Roster"
+        log:
+          "$ref": "#/components/schemas/Log"
       required:
         - "mode"
         - "kills"
         - "deaths"
         - "durationS"
+    Roster:
+      type: "array"
+      maxItems: 12
+      description: "Final scoreboard; extra rows are dropped, names cut to 40 characters, numbers clamped to 0-999"
+      items:
+        type: "object"
+        properties:
+          name:
+            type: "string"
+            maxLength: 40
+          team:
+            type: "string"
+            enum:
+              - "blue"
+              - "red"
+          kills:
+            type: "integer"
+          deaths:
+            type: "integer"
+          bot:
+            type: "boolean"
+          me:
+            type: "boolean"
+        required:
+          - "name"
+    Log:
+      type: "array"
+      maxItems: 300
+      description: "Battle log; unknown types are dropped, text cut to 40 characters, t clamped to 0-3600 s"
+      items:
+        type: "object"
+        properties:
+          t:
+            type: "number"
+            description: "Seconds since the start, 1 decimal"
+          type:
+            type: "string"
+            enum:
+              - "kill"
+              - "puzzle"
+              - "crate"
+              - "power"
+              - "drop"
+              - "respawn"
+              - "wave"
+              - "join"
+              - "leave"
+              - "end"
+          by:
+            type: "string"
+          target:
+            type: "string"
+          weapon:
+            type: "string"
+          ok:
+            type: "boolean"
+          detail:
+            type: "string"
+        required:
+          - "t"
+          - "type"
+    Match:
+      type: "object"
+      properties:
+        matchId:
+          type: "string"
+        mode:
+          type: "string"
+        multiplayer:
+          type: "boolean"
+        map:
+          type: "string"
+        difficulty:
+          type: "string"
+        durationS:
+          type: "integer"
+        teamMode:
+          type: "boolean"
+        winner:
+          type: "string"
+          nullable: true
+        createdAt:
+          type: "string"
+        roster:
+          "$ref": "#/components/schemas/Roster"
+        log:
+          "$ref": "#/components/schemas/Log"
+    HistoryRow:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        matchId:
+          type: "string"
+          nullable: true
+        mode:
+          type: "string"
+        difficulty:
+          type: "string"
+        map:
+          type: "string"
+        kills:
+          type: "integer"
+        deaths:
+          type: "integer"
+        wave:
+          type: "integer"
+        won:
+          type: "integer"
+        draw:
+          type: "boolean"
+        puzzles_solved:
+          type: "integer"
+        puzzles_attempted:
+          type: "integer"
+        duration_s:
+          type: "integer"
+        created_at:
+          type: "string"
+        multiplayer:
+          type: "boolean"
+        hasLog:
+          type: "boolean"
+    BoardRow:
+      type: "object"
+      properties:
+        rank:
+          type: "integer"
+        username:
+          type: "string"
+        kills:
+          type: "integer"
+        deaths:
+          type: "integer"
+        wave:
+          type: "integer"
+        wins:
+          type: "integer"
+        games:
+          type: "integer"
+        puzzles_solved:
+          type: "integer"
+        puzzles_attempted:
+          type: "integer"
     Status:
       type: "object"
       properties:
@@ -676,7 +829,7 @@ paths:
     get:
       tags:
         - "auth"
-      summary: "Download my data: profile, scores, daily results, sessions (JSON file, no password hash)"
+      summary: "Download my data: profile, scores, match history, battle logs, daily results, sessions (JSON file, no password hash)"
       security:
         - session: []
       responses:
@@ -849,7 +1002,7 @@ paths:
     post:
       tags:
         - "scores"
-      summary: "Save a finished game (puzzle counts come from the session)"
+      summary: "Save a finished game (puzzle counts come from the session; a roster or log also saves a battle log; body up to 96 KB)"
       security:
         - session: []
       requestBody:
@@ -868,6 +1021,9 @@ paths:
                 properties:
                   id:
                     type: "string"
+                  matchId:
+                    type: "string"
+                    nullable: true
                   puzzlesSolved:
                     type: "integer"
                   puzzlesAttempted:
@@ -875,7 +1031,7 @@ paths:
                   unlocked:
                     "$ref": "#/components/schemas/Unlocked"
         "400":
-          description: "Invalid score"
+          description: "Invalid score, roster or log"
           content:
             application/json:
               schema:
@@ -886,17 +1042,24 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        "413":
+          description: "Body too large"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
   "/scores/leaderboard":
     get:
       tags:
         - "scores"
-      summary: "Leaderboard for one mode"
+      summary: "Leaderboard: one row per player (best game; survival by wave) or career totals (wins, then kills); guests left out"
       security: []
       parameters:
         - name: "mode"
           in: "query"
           schema:
             type: "string"
+          description: "quick, survival, training, team, online, campaign (or all with by=career)"
         - name: "period"
           in: "query"
           schema:
@@ -904,6 +1067,13 @@ paths:
             enum:
               - "all"
               - "today"
+        - name: "by"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "best"
+              - "career"
         - name: "limit"
           in: "query"
           schema:
@@ -920,10 +1090,16 @@ paths:
                     type: "string"
                   period:
                     type: "string"
+                  by:
+                    type: "string"
                   rows:
                     type: "array"
                     items:
-                      type: "object"
+                      "$ref": "#/components/schemas/BoardRow"
+                  me:
+                    "$ref": "#/components/schemas/BoardRow"
+                    nullable: true
+                    description: "My own row and rank when logged in, even outside the top list"
   "/scores/me":
     get:
       tags:
@@ -947,6 +1123,94 @@ paths:
                       type: "object"
         "401":
           description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/scores/history":
+    get:
+      tags:
+        - "scores"
+      summary: "My match history, newest first (training not included)"
+      security:
+        - session: []
+      parameters:
+        - name: "filter"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "all"
+              - "solo"
+              - "online"
+              - "quick"
+              - "survival"
+              - "team"
+              - "campaign"
+        - name: "before"
+          in: "query"
+          schema:
+            type: "string"
+          description: "Cursor from the previous page (next)"
+        - name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 50
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  rows:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/HistoryRow"
+                  next:
+                    type: "string"
+                    nullable: true
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/matches/{matchId}":
+    get:
+      tags:
+        - "scores"
+      summary: "One match with its scoreboard and battle log (only for players in it, or admins); my roster row has me: true"
+      security:
+        - session: []
+      parameters:
+        - name: "matchId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: "Match id from the history"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  match:
+                    "$ref": "#/components/schemas/Match"
+        "401":
+          description: "Not logged in"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "No such match, or not yours"
           content:
             application/json:
               schema:
@@ -975,7 +1239,7 @@ paths:
     post:
       tags:
         - "campaign"
-      summary: "Report a mission result (stars worked out on the server)"
+      summary: "Report a mission result (stars worked out on the server; a roster or log also saves a battle log)"
       security:
         - session: []
       requestBody:
@@ -997,6 +1261,13 @@ paths:
                   type: "integer"
                 won:
                   type: "boolean"
+                map:
+                  type: "string"
+                  maxLength: 40
+                roster:
+                  "$ref": "#/components/schemas/Roster"
+                log:
+                  "$ref": "#/components/schemas/Log"
       responses:
         "200":
           description: "OK"
@@ -1004,8 +1275,24 @@ paths:
             application/json:
               schema:
                 type: "object"
+                properties:
+                  matchId:
+                    type: "string"
+                    nullable: true
+                  stars:
+                    type: "integer"
+                  best:
+                    type: "integer"
+                  progress:
+                    type: "object"
+                  totalStars:
+                    type: "integer"
+                  unlockedNext:
+                    type: "boolean"
+                  unlocked:
+                    "$ref": "#/components/schemas/Unlocked"
         "400":
-          description: "Bad result"
+          description: "Bad result, roster or log"
           content:
             application/json:
               schema:

@@ -21,6 +21,7 @@ const { createScoresRouter } = require('./routes/scores');
 const { createAdminRouter } = require('./routes/admin');
 const { createDailyRouter } = require('./routes/daily');
 const { createCampaignRouter } = require('./routes/campaign');
+const { createMatchesRouter } = require('./routes/matches');
 const { createAchievementsRouter } = require('./routes/achievements');
 const { createPuzzleRouter } = require('./routes/puzzles');
 const { createStatusRouter } = require('./routes/status');
@@ -51,6 +52,7 @@ function createApp({
   const controllers = createControllers(services);
 
   app.use(apiVersion);
+  app.post(['/api/scores', '/api/campaign/result'], express.json({ limit: '96kb' }));
   app.use(express.json({ limit: '4kb' }));
 
   app.use('/api', createDocsRouter(controllers));
@@ -67,6 +69,7 @@ function createApp({
   app.use('/api/admin', createAdminRouter(controllers));
   app.use('/api/daily', createDailyRouter(controllers));
   app.use('/api/campaign', createCampaignRouter(controllers));
+  app.use('/api/matches', createMatchesRouter(controllers));
   app.use('/api/achievements', createAchievementsRouter(controllers));
   app.use('/api/puzzle', createPuzzleRouter(controllers));
   app.use('/api/status', createStatusRouter(controllers));
