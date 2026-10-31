@@ -48,7 +48,7 @@ test('register, change password and reset refuse a breached password', async () 
   try {
     const refused = await client(s.base).post('/api/auth/register', { username: 'pwned_one', password: BREACHED });
     assert.equal(refused.status, 400);
-    assert.match(refused.body.error, /250,000 data breaches/);
+    assert.match(refused.body.error, /250,000 leaked password lists/);
 
     const c = client(s.base);
     assert.equal((await c.post('/api/auth/register', { username: 'safe_one', password: 'banana-split-77' })).status, 201);

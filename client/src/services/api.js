@@ -23,7 +23,7 @@ async function call(method, path, body, { quiet = false } = {}) {
       emit('session:ended', { text: data.suspended ? data.error : 'You were signed out. Please log in again.' });
     }
     if (res.status >= 500 && !quiet) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });
-    throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status });
+    throw Object.assign(new Error(data.error || `Server returned ${res.status}`), { status: res.status, pwned: !!data.pwned });
   }
   for (const a of data.unlocked ?? []) emit('achievement:unlocked', a);
   return data;
