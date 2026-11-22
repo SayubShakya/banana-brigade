@@ -12,8 +12,8 @@ into `main`, so every feature shows as its own bubble in `git log --graph`. GitH
 the build on every push and pull request. A pull-request template and a review checklist are in the repository.
 Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`,
 `v0.4-multiplayer`, `v0.5-campaign`, then `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.3.1`, `v1.3.2` and `v1.4.0` (`git tag -n`).
-The release steps are in `CONTRIBUTING.md`. On 22 Nov 2026 `main` had 487 commits, 114 of them merge commits, and five changes went through GitHub pull requests
-(#1 to #5) with review comments and green CI before merging.
+The release steps are in `CONTRIBUTING.md`. On 22 Nov 2026 `main` had about 500 commits, more than 120 of them merge commits. Pull request #1 went through
+GitHub with a description, review comments and green CI before it was merged.
 
 | Alternative | For | Against |
 |---|---|---|
@@ -24,9 +24,9 @@ The release steps are in `CONTRIBUTING.md`. On 22 Nov 2026 `main` had 487 commit
 
 **Trade-offs and limits**
 - **Most code reviews were done locally**: most branches were checked against the review checklist and merged
-  with `--no-ff` on this machine. From pull request #1 onwards, changes go through GitHub pull requests with
-  review comments and green CI; a branch ruleset on `main` makes that the only way in. One developer cannot approve their own
-  pull request, so a second reviewer is the next improvement in a team.
+  with `--no-ff` on this machine; only pull request #1 went through GitHub with review comments and green CI.
+  Using pull requests for every change, enforced by a branch ruleset on `main`, is the obvious improvement. One
+  developer cannot approve their own pull request, so a second reviewer would be the next step in a team.
 - One developer: branches rarely conflict, so the history shows little real merge-conflict resolution.
 - Most work happened in a few days (14 and 28–30 October), so the dates show bursts rather than steady progress.
 - The history keeps a real design change: SQLite (`fadda7c`) replaced by MongoDB (`75afbbd`). Because
@@ -59,7 +59,7 @@ for online play.
 - Some events have no listeners yet (`banana:requested`, `banana:loaded`, `match:countdown`, `input:minimap`,
   `cutscene:started`).
 - On the server, the rules are held in an array and `achievements.emit` awaits them in order. The only other
-  listener on the `EventEmitter` is the admin event feed (`server/services/eventLog.js:27-36`). This keeps the
+  listener on the `EventEmitter` is the admin event feed (`server/services/eventLog.js:41-51`). This keeps the
   "which badges did this unlock?" reply simple, but a slow rule delays the HTTP reply.
 - Bus events are synchronous; a heavy listener would slow the frame.
 
@@ -147,9 +147,9 @@ The first version locked a *username* after 5 wrong passwords. That had two prob
 could lock you out for 10 minutes, and the check ("fewer than 5 failures?") and the record ("one more failure")
 were two separate steps, so guesses sent in parallel could all pass the check before any was recorded.
 Now every try is counted *before* the password is checked, with one atomic `findOneAndUpdate` + `$inc` on a
-counter document (`bumpCounter`, `server/repositories/rateLimitRepository.js:5-19`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
-5 are checked and 7 are refused (`tests/integration/password-reset.test.js:114`). A correct password takes its try back
-(`server/services/rateLimiter.js:32`).
+counter document (`bumpCounter`, `server/repositories/rateLimitRepository.js:16-33`). Twelve guesses sent at once get the numbers 1 to 12, so exactly
+5 are checked and 7 are refused (`tests/integration/password-reset.test.js:123`). A correct password takes its try back
+(`server/services/rateLimiter.js:44`).
 
 | Option | For | Against |
 |---|---|---|
@@ -263,7 +263,7 @@ warning is logged (fail open).
 - "Remember me" on a shared computer lets the next person in; that is why it is off by default.
 - **Single-player kills are reported by the browser.** Puzzle counts, stars and daily scores are checked by the
   server, and online matches are fully server-authoritative, but in offline modes a modified browser could post
-  a high kill count (within the limits in `server/services/scoreService.js:12-23`).
+  a high kill count (within the limits in `server/services/scoreService.js:15-31`).
 - No HTTPS in local development; the cookie becomes `Secure` only with `NODE_ENV=production`.
 - No email address on accounts, so no email verification; no multi-factor authentication.
 - SameSite=Lax is the CSRF defence; there is no separate CSRF token.

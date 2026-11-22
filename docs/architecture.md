@@ -84,9 +84,9 @@ flowchart TB
 
 ## Sequence: login and session
 
-Code: `server/routes/auth.js:10` → `server/controllers/authController.js:14-18` →
-`server/services/authService.js:70-96`, with `server/services/rateLimiter.js:16-34` and
-`server/repositories/rateLimitRepository.js:5-19`.
+Code: `server/routes/auth.js:12` → `server/controllers/authController.js:22-26` →
+`server/services/authService.js:106-137`, with `server/services/rateLimiter.js:28-46` and
+`server/repositories/rateLimitRepository.js:16-33`.
 
 ```mermaid
 sequenceDiagram
