@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '../../services/api.js';
-import { Sky } from '../../components/common.jsx';
+import { Sky, Icon } from '../../components/common.jsx';
 
 export default function AdminLogin({ onLogin, onPlayer, onHome }) {
   const [username, setUsername] = useState('');
@@ -40,8 +40,10 @@ export default function AdminLogin({ onLogin, onPlayer, onHome }) {
           </label>
           {error && <p className="auth-error" role="alert">{error}</p>}
           <button className="mbtn primary" type="submit" disabled={busy}>Log in as admin</button>
-          <button type="button" className="link-btn" onClick={onPlayer}>Player login</button>
-          <button type="button" className="link-btn" onClick={onHome}>Back to the home page</button>
+          <div className="auth-links">
+            <button type="button" className="pill-btn" onClick={onHome}><span aria-hidden="true">←</span>Home</button>
+            <button type="button" className="pill-btn" onClick={onPlayer}><Icon id="user" />Player login</button>
+          </div>
         </form>
       </div>
     </section>

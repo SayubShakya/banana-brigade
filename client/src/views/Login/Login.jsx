@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api.js';
-import { Sky } from '../../components/common.jsx';
+import { Sky, Icon } from '../../components/common.jsx';
 import { useNameHint, strength, LEVELS } from './authFields.js';
 
 const tokenFromHash = () => (location.hash.startsWith('#reset=') ? location.hash.slice(7) : null);
@@ -113,9 +113,11 @@ export default function Login({ onLogin, onHome, onGuest }) {
           <button className="mbtn primary" type="submit" disabled={busy}>{SUBMIT[mode]}</button>
           {mode === 'login' && <button type="button" className="link-btn" onClick={() => switchTo('forgot')}>Forgot password?</button>}
           {TITLES[mode] && <button type="button" className="link-btn" onClick={() => switchTo('login')}>Back to log in</button>}
-          {mode === 'login' && onGuest && <button type="button" className="link-btn" onClick={onGuest}>Just try it: play as guest</button>}
-          {!TITLES[mode] && onHome && <button type="button" className="link-btn" onClick={onHome}>Back to the home page</button>}
-          {mode === 'login' && <a className="link-btn admin-link" href="#admin-login">Admin login</a>}
+          {mode === 'login' && onGuest && <button type="button" className="mbtn ghost guest-btn" onClick={onGuest}><Icon id="banana" />Just try it: play as guest</button>}
+          {!TITLES[mode] && <div className="auth-links">
+            {onHome && <button type="button" className="pill-btn" onClick={onHome}><span aria-hidden="true">←</span>Home</button>}
+            {mode === 'login' && <a className="pill-btn admin" href="#admin-login"><Icon id="lock" />Admin login</a>}
+          </div>}
           <p className="auth-note">Passwords are stored only as bcrypt hashes. You stay signed in with a secure, HttpOnly session cookie.</p>
         </form>
       </div>
