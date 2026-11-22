@@ -292,3 +292,26 @@ test('a player who leaves keeps their real name in the log and roster, still get
     assert.equal(scores.find((row) => row.userId === b.me.id).won, false);
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
+
+test('only the host can end a running match for everyone, and the results say the host ended it', async () => {
+  const s = await startServer();
+  const a = await player(s, 'endhost');
+  const b = await player(s, 'endpal');
+  try {
+    const { room } = await call(a.socket, 'room:create', { bots: false });
+    await call(b.socket, 'room:join', { code: room.code });
+    assert.equal((await call(a.socket, 'room:end')).error, 'No match is running');
+    b.socket.emit('room:ready', { ready: true });
+    await once(a.socket, 'room:update');
+    const started = once(a.socket, 'match:start');
+    await call(a.socket, 'room:start');
+    await started;
+    assert.equal((await call(b.socket, 'room:end')).error, 'Only the host can end the match');
+    assert.equal(s.realtime.rooms.room(room.code).match.over, false);
+    const ended = once(b.socket, 'match:end');
+    assert.deepEqual(await call(a.socket, 'room:end'), { ok: true });
+    const summary = await ended;
+    assert.equal(summary.reason, 'host');
+    assert.equal(summary.log.at(-1).detail, 'Host ended it');
+  } finally { a.socket.close(); b.socket.close(); await s.close(); }
+});
