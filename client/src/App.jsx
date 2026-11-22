@@ -5,6 +5,7 @@ import { useSettings } from './controllers/useSettings.js';
 import { useAccount } from './controllers/useAccount.js';
 import { useBattle } from './controllers/useBattle.js';
 import Login from './views/Login/Login.jsx';
+import AdminLogin from './views/Login/AdminLogin.jsx';
 import Menu from './views/Menu.jsx';
 import Avatar from './views/Avatar.jsx';
 import Profile from './views/Profile.jsx';
@@ -51,6 +52,7 @@ export default function App() {
       {screen === 'notfound' && <NotFound onHome={nav.reload} />}
       {screen === 'offline' && <Offline onBack={start} />}
       {screen === 'login' && <Login key={nav.loginKey} onGuest={player.playAsGuest} onHome={nav.toHome} onLogin={player.onLogin} />}
+      {screen === 'adminLogin' && <AdminLogin onLogin={player.onAdminLogin} onPlayer={() => { nav.clearHash(); nav.setScreen('login'); }} onHome={nav.toHome} />}
       {screen === 'menu' && <Menu account={account} isNew={player.isNew} parts={parts} onDeploy={(m) => battle.deployFrom(null, m)} onOpen={nav.open} />}
       {screen === 'avatar' && <Avatar name={account.username} parts={parts} setParts={player.setParts} onBack={back} />}
       {screen === 'profile' && <Profile account={account} parts={parts} onCustomise={() => openFrom('profile', 'avatar')} onHistory={() => openFrom('profile', 'history')} onBack={back} />}

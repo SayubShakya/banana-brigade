@@ -138,6 +138,8 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .auth-error { margin: 0; color: var(--red); font-weight: 600; font-size: 2cqh; }
 .auth-note { margin: 0; font-size: 1.6cqh; color: var(--khaki); text-align: center; }
 .auth-title { margin: 0; font-size: 2.8cqh; color: var(--banana); text-align: center; }
+.admin-login { border-top: 0.5cqh solid var(--banana); }
+.admin-link { font-size: 1.6cqh; opacity: 0.75; text-align: center; }
 .auth-info { margin: 0; font-size: 1.9cqh; color: var(--good); font-weight: 600; }
 .link-btn { background: none; border: 0; padding: 0.4cqh; color: var(--khaki); font: inherit; font-size: 1.8cqh; text-decoration: underline; cursor: pointer; align-self: center; }
 .link-btn:hover, .link-btn:focus-visible { color: var(--banana); }

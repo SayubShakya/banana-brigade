@@ -115,6 +115,7 @@ export default function Login({ onLogin, onHome, onGuest }) {
           {TITLES[mode] && <button type="button" className="link-btn" onClick={() => switchTo('login')}>Back to log in</button>}
           {mode === 'login' && onGuest && <button type="button" className="link-btn" onClick={onGuest}>Just try it: play as guest</button>}
           {!TITLES[mode] && onHome && <button type="button" className="link-btn" onClick={onHome}>Back to the home page</button>}
+          {mode === 'login' && <a className="link-btn admin-link" href="#admin-login">Admin login</a>}
           <p className="auth-note">Passwords are stored only as bcrypt hashes. You stay signed in with a secure, HttpOnly session cookie.</p>
         </form>
       </div>

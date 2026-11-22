@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api.js';
+import { emit } from '../services/eventBus.js';
 import { askPuzzle } from '../services/puzzleBridge.js';
 import { askPower } from '../services/powerBridge.js';
 import { MODES } from '../game/config.js';
@@ -28,6 +29,7 @@ export function useNavigation() {
     const onHash = () => {
       const h = location.hash.slice(1);
       if (PUBLIC.includes(h)) setScreen(h);
+      else if (h === 'admin-login') setScreen((s) => (['home', 'login'].includes(s) ? 'adminLogin' : s));
       else if (h.startsWith('reset=')) { setLoginKey((k) => k + 1); setScreen('login'); }
     };
     window.addEventListener('hashchange', onHash);
@@ -48,18 +50,18 @@ export function useStartRoute({ setScreen }, { restore }, { settings }, { startB
     api.me().then(({ user }) => {
       const hash = location.hash.slice(1);
       if (!user || hash.startsWith('reset=')) {
-        setScreen(hash.startsWith('reset=') || hash === 'login' ? 'login' : PUBLIC.includes(hash) ? hash : 'home');
+        setScreen(hash === 'admin-login' ? 'adminLogin' : hash.startsWith('reset=') || hash === 'login' ? 'login' : PUBLIC.includes(hash) ? hash : 'home');
         return;
       }
       restore(user);
       setScreen('menu');
-      openPreview(hash);
+      openPreview(hash, user.role);
       if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     }).catch((err) => setScreen(err.offline ? 'offline' : 'home'));
   }, []);
   useEffect(start, [start]);
 
-  function openPreview(hash) {
+  function openPreview(hash, role) {
     const [name, arg] = hash.split('-');
     if (name === 'battle') { game().prepare(MODES[arg] ? arg : 'quick', settings.difficulty, null, settings.matchLength, settings.mapChoice); startBattle(MODES[arg] ? arg : 'quick'); }
     else if (name === 'difficulty') deploy('quick');
@@ -72,6 +74,7 @@ export function useStartRoute({ setScreen }, { restore }, { settings }, { startB
     else if (name === 'power') askPower(powerChoices());
     else if (name === 'puzzle') askPuzzle(['deploy', 'respawn', 'crate'].includes(arg) ? arg : 'deploy', { modeLabel: 'Quick Play', title: 'Banana puzzle', subtitle: 'Preview of the puzzle screen.' });
     else if (name === 'online') deploy('online');
+    else if (hash === 'admin-login') { if (role === 'admin') setScreen('admin'); else emit('toast:error', { text: 'That page is for admins only.' }); }
     else if (['privacy', 'terms', 'profile', 'history', 'scores', 'settings', 'avatar', 'controls', 'modes', 'daily', 'campaign', 'admin'].includes(name)) setScreen(name);
   }
 

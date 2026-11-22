@@ -67,7 +67,7 @@ function createAuthService({
     return user;
   }
 
-  async function login({ username, password, remember, ip }, session) {
+  async function login({ username, password, remember, ip, requireRole }, session) {
     if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       throw badRequest('Enter your username and password');
     }
@@ -89,9 +89,13 @@ function createAuthService({
       log('security', user.username, 'tried to log in while suspended');
       throw forbidden(`This account is suspended: ${user.suspended.reason}`, { suspended: true });
     }
+    if (requireRole && user.role !== requireRole) {
+      log('security', user.username, 'tried the admin login without admin rights');
+      throw forbidden('This login is for admins only. Players log in on the normal page.');
+    }
     await db.touchLogin(user.id);
     await session.start(user, { remember: remember === true });
-    log('auth', user.username, `logged in${remember === true ? ' (remember me)' : ''}`);
+    log('auth', user.username, `logged in${requireRole ? ' (admin page)' : remember === true ? ' (remember me)' : ''}`);
     return user;
   }
 

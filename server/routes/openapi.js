@@ -57,6 +57,7 @@ const spec = {
   paths: {
     '/auth/register': { post: op('auth', 'Create an account and log in', { req: credentials, status: 201, ok: userReply, auth: false, errors: { 400: err('Bad name, short or breached password'), 409: err('Name taken') } }) },
     '/auth/login': { post: op('auth', 'Log in (5 tries per name per IP, 20 per IP, in 10 min)', { req: obj({ ...credentials.properties, remember: bool }, ['username', 'password']), ok: userReply, auth: false, errors: { 401: err('Wrong name or password'), 429: err('Too many tries') } }) },
+    '/auth/admin-login': { post: op('auth', 'Admin-only login: admins get a session, players get 403 and no session', { req: credentials, ok: userReply, auth: false, errors: { 401: err('Wrong name or password'), 403: err('Admins only'), 429: err('Too many tries') } }) },
     '/auth/logout': { post: op('auth', 'Log out this device', { auth: false }) },
     '/auth/logout-all': { post: op('auth', 'Log out every device', { ok: json(obj({ ok: bool, ended: int })) }) },
     '/auth/password': { post: op('auth', 'Change password (ends the other sessions)', { req: obj({ current: str, next: str }, ['current', 'next']), ok: json(obj({ ok: bool, ended: int })), errors: { 400: err('Too short or breached'), 403: err('Current password wrong') } }) },
