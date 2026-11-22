@@ -132,7 +132,8 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   }
 
   const resume = () => (online ? net().resume() : game().resume());
-  const endNow = () => game().endNow();
+  const endNow = () => (online ? net().endForAll().then(resume).catch((err) => emit('toast:error', { text: err.message })) : game().endNow());
+  const canEnd = () => !online || net().isHost;
 
   const toMap = () => { game().quit(); setOver(null); setScreen('campaign'); };
   const playAgain = () => {
@@ -142,5 +143,5 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     deployWith(m, settings.difficulty);
   };
 
-  return { over, online, pendingMode, startBattle, startBootCamp: startBootCampBattle, deploy, deployFrom, deployWith, playMission, toMenu, resume, endNow, toMap, playAgain };
+  return { over, online, pendingMode, startBattle, startBootCamp: startBootCampBattle, deploy, deployFrom, deployWith, playMission, toMenu, resume, endNow, canEnd, toMap, playAgain };
 }
