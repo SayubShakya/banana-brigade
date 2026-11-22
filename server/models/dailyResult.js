@@ -1,3 +1,6 @@
+// Model layer: one player's progress and score in one day's Daily Challenge.
+// index = which puzzle they are on, issuedAt = when it was handed out (for speed bonus).
+
 const { Schema } = require('mongoose');
 
 const dailyResultSchema = new Schema({
@@ -10,7 +13,9 @@ const dailyResultSchema = new Schema({
   issuedAt: { type: Date, default: Date.now },
   finished: { type: Boolean, default: false },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
+// Unique (user, date): a player can only have one result per day, enforced by MongoDB.
 dailyResultSchema.index({ user: 1, date: 1 }, { unique: true });
+// Used for the daily leaderboard (by date, highest score first).
 dailyResultSchema.index({ date: 1, score: -1 });
 
 module.exports = { dailyResultSchema };

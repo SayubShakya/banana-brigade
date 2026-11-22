@@ -1,5 +1,9 @@
+// Service layer: achievements and the game event bus (event-driven programming theme).
+// Services emit events such as 'score:saved'; rules listen for them and unlock badges.
+
 const { EventEmitter } = require('node:events');
 
+// The list of every achievement the player can earn.
 const ACHIEVEMENTS = [
   { id: 'first_blood', name: 'First Blood', text: 'Get a kill in a saved battle.' },
   { id: 'sharpshooter', name: 'Sharpshooter', text: '10 kills in one battle.' },
@@ -23,15 +27,24 @@ const ACHIEVEMENTS = [
 const { POWERS } = require('../../client/src/game/config.js');
 const POWER_IDS = Object.keys(POWERS);
 const POWER_COUNT = POWER_IDS.length;
+// Keeps only real power-up names and removes duplicates (validation of client input).
 const cleanPowers = (list) => (Array.isArray(list) ? [...new Set(list.filter((p) => POWER_IDS.includes(p)))] : []);
 const BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
+// Seconds allowed per puzzle type, used for the "Clutch" achievement.
 const LIMITS = { deploy: 30, respawn: 15, crate: 20, daily: 20 };
 
+/**
+ * Creates the achievements system.
+ * @param {object} deps db (repositories)
+ * @returns {{emit, events, list, forPlayer}} events is the EventEmitter other code can listen to
+ */
 function createAchievements({ db }) {
   const events = new EventEmitter();
   const rules = [];
+  // rule(eventName, check) registers a handler: check() returns the achievement ids earned.
   const rule = (eventName, check) => rules.push([eventName, check]);
 
+  // Handler for 'score:saved': kill, wave and win based achievements.
   rule('score:saved', async (userId, s) => {
     const ids = [];
     if (s.kills >= 1) ids.push('first_blood');
@@ -46,6 +59,7 @@ function createAchievements({ db }) {
     return ids;
   });
 
+  // Handler for 'puzzle:answered': puzzle streak, speed and crate achievements.
   rule('puzzle:answered', async (userId, p) => {
     const counters = await db.recordPuzzle(userId, { correct: p.correct, crate: p.purpose === 'crate' && p.correct });
     const ids = [];
@@ -57,6 +71,7 @@ function createAchievements({ db }) {
     return ids;
   });
 
+  // Handler for 'mission:finished': campaign achievements (mission 9 is the last).
   rule('mission:finished', async (userId, r) => {
     const ids = [];
     if (r.stars === 3) ids.push('three_stars');
@@ -64,11 +79,13 @@ function createAchievements({ db }) {
     return ids;
   });
 
+  // Handler for 'power:used': unlock when all five powers have been used.
   rule('power:used', async (userId, { powers }) => {
     const all = await db.addPowersUsed(userId, powers);
     return all.length >= POWER_COUNT ? ['power_hungry'] : [];
   });
 
+  // Handler for 'daily:finished': daily challenge streak and perfect score.
   rule('daily:finished', async (userId, d) => {
     const ids = [];
     if (d.streak >= 3) ids.push('daily_warrior');
@@ -76,19 +93,30 @@ function createAchievements({ db }) {
     return ids;
   });
 
+  /**
+   * Fires a game event. First tells every listener on the EventEmitter (e.g. the
+   * live activity feed), then runs the matching rules and saves new achievements.
+   * @param {string} eventName e.g. 'score:saved'
+   * @param {string} userId the player
+   * @param {object} data event details
+   * @returns {Promise<Array>} achievements unlocked by this event (shown as pop-ups)
+   */
   async function emit(eventName, userId, data) {
     events.emit(eventName, userId, data);
     const unlocked = [];
     for (const [name, check] of rules) {
       if (name !== eventName) continue;
       for (const id of await check(userId, data)) {
+        // unlockAchievement returns false if the player already had it, so it is only announced once.
         if (await db.unlockAchievement(userId, id)) unlocked.push(BY_ID.get(id));
       }
     }
+    // A second event, so the activity feed can show the unlock too.
     for (const a of unlocked) events.emit('achievement:unlocked', userId, a);
     return unlocked;
   }
 
+  /** All achievements plus the ones this player has unlocked. */
   async function forPlayer(userId) {
     const user = await db.findUserById(userId);
     return { all: ACHIEVEMENTS, mine: user?.achievements ?? [] };

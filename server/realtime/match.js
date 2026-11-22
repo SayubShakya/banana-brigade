@@ -1,3 +1,7 @@
+// Real-time layer: the online match engine (event-driven programming theme).
+// The server is the authority: it runs the same game world code as the browser 30 times
+// a second, applies each player's controls and sends snapshots to everyone in the room.
+
 const crypto = require('node:crypto');
 const { createWorld, updateWorld, revive, rewardBananaCrate, closeBananaCrate, endMatchNow, emptyControls, powerChoices, bananaAnswered, callSupplyDrop, openSupplyCrate } = require('../../client/src/game/world.js');
 const { BANANA_CRATE, BANANA_METER, SOLDIER } = require('../../client/src/game/config.js');
@@ -7,19 +11,29 @@ const { BOT_NAMES } = require('../../client/src/game/config.js');
 const { randomMapId, MAP_IDS } = require('../../client/src/game/map.js');
 const { createBattleLog } = require('../../client/src/game/battleLog.js');
 
+// 30 game updates ("ticks") per second; a snapshot is sent every tick.
 const TICK_HZ = 30;
 const SNAPSHOT_EVERY = 1;
+// One-shot button presses that are remembered until the next tick, so a quick tap is never lost.
 const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup', 'supply'];
+// Round to one decimal place to keep snapshot messages small.
 const round = (n) => Math.round(n * 10) / 10;
 
+// Banana crate timings (ms): how long a player is held after a crate, extra time to answer, and a cooldown.
 const CRATE_TIMINGS = {
   holdMs: 1600,
   extraMs: 6000,
   cooldownMs: 5000,
   botGrace: 1,
 };
+// Gun info sent to clients (Infinity cannot be sent as JSON, so it becomes -1).
 const gun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === Infinity ? -1 : g.spare };
 
+/**
+ * Converts a soldier into the small, rounded object sent in each snapshot.
+ * @param {object} s soldier from the game world
+ * @returns {object} position, health, weapons, score etc.
+ */
 function soldierState(s) {
   return {
     id: s.id, x: round(s.x), y: round(s.y), aim: round(s.aim), facing: s.facing, walkPhase: round(s.walkPhase),
@@ -31,9 +45,21 @@ function soldierState(s) {
   };
 }
 
+/**
+ * Creates and starts one online match.
+ * @param {object} opts players, teamMode, difficulty, map, bots, timeLimit, killLimit, crateTimings
+ * @param {Function} opts.send send(event, payload, userId?) emits to the room, or to one player
+ * @param {Function} opts.onEnd called with the summary when the match ends (to save scores)
+ * @param {Function} opts.onPower called when a player gets a Banana Power
+ * @param {Function} opts.onKill called on a kill (for the live activity feed)
+ * @returns {object} the match API used by rooms.js (setControls, canAsk, applyPuzzle, end...)
+ */
 function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, onPower, onKill, timeLimit, killLimit, crateTimings, map = 'random', bots = true }) {
   const T = { ...CRATE_TIMINGS, ...crateTimings };
   const matchId = crypto.randomUUID();
+  // outbox: game events collected during a tick, sent with the next snapshot.
+  // crates/holds/offers/cooldowns: per-player timers for Banana crate puzzles and power choices.
+  // puzzles: solved/attempted per player; pending: latest controls per player.
   const outbox = [];
   const near = new Set();
   const crates = new Map();
@@ -45,7 +71,13 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
   let tick = 0;
   let ended = false;
 
+  // Soldier ids for humans are "u" + userId, so they never clash with bot ids.
   const sid = (userId) => `u${userId}`;
+  /**
+   * Event handler for the game world: the shared world code calls emit() for every
+   * game event (kill, damage, shot, pickup...). Each case turns the event into a small
+   * message in the outbox, or starts crate/supply puzzles, or finishes the match.
+   */
   const emit = (event, p) => {
     switch (event) {
       case 'soldier:killed':
@@ -75,6 +107,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     }
   };
 
+  // Pick the requested map if it is valid, otherwise a random one.
   const mapId = MAP_IDS.includes(map) ? map : randomMapId();
   const world = createWorld({
     mode: 'online', teamMode, difficulty, emit, map: mapId, timeLimit, killLimit, fillBots: bots,
@@ -82,15 +115,21 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     botAvatars: Array.from({ length: 8 }, (_, i) => ({ bot: i })),
     botNames: [...BOT_NAMES].sort(() => Math.random() - 0.5),
   });
+  // The battle log records the timeline for the match replay.
   const byUser = (userId) => world.soldiers.find((s) => s.id === sid(userId));
   const battle = createBattleLog(world);
   for (const s of world.soldiers) if (s.isPlayer) battle.add('join', { by: s.name });
 
   const roster = () => world.soldiers.map((s) => ({ id: s.id, name: s.name, team: s.team, human: s.isPlayer, avatar: s.avatar }));
 
+  /**
+   * A player touched a Banana crate: freeze them (busy + shield) and ask their browser
+   * to request a puzzle ('puzzle:offer'). A timer closes the offer if they do not answer.
+   */
   function offerCrate(soldier, pickup) {
     if (soldier.busy || !pickup.active || ended) return;
     const userId = soldier.id.slice(1);
+    // Cooldown stops a player opening crates again and again.
     if (Date.now() < (cooldowns.get(userId) ?? 0)) return;
     for (const c of crates.values()) if (c.pickup === pickup) return;
     soldier.busy = true;
@@ -101,6 +140,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     send('puzzle:offer', { purpose: 'crate', seconds }, userId);
   }
 
+  // A supply drop: offer a choice of powers straight away (no puzzle); pick randomly on timeout.
   function offerSupply(soldier, pickup) {
     if (soldier.busy || !pickup.active || ended) return;
     const userId = soldier.id.slice(1);
@@ -112,12 +152,14 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     send('power:offer', { choices: offers.get(userId).choices, seconds: BANANA_CRATE.pickSeconds }, userId);
   }
 
+  // The crate puzzle timed out: close it and let the player move again.
   function expireCrate(userId) {
     if (!crates.delete(userId)) return;
     release(userId);
     send('puzzle:closed', { purpose: 'crate', reason: 'time' }, userId);
   }
 
+  // Unfreezes a player after a crate, with a short spawn shield and a grace period from bots.
   function release(userId) {
     cooldowns.set(userId, Date.now() + T.cooldownMs);
     const s = byUser(userId);
@@ -127,6 +169,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     s.graceUntil = world.time + SOLDIER.spawnShield + T.botGrace;
   }
 
+  // Clears every crate/power timer for one player (or all players) so none fire after the match.
   function clearTimers(userId) {
     clearTimeout(crates.get(userId)?.timer);
     clearTimeout(holds.get(userId));
@@ -137,21 +180,28 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
   }
   const clearAllTimers = () => { for (const id of new Set([...crates.keys(), ...holds.keys(), ...offers.keys()])) clearTimers(id); };
 
+  /**
+   * Stores a player's latest controls from the 'input' socket event.
+   * Validation: only true/false flags and finite numbers are kept, so bad input cannot break the game.
+   */
   function setControls(userId, c) {
     const prev = pending.get(userId) ?? emptyControls();
     const next = {
       left: !!c.left, right: !!c.right, jet: !!c.jet, fire: !!c.fire,
       aimX: Number.isFinite(c.aimX) ? c.aimX : prev.aimX, aimY: Number.isFinite(c.aimY) ? c.aimY : prev.aimY,
     };
+    // OR with the previous value: a press is kept until the next tick uses it.
     for (const a of ACTIONS) next[a] = prev[a] || !!c[a];
     pending.set(userId, next);
   }
 
+  /** One game tick: apply controls, move bots, update the world, send a snapshot. */
   function step() {
     tick += 1;
     for (const [userId, c] of pending) {
       const s = byUser(userId);
       if (!s || !s.isPlayer) continue;
+      // A busy player (solving a puzzle) cannot move or shoot, only aim.
       if (s.busy) Object.assign(s.controls, emptyControls(), { aimX: c.aimX, aimY: c.aimY });
       else Object.assign(s.controls, c);
       if (c.supply && !s.busy) callSupplyDrop(world, s);
@@ -163,6 +213,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     if (tick % SNAPSHOT_EVERY === 0) sendSnapshot();
   }
 
+  // Broadcasts the full game state ('match:snapshot') to the room, with this tick's events.
   function sendSnapshot() {
     send('match:snapshot', {
       t: Date.now(), time: round(world.time), timeLeft: round(world.timeLeft), teamKills: world.teamKills,
@@ -177,10 +228,15 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     });
   }
 
+  // The game loop: runs step() 30 times a second. A crash in one tick is logged but does not stop the match.
   const timer = setInterval(() => {
     try { step(); } catch (err) { console.error('Match tick failed:', err); }
   }, 1000 / TICK_HZ);
 
+  /**
+   * Ends the match once: stops the loop and timers, works out winners (a tie in kills
+   * means no winner), builds each human's result, then sends 'match:end' and calls onEnd.
+   */
   function finish({ ranking, teamKills, reason }) {
     if (ended) return;
     ended = true;
@@ -206,6 +262,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       map: mapId, difficulty, winner: teamMode ? winners : tied ? null : ranking[0]?.name ?? null,
       roster: roster.map(({ userId, ...r }) => r), log: battle.entries(),
     };
+    // setImmediate: finish after the current tick, so the final snapshot includes the last kill.
     setImmediate(() => {
       sendSnapshot();
       send('match:end', summary);
@@ -213,6 +270,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     });
   }
 
+  // The public match API used by rooms.js.
   const api = {
     matchId,
     mapId,
@@ -221,12 +279,17 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
     timeLimit: world.cfg.timeLimit,
     killLimit: world.cfg.killLimit,
     setControls,
+    /** Counts a puzzle attempt for this player's online score. */
     countPuzzle(userId, correct) {
       const p = puzzles.get(userId) ?? { solved: 0, attempted: 0 };
       p.attempted += 1;
       if (correct) p.solved += 1;
       puzzles.set(userId, p);
     },
+    /**
+     * Security check: may this player ask for a puzzle now? Only when dead and not yet
+     * used their banana respawn, or when a crate is waiting for them.
+     */
     canAsk(userId, purpose) {
       const s = byUser(userId);
       if (!s || ended) return false;
@@ -234,10 +297,15 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       if (purpose === 'crate') return crates.has(userId);
       return false;
     },
+    /** Marks the one banana respawn as used once a respawn puzzle is handed out. */
     puzzleIssued(userId, purpose) {
       const s = byUser(userId);
       if (s && purpose === 'respawn') s.bananaUsed = true;
     },
+    /**
+     * Applies a puzzle result: a correct respawn puzzle revives the player; a correct
+     * crate puzzle offers powers (more choices for a faster grade). A wrong answer just releases them.
+     */
     applyPuzzle(userId, purpose, correct, grade = null) {
       const s = byUser(userId);
       if (!s || ended) return;
@@ -261,6 +329,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
         send('power:offer', { choices, seconds: BANANA_CRATE.pickSeconds }, userId);
       }
     },
+    /** The player picks a power from their offer (unknown choices become random). @returns the power or null */
     choosePower(userId, choice) {
       const offer = offers.get(userId);
       const s = byUser(userId);
@@ -273,11 +342,13 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       onPower?.(userId, power);
       return power;
     },
+    /** The player closed the crate puzzle. */
     cancelCrate(userId) {
       if (!crates.has(userId) && !offers.has(userId)) return;
       clearTimers(userId);
       release(userId);
     },
+    /** A player left mid-match: their soldier stays but is no longer controlled by them. */
     leave(userId) {
       const s = byUser(userId);
       if (!s) return;
@@ -289,6 +360,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       pending.delete(userId);
       outbox.push(['left', { soldier: s.id }]);
     },
+    /** A player reconnected: give them their soldier back. @returns false if the match is over */
     rejoin(userId) {
       const s = byUser(userId);
       if (!s || ended) return false;
@@ -296,6 +368,7 @@ function createMatch({ players, teamMode, difficulty = 'medium', send, onEnd, on
       battle.add('join', { by: s.name });
       return true;
     },
+    // end(): end the match now; stop(): stop the loop without results (room emptied).
     end(reason = 'host') { endMatchNow(world, reason); },
     stop() { ended = true; clearInterval(timer); clearAllTimers(); },
     get over() { return ended; },

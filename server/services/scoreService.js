@@ -1,13 +1,23 @@
+// Service layer: saving scores and building leaderboards.
+// It never trusts the browser: every number is checked and puzzle counts come from the session.
+
 const { badRequest } = require('../lib/errors');
 const { cleanPowers } = require('./achievements');
 const { parseMatchInput } = require('./matchService');
 
+// Modes a client may submit here (online and campaign scores are saved by other code).
 const MODES = ['quick', 'survival', 'training', 'team'];
 const BOARDS = [...MODES, 'online', 'campaign'];
 const PUBLIC_MODES = ['quick', 'survival', 'team', 'online', 'campaign'];
+// Validation helpers: int() accepts only whole numbers in 0..max; clampLimit() keeps a page size in range.
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
 const clampLimit = (value, max, fallback) => Math.min(max, Math.max(1, Number.parseInt(value, 10) || fallback));
 
+/**
+ * Reads and validates a submitted score. Any invalid field becomes null.
+ * @param {string} userId the logged-in player
+ * @param {object} b request body
+ */
 function parseScore(userId, b) {
   return {
     userId,
@@ -21,7 +31,18 @@ function parseScore(userId, b) {
   };
 }
 
+/**
+ * Creates the score service.
+ * @param {object} deps db, achievements (event bus), matchService
+ */
 function createScoreService({ db, achievements, matchService }) {
+  /**
+   * Saves a finished game.
+   * @param {object} tally session puzzle counter; the solved/attempted numbers come from
+   *   here, not from the request body, so players cannot fake how many puzzles they solved
+   * @returns {Promise<object>} score id, matchId and any achievements unlocked
+   * @throws 400 if a field is missing or out of range
+   */
   async function save(userId, body, tally) {
     const score = parseScore(userId, body);
     if (Object.values(score).some((v) => v === null)) throw badRequest('Send mode, kills, deaths and durationS as whole numbers');
@@ -32,12 +53,17 @@ function createScoreService({ db, achievements, matchService }) {
     score.puzzlesAttempted = p.attempted;
     const matchId = score.mode === 'training' ? null : await matchService.saveSolo(userId, score, input);
     const id = await db.addScore({ ...score, map: input.map, draw: input.draw, ...(matchId ? { matchId } : {}) });
+    // Fire events (training games do not count) so achievements can react.
     const unlocked = score.mode === 'training' ? [] : await achievements.emit('score:saved', score.userId, { ...score, won: !!score.won });
     const powers = score.mode === 'training' ? [] : cleanPowers(body.powers);
     if (powers.length) unlocked.push(...await achievements.emit('power:used', score.userId, { powers }));
     return { id, matchId, puzzlesSolved: score.puzzlesSolved, puzzlesAttempted: score.puzzlesAttempted, unlocked };
   }
 
+  /**
+   * Leaderboard for the game. Every query value is checked: unknown mode -> 'quick',
+   * limit clamped to 1..50, period is 'today' or 'all'.
+   */
   async function leaderboard({ mode: askedMode, limit: askedLimit, period: askedPeriod, by: askedBy }, userId = null) {
     const by = askedBy === 'career' ? 'career' : 'best';
     const mode = BOARDS.includes(askedMode) || (by === 'career' && askedMode === 'all') ? askedMode : 'quick';
@@ -48,11 +74,13 @@ function createScoreService({ db, achievements, matchService }) {
     return { mode, period, by, rows, me };
   }
 
+  /** The player's own totals and 20 most recent games. */
   async function mine(userId) {
     const [totals, recent] = await Promise.all([db.totalsForUser(userId), db.scoresForUser(userId, 20)]);
     return { totals, recent };
   }
 
+  /** Leaderboard for the public API: only safe, public fields are returned. */
   async function publicLeaderboard({ mode: askedMode, limit: askedLimit }) {
     const mode = PUBLIC_MODES.includes(askedMode) ? askedMode : 'quick';
     const { rows } = await db.leaderboard(mode, clampLimit(askedLimit, 50, 10));

@@ -1,3 +1,6 @@
+// Model layer: one finished game's score for one player.
+// MODES lists the game modes; other files import it so the list lives in one place.
+
 const { Schema } = require('mongoose');
 
 const MODES = ['quick', 'survival', 'training', 'team', 'online', 'campaign'];
@@ -18,6 +21,8 @@ const scoreSchema = new Schema({
   matchId: String,
   multiplayer: { type: Boolean, default: false },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
+// Indexes for the leaderboard (per mode by kills), a player's history (newest first)
+// and checking whether a match already has a score from this user.
 scoreSchema.index({ mode: 1, kills: -1 });
 scoreSchema.index({ user: 1, createdAt: -1 });
 scoreSchema.index({ matchId: 1, user: 1 });

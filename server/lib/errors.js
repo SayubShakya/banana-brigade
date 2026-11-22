@@ -1,3 +1,12 @@
+// Helper library: error classes used by the services layer.
+// Services throw these; the error handler middleware turns them into HTTP replies.
+
+/**
+ * An error that carries an HTTP status code and optional extra JSON fields.
+ * @param {number} status HTTP status, e.g. 400 or 404
+ * @param {string} message text shown to the user
+ * @param {object} extra extra fields added to the JSON body
+ */
 class AppError extends Error {
   constructor(status, message, extra = {}) {
     super(message);
@@ -6,11 +15,13 @@ class AppError extends Error {
     this.extra = extra;
   }
 
+  /** The JSON body sent to the client, e.g. { error: 'Not found' }. */
   get body() {
     return { error: this.message, ...this.extra };
   }
 }
 
+// Short helpers so services can write `throw notFound('...')`.
 const badRequest = (message, extra) => new AppError(400, message, extra);
 const unauthorized = (message, extra) => new AppError(401, message, extra);
 const forbidden = (message, extra) => new AppError(403, message, extra);

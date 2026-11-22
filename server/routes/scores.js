@@ -1,6 +1,9 @@
+// Routes layer: /api/scores URLs.
+
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
 
+/** Builds the scores router. The leaderboard is public; the rest need login. */
 function createScoresRouter({ scoresController: scores }) {
   const router = express.Router();
 

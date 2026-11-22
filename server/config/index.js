@@ -1,11 +1,21 @@
+// Config layer: reads settings from environment variables in one place,
+// with safe defaults for development and hard failures for production.
 const crypto = require('node:crypto');
 const { DEFAULT_BASE_URL } = require('../services/bananaApi');
 
+/**
+ * Builds the app configuration object.
+ * @param {object} env environment variables (process.env by default; tests pass their own)
+ * @returns {object} port, MongoDB URI, session secret, Banana API URL/timeout, etc.
+ * @throws {Error} in production if SESSION_SECRET or APP_URL is missing
+ */
 function loadConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
   const warnings = [];
 
   let sessionSecret = env.SESSION_SECRET;
+  // Security: a missing or default secret would let anyone forge session cookies,
+  // so production refuses to start. Development uses a random secret instead.
   if (!sessionSecret || sessionSecret === 'change-me') {
     if (production) throw new Error('SESSION_SECRET must be set in production.');
     sessionSecret = crypto.randomBytes(32).toString('hex');
@@ -16,6 +26,7 @@ function loadConfig(env = process.env) {
   if (bananaApiUrl !== DEFAULT_BASE_URL) warnings.push(`Using Banana API at ${bananaApiUrl}`);
 
   const appUrl = env.APP_URL || null;
+  // Password reset emails need a real address to link back to.
   if (production && !appUrl) throw new Error('APP_URL must be set in production (the address used in password reset links).');
 
   return {
