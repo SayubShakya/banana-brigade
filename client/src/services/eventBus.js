@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const listeners = new Map();
 
 export function on(eventName, handler) {

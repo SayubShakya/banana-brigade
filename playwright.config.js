@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { defineConfig } = require('@playwright/test');
 
 const PORT = 3199;

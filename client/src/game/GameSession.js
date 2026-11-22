@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { on, emit } from '../services/eventBus.js';
 import { MODES, WEAPONS, BOT_NAMES, ZOOM_LEVELS, DIFFICULTY, BANANA_METER, matchRules } from './config.js';
 import { BOT_AVATARS, makeAvatar } from './characters.js';

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const http = require('node:http');
 const { MongoStore } = require('connect-mongo');
 const { loadConfig } = require('./config');

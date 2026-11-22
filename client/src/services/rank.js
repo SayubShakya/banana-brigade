@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 export const RANKS = [
   { name: 'Recruit', xp: 0 },
   { name: 'Private', xp: 500 },

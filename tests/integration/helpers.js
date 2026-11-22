@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const { after } = require('node:test');

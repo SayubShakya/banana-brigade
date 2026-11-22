@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { AppError } = require('../lib/errors');
 
 function errorHandler(err, req, res, next) {

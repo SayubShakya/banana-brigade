@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useEffect, useRef } from 'react';
 import { PARTS, DEFAULT_AVATAR, makeAvatar, drawSoldier } from '../game/characters.js';
 import { WEAPONS } from '../game/config.js';

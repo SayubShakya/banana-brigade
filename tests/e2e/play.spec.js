@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { test, expect } = require('@playwright/test');
 
 test('register, log in, start Quick Play and solve the deploy puzzle', async ({ page }) => {

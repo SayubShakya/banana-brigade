@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
 import { emit } from '../services/eventBus.js';

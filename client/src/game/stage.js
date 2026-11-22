@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { createRenderer } from './render.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';

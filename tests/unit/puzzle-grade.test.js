@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createPuzzleStore, gradeFor } = require('../../server/services/puzzles');

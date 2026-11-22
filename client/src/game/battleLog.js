@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { POWERS, WEAPONS } from './config.js';
 
 export const LOG_CAP = 300;

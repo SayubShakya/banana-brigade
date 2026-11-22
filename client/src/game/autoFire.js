@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { WEAPONS, SIDEARM, DIFFICULTY } from './config.js';
 import { raycast } from './map.js';
 

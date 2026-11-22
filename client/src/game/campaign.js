@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 export const CHAPTERS = [
   { id: 1, name: 'Boot Camp', needStars: 0, difficulty: 'easy' },
   { id: 2, name: 'Jungle Front', needStars: 6, difficulty: 'medium' },

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 set -euo pipefail
 cd "$(dirname "$0")"
 if ! command -v node >/dev/null 2>&1; then echo "Install Node.js 22 or later from https://nodejs.org" >&2; exit 1; fi

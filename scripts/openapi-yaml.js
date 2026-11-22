@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const fs = require('node:fs');
 const path = require('node:path');
 const { spec } = require('../server/routes/openapi');

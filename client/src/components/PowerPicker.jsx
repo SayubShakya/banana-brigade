@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { POWERS, BANANA_CRATE } from '../game/config.js';
 import { registerPowerOpener } from '../services/powerBridge.js';

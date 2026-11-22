@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { BANANA_METER } from './config.js';
 
 export const gradeLabel = (grade) => (grade ? grade.toUpperCase() : '');

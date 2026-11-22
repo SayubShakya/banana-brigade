@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { registerCutscenePlayer } from '../services/cutsceneBridge.js';
 

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { store } from './storage.js';
 import { emit } from './eventBus.js';
 

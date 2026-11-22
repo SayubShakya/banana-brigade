@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useEffect, useState } from 'react';
 import { getSocket, request } from '../net/socket.js';
 import { Panel, Icon } from '../components/common.jsx';

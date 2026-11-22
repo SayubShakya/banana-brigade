@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { describeDevice } = require('./device');
 
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;

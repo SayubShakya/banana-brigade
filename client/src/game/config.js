@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 export const VIEW = { width: 1280, height: 720 };
 export const TILE = 40;
 

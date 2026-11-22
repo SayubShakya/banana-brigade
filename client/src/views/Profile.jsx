@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { rankFor, xpFor, MODE_NAMES } from '../services/rank.js';

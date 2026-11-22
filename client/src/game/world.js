@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { emit as busEmit } from '../services/eventBus.js';
 import { PHYSICS, SOLDIER, WEAPONS, CRATE_WEAPONS, SIDEARM, GRENADE, PICKUPS, TILE, HEALTH_REGEN, MODES, BANANA_CRATE, DIFFICULTY, HEADSHOT_ZONE, HEAD_CAP_ABOVE, HEAD_CAP_HALF_WIDTH, POWERS, BANANA_METER } from './config.js';
 import { createMap, moveBox, raycast, isSolid, MAPS, randomMapId } from './map.js';

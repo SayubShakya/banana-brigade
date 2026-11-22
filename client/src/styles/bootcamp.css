@@ -1,5 +1,3 @@
-/* Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. */
-
 .coach-layer { position: absolute; inset: 0; z-index: 12; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 1.2cqh; padding-top: 12cqh; }
 .coach-card {
   pointer-events: auto; width: min(64cqh, 92%); padding: 1.6cqh 2.4cqh 1.4cqh; border-radius: 1.6cqh;

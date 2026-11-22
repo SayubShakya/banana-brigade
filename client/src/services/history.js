@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { WEAPONS } from '../game/config.js';
 import { MAPS } from '../game/maps.js';
 import { MODE_NAMES } from './rank.js';

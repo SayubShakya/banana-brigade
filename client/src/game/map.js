@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { TILE } from './config.js';
 import { MAPS } from './maps.js';
 

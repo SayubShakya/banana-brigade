@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { on } from '../services/eventBus.js';
 
 const FADE_MS = 1200;

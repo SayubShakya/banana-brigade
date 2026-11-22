@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const crypto = require('node:crypto');
 const { cleanRoster, cleanLog, text } = require('../models/match');
 const { isId, oid } = require('./rows');

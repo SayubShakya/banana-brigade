@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { sessionPort, puzzleTally } = require('../lib/httpSession');
 
 const publicUser = (u) => ({ id: u.id, username: u.username, role: u.role, guest: !!u.guest });

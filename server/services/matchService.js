@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { badRequest, notFound } = require('../lib/errors');
 const { cleanRoster, cleanLog, text } = require('../models/match');
 const { HISTORY_FILTERS } = require('../repositories/scoreRepository');

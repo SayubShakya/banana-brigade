@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 

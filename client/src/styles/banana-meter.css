@@ -1,5 +1,3 @@
-/* Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. */
-
 .banana-meter-row { display: flex; align-items: center; gap: 0.8cqh; }
 .bar.banana-meter { width: 28cqh; height: 2.4cqh; }
 .bar.banana-meter .fill { background: linear-gradient(90deg, #c9a400, var(--banana, #ffe135)); transition: width 0.35s ease; }

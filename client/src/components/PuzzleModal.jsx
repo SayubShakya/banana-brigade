@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emit, on } from '../services/eventBus.js';
 import { api } from '../services/api.js';

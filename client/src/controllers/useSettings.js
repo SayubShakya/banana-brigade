@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useEffect, useState } from 'react';
 import { readJson, store } from '../services/storage.js';
 import { useBus } from '../hooks/useBus.js';

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { emit, on } from '../services/eventBus.js';
 import { isAimedAtEnemy, assistAim } from './autoFire.js';
 import { tutorialTick } from './tutorial.js';

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { VIEW } from './config.js';
 import { hasLineOfSight, KIND } from './map.js';
 import { on } from '../services/eventBus.js';

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createTutorial, STEPS, JET_HOLD, setUpRange, tutorialTick, CRATE_RETURN, CRATE_STEP, BOOT_CAMP } = require('../../client/src/game/tutorial.js');

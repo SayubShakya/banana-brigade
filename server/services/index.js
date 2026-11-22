@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { createRateLimiter } = require('./rateLimiter');
 const { createAuthService } = require('./authService');
 const { createAccountService } = require('./accountService');

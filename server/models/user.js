@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { Schema } = require('mongoose');
 
 const CASE_INSENSITIVE = { locale: 'en', strength: 2 };

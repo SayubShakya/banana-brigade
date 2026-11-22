@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useNavigation, useStartRoute } from './controllers/useNavigation.js';
 import { useSettings } from './controllers/useSettings.js';
 import { useAccount } from './controllers/useAccount.js';

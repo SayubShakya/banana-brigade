@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { on, emit } from '../services/eventBus.js';
 import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS, BANANA_METER } from './config.js';
 import { activeGun } from './world.js';

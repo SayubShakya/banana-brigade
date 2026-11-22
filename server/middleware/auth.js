@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 async function loadUser(req, res) {
   if (!req.session.userId) {
     res.status(401).json({ error: 'Please log in first' });

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useState } from 'react';
 import { DIFFICULTY, MODES, MATCH_LENGTHS, DEFAULT_MATCH_LENGTH, matchRules } from '../game/config.js';
 import { MAPS, MAP_IDS } from '../game/maps.js';

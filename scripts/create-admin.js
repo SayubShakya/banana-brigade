@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const bcrypt = require('bcryptjs');
 const { openDatabase } = require('../server/repositories');
 const { USERNAME, MIN_PASSWORD } = require('../server/services/authService');

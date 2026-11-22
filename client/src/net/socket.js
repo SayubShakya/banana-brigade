@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { io } from 'socket.io-client';
 import { emit } from '../services/eventBus.js';
 

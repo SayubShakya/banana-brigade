@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const { badRequest, forbidden } = require('../lib/errors');
 const { cleanPowers } = require('./achievements');
 const { parseMatchInput } = require('./matchService');

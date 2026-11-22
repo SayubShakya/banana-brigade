@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { VIEW, TILE, WEAPONS, SOLDIER, POWERS } from './config.js';
 
 const LEAD = { distance: 60, rate: 4 };

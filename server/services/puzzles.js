@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const crypto = require('node:crypto');
 
 const GRADES = [['gold', 5000], ['silver', 10000]];

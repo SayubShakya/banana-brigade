@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 const MINUTE = 60 * 1000;
 const LIMITS = {
   login: { perNameAndIp: 5, perIp: 20, windowMs: 10 * MINUTE },

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 function createAdminController({ adminService }) {
   return {
     async users(req, res) {

@@ -1,5 +1,3 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
 import { useCallback, useRef, useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
 import { askPuzzle } from '../services/puzzleBridge.js';
