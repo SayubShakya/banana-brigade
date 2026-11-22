@@ -12,7 +12,7 @@ into `main`, so every feature shows as its own bubble in `git log --graph`. GitH
 the build on every push and pull request. A pull-request template and a review checklist are in the repository.
 Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`,
 `v0.4-multiplayer`, `v0.5-campaign`, then `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.3.1`, `v1.3.2` and `v1.4.0` (`git tag -n`).
-The release steps are in `CONTRIBUTING.md`. On 22 Nov 2026 `main` had about 500 commits, more than 120 of them merge commits. Pull request #1 went through
+The release steps are in `CONTRIBUTING.md`. On 22 Nov 2026 `main` had about 510 commits, about 120 of them merge commits. Pull request #1 went through
 GitHub with a description, review comments and green CI before it was merged.
 
 | Alternative | For | Against |
