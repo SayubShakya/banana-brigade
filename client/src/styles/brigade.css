@@ -139,7 +139,14 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .auth-note { margin: 0; font-size: 1.6cqh; color: var(--khaki); text-align: center; }
 .auth-title { margin: 0; font-size: 2.8cqh; color: var(--banana); text-align: center; }
 .admin-login { border-top: 0.5cqh solid var(--banana); }
-.admin-link { font-size: 1.6cqh; opacity: 0.75; text-align: center; }
+.guest-btn { width: 100%; font-size: 1.9cqh; padding: 1cqh 2cqh; }
+.guest-btn .ico { width: 2.4cqh; height: 2.4cqh; }
+.auth-links { display: flex; justify-content: center; gap: 1cqh; flex-wrap: wrap; }
+.pill-btn { display: inline-flex; align-items: center; gap: 0.7cqh; padding: 1cqh 2.2cqh; border-radius: 3cqh; border: 0.25cqh solid var(--panel-line); background: rgba(255,255,255,0.05); color: var(--khaki); font: 700 1.9cqh 'Rubik', sans-serif; text-decoration: none; cursor: pointer; transition: background 120ms, color 120ms, border-color 120ms, transform 80ms; }
+.pill-btn .ico { width: 2.2cqh; height: 2.2cqh; }
+.pill-btn:hover, .pill-btn:focus-visible { background: rgba(255,232,102,0.12); border-color: var(--banana); color: var(--banana); }
+.pill-btn:active { transform: translateY(0.2cqh); }
+.pill-btn.admin { border-style: dashed; }
 .auth-info { margin: 0; font-size: 1.9cqh; color: var(--good); font-weight: 600; }
 .link-btn { background: none; border: 0; padding: 0.4cqh; color: var(--khaki); font: inherit; font-size: 1.8cqh; text-decoration: underline; cursor: pointer; align-self: center; }
 .link-btn:hover, .link-btn:focus-visible { color: var(--banana); }
