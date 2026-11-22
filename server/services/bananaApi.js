@@ -1,6 +1,6 @@
 // Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
 
-const DEFAULT_BASE_URL = 'https://marcconrad.com/uob/banana/api.php';
+const DEFAULT_BASE_URL = 'https://marcconrad.com/uob/banana/api.php'; // Banana API by Marc Conrad, University of Bedfordshire (https://marcconrad.com/uob/banana/doc.php).
 const HISTORY = 20;
 
 class BananaApiError extends Error {
