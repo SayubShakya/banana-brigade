@@ -173,3 +173,33 @@ test('admin pages are refused for players (403) and allowed for admins', async (
     assert.equal((await admin.del('/api/admin/users/not-an-id/scores', { reason: 'test reset' })).status, 404);
   } finally { await s.close(); }
 });
+
+test('the admin login lets admins in, refuses players with no session, and the player login still works for both', async () => {
+  const s = await startServer();
+  try {
+    const boss = (await client(s.base).post('/api/auth/register', { username: 'boss', password: 'bananas123' })).body.user;
+    await s.db.setRole(boss.id, 'admin');
+    await client(s.base).post('/api/auth/register', { username: 'grunt', password: 'bananas123' });
+
+    const player = client(s.base);
+    const refused = await player.post('/api/auth/admin-login', { username: 'grunt', password: 'bananas123' });
+    assert.equal(refused.status, 403);
+    assert.match(refused.body.error, /admins only/i);
+    assert.equal(refused.setCookie ?? '', '');
+    assert.equal((await player.get('/api/auth/me')).body.user ?? null, null);
+
+    const wrong = await client(s.base).post('/api/auth/admin-login', { username: 'boss', password: 'not-the-password' });
+    assert.equal(wrong.status, 401);
+    assert.match(wrong.body.error, /tries left/);
+
+    const admin = client(s.base);
+    const ok = await admin.post('/api/v1/auth/admin-login', { username: 'boss', password: 'bananas123' });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.user.role, 'admin');
+    assert.match(ok.setCookie, /^brigade\.sid=/);
+    assert.equal((await admin.get('/api/admin/audit')).status, 200);
+
+    assert.equal((await client(s.base).post('/api/auth/login', { username: 'boss', password: 'bananas123' })).status, 200);
+    assert.equal((await client(s.base).post('/api/auth/login', { username: 'grunt', password: 'bananas123' })).status, 200);
+  } finally { await s.close(); }
+});
