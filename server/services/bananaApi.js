@@ -84,7 +84,7 @@ function createBananaApi({
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
-    try {
+    try { //Get the puzzle from banana api, Server calls over HTTPS
       const res = await fetchImpl(url, { signal: controller.signal, headers: { 'Cache-Control': 'no-store', Accept: 'application/json' } });
       if (!res.ok) {
         const retryable = res.status >= 500 || res.status === 429;
