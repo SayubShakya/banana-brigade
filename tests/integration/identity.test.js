@@ -1,3 +1,5 @@
+// Integration tests for account and session management (virtual identity theme):
+// remember me, log out everywhere, password change, account deletion and role changes.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const bcrypt = require('bcryptjs');
@@ -7,23 +9,28 @@ const { startServer, client } = require('./helpers');
 
 const PW = 'bananas123';
 
+// Registers a user and returns their client and user id.
 async function registered(s, username) {
   const c = client(s.base);
   const res = await c.post('/api/auth/register', { username, password: PW });
   return { c, id: res.body.user.id };
 }
+// Logs in with a fresh client and returns it with the raw response (to read Set-Cookie).
 async function loggedIn(s, username, password = PW, extra = {}) {
   const c = client(s.base);
   const res = await c.post('/api/auth/login', { username, password, ...extra });
   return { c, res };
 }
+// Works out how many seconds a cookie will live, from the Expires part of its Set-Cookie header.
 const maxAge = (setCookie) => (Date.parse(/Expires=([^;]+)/i.exec(setCookie ?? '')?.[1]) - Date.now()) / 1000;
+// Opens a WebSocket that sends this client's session cookie.
 const connectSocket = async (s, c) => {
   const socket = io(s.base, { transports: ['websocket'], extraHeaders: { Cookie: c.cookie }, forceNew: true });
   await once(socket, 'connect');
   return socket;
 };
 
+// Proves "remember me" gives a 30 day cookie, and without it the session lasts only 2 hours.
 test('remember me keeps the cookie for 30 days; the default is 2 hours', async () => {
   const s = await startServer();
   try {
@@ -35,6 +42,7 @@ test('remember me keeps the cookie for 30 days; the default is 2 hours', async (
   } finally { await s.close(); }
 });
 
+// Proves "log out of all devices" ends every session and also disconnects live sockets.
 test('log out of all devices ends the sessions and live sockets on other clients too', async () => {
   const s = await startServer();
   let socket;
@@ -59,6 +67,7 @@ test('log out of all devices ends the sessions and live sockets on other clients
   } finally { socket?.close(); await s.close(); }
 });
 
+// Proves changing the password needs the old one and signs out other devices, in case they were stolen.
 test('changing the password needs the current one and logs out the other sessions', async () => {
   const s = await startServer();
   try {
@@ -77,6 +86,7 @@ test('changing the password needs the current one and logs out the other session
   } finally { await s.close(); }
 });
 
+// Proves deleting an account removes the user, their scores and their session.
 test('deleting the account removes the user, their scores and their session', async () => {
   const s = await startServer();
   try {
@@ -96,6 +106,7 @@ test('deleting the account removes the user, their scores and their session', as
   } finally { await s.close(); }
 });
 
+// Proves the username check endpoint reports whether a name is valid and not taken.
 test('the username check says whether a name is valid and free', async () => {
   const s = await startServer();
   try {
@@ -108,6 +119,7 @@ test('the username check says whether a name is valid and free', async () => {
   } finally { await s.close(); }
 });
 
+// Proves only admins can change roles, and an admin cannot remove their own admin role by mistake.
 test('only admins can change roles, and an admin cannot demote themselves', async () => {
   const s = await startServer();
   try {
@@ -127,6 +139,7 @@ test('only admins can change roles, and an admin cannot demote themselves', asyn
   } finally { await s.close(); }
 });
 
+// Proves losing admin rights takes effect at once, because roles are checked on every request.
 test('a demoted or deleted admin loses access at once, even with a live session', async () => {
   const s = await startServer();
   try {
@@ -141,6 +154,7 @@ test('a demoted or deleted admin loses access at once, even with a live session'
   } finally { await s.close(); }
 });
 
+// Proves a password change disconnects sockets on other devices but keeps the current one connected.
 test('a password change drops the other devices\' sockets but keeps this one', async () => {
   const s = await startServer();
   let mine; let theirs;

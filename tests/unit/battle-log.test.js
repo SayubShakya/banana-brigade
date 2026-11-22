@@ -1,8 +1,11 @@
+// Unit tests for the battle log (client/src/game/battleLog.js), which listens to game events
+// and turns them into a timed list of entries plus a final scoreboard (roster).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createBattleLog, LOG_CAP } = require('../../client/src/game/battleLog.js');
 const { createWorld, damage, callSupplyDrop, fillBananaMeter, rewardBananaCrate, endMatchNow } = require('../../client/src/game/world.js');
 
+// A tiny fake world with one player and one bot; it records which events still reach the game.
 function fakeWorld() {
   const seen = [];
   const me = { id: 'p0', name: 'sayub', isPlayer: true, team: 'p0', kills: 0, deaths: 0 };
@@ -11,6 +14,8 @@ function fakeWorld() {
   return { w, me, bot, seen };
 }
 
+// Proves each kind of game event becomes the right log entry with the match time,
+// and that the log only listens: events still reach the rest of the game.
 test('kills, puzzles, powers, drops and the end reason become log entries with match time', () => {
   const { w, me, bot, seen } = fakeWorld();
   const log = createBattleLog(w);
@@ -35,6 +40,7 @@ test('kills, puzzles, powers, drops and the end reason become log entries with m
   ]);
 });
 
+// Proves the log is capped at 300 entries so it cannot grow forever, but the end entry is kept.
 test('the log stops at 300 entries but always keeps the end entry', () => {
   const { w, me, bot } = fakeWorld();
   const log = createBattleLog(w);
@@ -46,6 +52,7 @@ test('the log stops at 300 entries but always keeps the end entry', () => {
   assert.equal(list.filter((e) => e.type === 'kill').length, LOG_CAP - 1);
 });
 
+// Proves long names are cut to 40 characters and the roster marks the player and the bots.
 test('names are cut to 40 characters and the roster marks me and the bots', () => {
   const { w, me, bot } = fakeWorld();
   bot.name = 'B'.repeat(60);
@@ -60,6 +67,8 @@ test('names are cut to 40 characters and the roster marks me and the bots', () =
   ]);
 });
 
+// Proves the log works with a real world (not a fake): kill, drop, power and end are logged,
+// and in team mode every roster row has a team.
 test('a real quick battle logs kills, the supply drop and the end, and the roster has teams in team mode', () => {
   const w = createWorld({ mode: 'team', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi', 'Mango', 'Plum', 'Fig', 'Lime', 'Date'], emit: () => {} });
   const log = createBattleLog(w);
@@ -81,6 +90,7 @@ test('a real quick battle logs kills, the supply drop and the end, and the roste
   assert.equal(roster[0].kills, 1);
 });
 
+// Proves survival mode logs each new wave.
 test('survival logs each wave', () => {
   const w = createWorld({ mode: 'survival', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi'], emit: () => {} });
   const log = createBattleLog(w);
@@ -91,6 +101,8 @@ test('survival logs each wave', () => {
   assert.deepEqual(log.entries(), [{ t: 0, type: 'wave', detail: 'Wave 2' }]);
 });
 
+// Proves the opening entries (deploy puzzles and wave 1) are added even though they
+// happen before the log is created.
 test('the opening logs the deploy puzzles and the first survival wave, which starts before the log exists', () => {
   const w = createWorld({ mode: 'survival', playerName: 'sayub', playerAvatar: {}, botAvatars: [{}], botNames: ['Kiwi'], emit: () => {} });
   assert.equal(w.wave, 1);
@@ -106,6 +118,7 @@ test('the opening logs the deploy puzzles and the first survival wave, which sta
   assert.deepEqual(quick.entries().map((e) => e.type), ['puzzle']);
 });
 
+// Proves bots that join with a new wave are not wrongly logged as respawns.
 test('soldiers that first appear with a new survival wave are not logged as respawns', () => {
   const { w, bot } = fakeWorld();
   const log = createBattleLog(w);
@@ -117,6 +130,7 @@ test('soldiers that first appear with a new survival wave are not logged as resp
   assert.deepEqual(log.entries().map((e) => e.by), ['Bot Kiwi', 'Wave Bot']);
 });
 
+// Proves dead survival bots that were removed from the world still show on the final scoreboard.
 test('survival bots that were killed and removed still appear on the final scoreboard', () => {
   const { w, me, bot } = fakeWorld();
   const log = createBattleLog(w);

@@ -1,3 +1,5 @@
+// Tests for the OpenAPI (Swagger) description of the API (interoperability theme).
+// They prove the documentation matches the real routes, so other programs can rely on it.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -5,6 +7,7 @@ const path = require('node:path');
 const { spec } = require('../../server/routes/openapi');
 const { startServer, client } = require('./helpers');
 
+// Reads server/app.js and the route files and collects every API route as "method /path".
 function routesInCode() {
   const dir = path.join(__dirname, '..', '..', 'server');
   const app = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
@@ -23,6 +26,7 @@ function routesInCode() {
   return routes;
 }
 
+// Proves the OpenAPI file and the code list exactly the same routes, so the docs cannot drift.
 test('the OpenAPI file lists every route in the code, and nothing that is not there', () => {
   const inSpec = new Set(Object.entries(spec.paths).flatMap(([p, ops]) => Object.keys(ops).map((m) => `${m} ${p}`)));
   const inCode = routesInCode();
@@ -32,6 +36,7 @@ test('the OpenAPI file lists every route in the code, and nothing that is not th
   assert.equal(spec.openapi, '3.0.3');
 });
 
+// Proves the versioned /api/v1 paths and the old /api paths both work, and the docs are served.
 test('/api/v1 and the old /api paths both work; the spec and docs page are served', async () => {
   const s = await startServer();
   try {
@@ -49,6 +54,7 @@ test('/api/v1 and the old /api paths both work; the spec and docs page are serve
   } finally { await s.close(); }
 });
 
+// Proves the public leaderboard is open to any website (CORS) and never sets a cookie.
 test('the public leaderboard needs no login, allows any origin and sets no cookie', async () => {
   const s = await startServer();
   try {
@@ -73,6 +79,7 @@ test('the public leaderboard needs no login, allows any origin and sets no cooki
   } finally { await s.close(); }
 });
 
+// Proves the saved docs/openapi.yaml file matches the spec in the code.
 test('docs/openapi.yaml is up to date with server/routes/openapi.js (run npm run openapi if not)', () => {
   const { yaml, OUT } = require('../../scripts/openapi-yaml');
   assert.equal(fs.readFileSync(OUT, 'utf8'), yaml);

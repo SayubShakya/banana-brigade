@@ -1,12 +1,17 @@
+// Unit tests for how the server copes when the Banana API is slow, broken or down:
+// retries with back-off, timeouts, a circuit breaker and a saved reserve of puzzles.
+// A fake fetch is used, so no real network call to the Banana API is made.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createBananaApi, BananaApiError } = require('../../server/services/bananaApi');
 const { createPuzzlePool } = require('../../server/services/pool');
 
+// A fake PNG image in base64, plus fake HTTP responses: a good puzzle and an error status.
 const PNG = 'iVBORw0KGgo' + 'A'.repeat(120);
 const good = (solution = 5) => ({ ok: true, status: 200, text: async () => JSON.stringify({ question: PNG, solution }) });
 const http = (status) => ({ ok: false, status, text: async () => '' });
 
+// Fake fetch: returns the prepared answers one by one (or throws one) and records each call.
 function fakeFetch(answers) {
   const calls = [];
   const fetchImpl = async (url, opts) => {
@@ -17,8 +22,10 @@ function fakeFetch(answers) {
   };
   return { fetchImpl, calls };
 }
+// Options that skip the real waiting between retries, so the tests run fast.
 const noWait = { sleep: async () => {}, random: () => 0 };
 
+// Proves a short network or 503 failure is retried with growing waits and the puzzle still arrives.
 test('a transient failure is retried and the puzzle still arrives', async () => {
   const waits = [];
   const { fetchImpl, calls } = fakeFetch([new TypeError('fetch failed'), http(503), good(4)]);
@@ -32,6 +39,7 @@ test('a transient failure is retried and the puzzle still arrives', async () => 
   assert.equal(api.stats().successRate, 1);
 });
 
+// Proves the request asks for JSON with a base64 image and tells caches not to store it.
 test('the request asks for JSON with a base64 image and no stored copy', async () => {
   const { fetchImpl, calls } = fakeFetch([good()]);
   await createBananaApi({ fetchImpl, ...noWait }).fetchPuzzle();
@@ -39,6 +47,7 @@ test('the request asks for JSON with a base64 image and no stored copy', async (
   assert.equal(calls[0].opts.headers['Cache-Control'], 'no-store');
 });
 
+// Proves bad data from the API is rejected straight away, because retrying would not fix it.
 test('malformed data is not retried', async () => {
   const bad = { ok: true, status: 200, text: async () => '{"question":"x","solution":42}' };
   const { fetchImpl, calls } = fakeFetch([bad, good()]);
@@ -48,6 +57,7 @@ test('malformed data is not retried', async () => {
   assert.equal(api.stats().successRate, 0);
 });
 
+// Proves a 4xx error is not retried (our request is wrong), but 429 "too many requests" is.
 test('a 4xx answer is not retried, but 429 (too many requests) is', async () => {
   const { fetchImpl, calls } = fakeFetch([http(404)]);
   await assert.rejects(createBananaApi({ fetchImpl, ...noWait }).fetchPuzzle(), (err) => err.kind === 'http-4xx');
@@ -57,6 +67,7 @@ test('a 4xx answer is not retried, but 429 (too many requests) is', async () => 
   assert.equal(busy.calls.length, 2);
 });
 
+// Proves a request that hangs is cut off by the timeout, so the player is not left waiting.
 test('a hung request is aborted by the timeout', async () => {
   const hang = (opts) => new Promise((_, reject) => opts.signal.addEventListener('abort', () => reject(new Error('aborted'))));
   const { fetchImpl, calls } = fakeFetch([hang, hang]);
@@ -68,6 +79,7 @@ test('a hung request is aborted by the timeout', async () => {
   assert.ok(calls[0].opts.signal.aborted);
 });
 
+// Proves small format differences (data: prefix, line breaks, solution as text) are cleaned up.
 test('small format differences are normalised', async () => {
   const odd = { ok: true, status: 200, text: async () => JSON.stringify({ question: `data:image/png;base64,${PNG.slice(0, 50)}\n${PNG.slice(50)}`, solution: '3' }) };
   const { fetchImpl } = fakeFetch([odd]);
@@ -75,9 +87,12 @@ test('small format differences are normalised', async () => {
   assert.deepEqual(p, { image: `data:image/png;base64,${PNG}`, solution: 3 });
 });
 
+// A sample puzzle and a helper that makes a "Banana API is down" error.
 const PUZZLE = { image: 'data:image/png;base64,xyz', solution: 6 };
 const down = () => new BananaApiError('Banana API is unreachable', { kind: 'network' });
 
+// Proves the circuit breaker: after 3 failures in a row it stops calling the API and serves
+// reserve puzzles, then after the cool-down it tries the API again and closes on success.
 test('the circuit opens after K failures in a row, serves the reserve, then probes', async () => {
   let clock = 0;
   let up = true;
@@ -103,6 +118,7 @@ test('the circuit opens after K failures in a row, serves the reserve, then prob
   assert.equal(pool.status().circuit.state, 'closed');
 });
 
+// Proves a failed test call after the cool-down opens the circuit again.
 test('a failed probe opens the circuit again', async () => {
   let clock = 0;
   const pool = createPuzzlePool({ fetchPuzzle: async () => { throw down(); }, size: 0, failureThreshold: 2, coolDownMs: 1000, now: () => clock });
@@ -116,6 +132,8 @@ test('a failed probe opens the circuit again', async () => {
   assert.equal(pool.status().circuit.retryInMs, 1000);
 });
 
+// Proves a slow API does not make the player wait when a reserve puzzle is ready,
+// and the slow live puzzle is kept for later.
 test('a slow API does not keep the player waiting when there is a reserve', async () => {
   let slow = false;
   const pool = createPuzzlePool({
@@ -131,6 +149,7 @@ test('a slow API does not keep the player waiting when there is a reserve', asyn
   assert.equal(pool.status().ready, 1);
 });
 
+// Proves many players at once never cause more than 2 calls to the API at the same time.
 test('many players at once do not flood the API', async () => {
   let calls = 0;
   let open = 0;
@@ -150,6 +169,7 @@ test('many players at once do not flood the API', async () => {
   assert.ok(most <= 2, `at most 2 calls at once, saw ${most}`);
 });
 
+// Proves the status report gives call count, success rate, latency and retries (shown on the admin page).
 test('status reports latency, success rate and retries', async () => {
   let clock = 0;
   const steps = [120, 80, 'fail', 100];
@@ -169,6 +189,8 @@ test('status reports latency, success rate and retries', async () => {
   assert.equal(st.circuit.state, 'closed');
 });
 
+// Proves the reserve is saved to a store and loaded again after a restart, so puzzles
+// still work if the server restarts while the API is down.
 test('the reserve is saved in a store and loaded again after a restart', async () => {
   const saved = [];
   const store = { load: async (n) => saved.slice(-n).reverse(), save: async (p) => { saved.push(p); } };

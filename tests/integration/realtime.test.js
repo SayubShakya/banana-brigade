@@ -1,14 +1,19 @@
+// Integration tests for online play over Socket.io (event-driven programming theme).
+// The server runs the match, so these tests prove clients cannot cheat it.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { io } = require('socket.io-client');
 const { startServer, client } = require('./helpers');
 
+// Waits for one socket event and fails the test if it does not arrive in time.
 const once = (socket, event, ms = 4000) => new Promise((resolve, reject) => {
   const t = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), ms);
   socket.once(event, (data) => { clearTimeout(t); resolve(data); });
 });
+// Sends a socket event and waits for the server's acknowledgement reply.
 const call = (socket, event, data) => new Promise((resolve) => (data === undefined ? socket.emit(event, resolve) : socket.emit(event, data, resolve)));
 
+// Registers a player, opens a logged-in WebSocket and returns their user details.
 async function player(s, username) {
   const c = client(s.base);
   await c.post('/api/auth/register', { username, password: 'bananas123' });
@@ -18,6 +23,7 @@ async function player(s, username) {
   return { socket, c, me };
 }
 
+// Proves a WebSocket connection without a login session is refused.
 test('a WebSocket without a login session is refused', async () => {
   const s = await startServer();
   const socket = io(s.base, { transports: ['websocket'], forceNew: true });
@@ -27,6 +33,7 @@ test('a WebSocket without a login session is refused', async () => {
   } finally { socket.close(); await s.close(); }
 });
 
+// Proves players join a room by code and only the host can start the match.
 test('players meet in a room by code; only the host can start', async () => {
   const s = await startServer();
   const a = await player(s, 'hostie');
@@ -44,6 +51,7 @@ test('players meet in a room by code; only the host can start', async () => {
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves the server is in charge: it ignores scores sent by clients and saves results itself.
 test('the server runs the match, ignores faked scores and saves the results itself', async () => {
   const s = await startServer();
   const a = await player(s, 'alpha');
@@ -83,6 +91,7 @@ test('the server runs the match, ignores faked scores and saves the results itse
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves the bot difficulty chosen by the host is checked by the server before the match uses it.
 test('the host picks the bot difficulty; the server checks it and passes it to the match', async () => {
   const s = await startServer();
   const a = await player(s, 'hardhost');
@@ -102,6 +111,8 @@ test('the host picks the bot difficulty; the server checks it and passes it to t
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves the banana crate rules online: time limit from the room difficulty, enforced by the server,
+// and only one respawn puzzle try per death.
 test('banana crates online: the room difficulty time, a server time limit, and one respawn try per death', async () => {
   const s = await startServer({ matchOptions: { crateTimings: { extraMs: -11800 } } });
   const a = await player(s, 'crater');
@@ -133,6 +144,7 @@ test('banana crates online: the room difficulty time, a server time limit, and o
   } finally { a.socket.close(); await s.close(); }
 });
 
+// Proves a player who loses connection gets the same soldier back when they reconnect.
 test('a player who drops out mid-match gets their soldier back when they reconnect', async () => {
   const s = await startServer();
   const a = await player(s, 'stayer');
@@ -160,6 +172,7 @@ test('a player who drops out mid-match gets their soldier back when they reconne
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves reopening the lobby shows the room the player is still in.
 test('opening the lobby again shows the room you are still in', async () => {
   const s = await startServer();
   const a = await player(s, 'roomhost');
@@ -172,6 +185,7 @@ test('opening the lobby again shows the room you are still in', async () => {
   } finally { a.socket.close(); await s.close(); }
 });
 
+// Proves the end of an online match saves exactly one battle log with the full events and roster.
 test('an online match end saves one battle log with kills, puzzles, joins and the full roster', async () => {
   const { damage } = require('../../client/src/game/world.js');
   const s = await startServer();
@@ -225,6 +239,7 @@ test('an online match end saves one battle log with kills, puzzles, joins and th
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves a tie is saved as a draw for everyone, along with the room settings.
 test('an online tie is a draw for everyone, and the room difficulty and game time are saved', async () => {
   const s = await startServer();
   const a = await player(s, 'tiehost');
@@ -253,6 +268,7 @@ test('an online tie is a draw for everyone, and the room difficulty and game tim
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves a player who leaves stays named in the log and roster but cannot be the winner.
 test('a player who leaves keeps their real name in the log and roster, still gets the game, but cannot win it', async () => {
   const { damage } = require('../../client/src/game/world.js');
   const s = await startServer();
@@ -291,6 +307,7 @@ test('a player who leaves keeps their real name in the log and roster, still get
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves only the host can end a running match, and the results say the host ended it.
 test('only the host can end a running match for everyone, and the results say the host ended it', async () => {
   const s = await startServer();
   const a = await player(s, 'endhost');

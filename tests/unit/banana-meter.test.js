@@ -1,9 +1,12 @@
+// Unit tests for the banana meter: correct Banana API answers fill a meter, a full meter
+// calls a supply drop, and the answer grade (gold/silver/bronze) changes crate rewards.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createWorld, updateWorld, revive, damage, bananaAnswered, fillBananaMeter, callSupplyDrop, openSupplyCrate, powerChoices } = require('../../client/src/game/world.js');
 const { meterGain, applyAnswer, crateChoiceCount, spawnShieldFor } = require('../../client/src/game/meter.js');
 const { BANANA_METER, SOLDIER } = require('../../client/src/game/config.js');
 
+// Creates a training world and records every event it emits, so tests can check them.
 function world() {
   const events = [];
   const w = createWorld({
@@ -13,6 +16,7 @@ function world() {
   return { w, p: w.player, events };
 }
 
+// Proves gold answers fill the meter faster than bronze, and a streak can double the gain.
 test('meter gain depends on the grade and grows with the streak up to double', () => {
   assert.equal(meterGain('gold', 0), 40);
   assert.equal(meterGain('silver', 0), 30);
@@ -22,12 +26,14 @@ test('meter gain depends on the grade and grows with the streak up to double', (
   assert.equal(meterGain(null, 0), 0);
 });
 
+// Proves a wrong answer is a soft penalty: the streak halves but the meter keeps its value.
 test('a wrong answer halves the streak but never wipes the meter', () => {
   assert.deepEqual(applyAnswer({ value: 50, streak: 5 }, { correct: false }), { value: 50, streak: 2, gained: 0, full: false });
   assert.deepEqual(applyAnswer({ value: 50, streak: 1 }, { correct: false }), { value: 50, streak: 0, gained: 0, full: false });
   assert.deepEqual(applyAnswer({ value: 90, streak: 0 }, { correct: true, grade: 'gold' }), { value: 100, streak: 1, gained: 40, full: true });
 });
 
+// Proves the world updates the meter on each answer and emits the banana:meter event for the UI.
 test('correct answers fill the player meter and emit banana:meter', () => {
   const { w, p, events } = world();
   bananaAnswered(w, p, { correct: true, grade: 'gold' });
@@ -41,6 +47,8 @@ test('correct answers fill the player meter and emit banana:meter', () => {
   assert.deepEqual({ value: last.value, streak: last.streak, gained: last.gained }, { value: 80, streak: 1, gained: 0 });
 });
 
+// Proves a full meter calls a supply crate next to the player, resets the meter, and the
+// crate disappears for good once opened (no puzzle needed for it).
 test('a full meter calls a supply drop crate that opens without a puzzle', () => {
   const { w, p, events } = world();
   assert.equal(callSupplyDrop(w, p), null, 'no drop before the meter is full');
@@ -58,6 +66,7 @@ test('a full meter calls a supply drop crate that opens without a puzzle', () =>
   assert.ok(!w.pickups.includes(crate), 'an opened supply crate is gone for good');
 });
 
+// Proves a drop called while flying still lands where the player can reach it.
 test('a supply drop called in mid-air lands on the ground below the soldier', () => {
   const { w, p } = world();
   const standing = p.y;
@@ -67,6 +76,7 @@ test('a supply drop called in mid-air lands on the ground below the soldier', ()
   assert.ok(Math.abs(crate.y - (standing + p.h / 2)) <= 36, 'the crate is within E reach once the soldier lands');
 });
 
+// Proves pressing E on a supply crate emits banana:crate so the UI can offer a free power.
 test('standing on a supply crate and pressing E asks for a free power', () => {
   const { w, p, events } = world();
   fillBananaMeter(w, p);
@@ -79,6 +89,8 @@ test('standing on a supply crate and pressing E asks for a free power', () => {
   assert.ok(ask && ask.payload.supply && ask.payload.pickup === crate);
 });
 
+// Proves the grade changes rewards: more crate choices for gold, and a longer
+// respawn shield after a gold answer than after a bronze one.
 test('grades change crate choices and the respawn shield', () => {
   assert.equal(crateChoiceCount('gold'), 4);
   assert.equal(crateChoiceCount('silver'), 3);

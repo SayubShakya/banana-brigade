@@ -1,3 +1,5 @@
+// Test server for the Playwright end-to-end tests (started automatically by playwright.config.js).
+// Runs the real app on port 3199 with an in-memory MongoDB and a fake Banana API whose answer is always 7.
 const fs = require('node:fs');
 const http = require('node:http');
 const { MongoMemoryServer } = require('mongodb-memory-server');
@@ -5,20 +7,24 @@ const { createApp } = require('../../server/app');
 const { attachRealtime } = require('../../server/realtime/socket');
 const { openDatabase } = require('../../server/repositories');
 
+// A 1x1 pixel PNG used as the puzzle picture, so the browser test does not need the internet.
 const IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
 const fakeBananaApi = { fetchPuzzle: async () => ({ image: IMAGE, solution: 7 }) };
 const PORT = Number(process.env.E2E_PORT) || 3199;
 
 (async () => {
+  // Reuse a Homebrew mongod on a Mac instead of downloading one.
   if (!process.env.MONGOMS_SYSTEM_BINARY && fs.existsSync('/opt/homebrew/bin/mongod')) {
     process.env.MONGOMS_SYSTEM_BINARY = '/opt/homebrew/bin/mongod';
   }
   const mongo = await MongoMemoryServer.create();
   const db = await openDatabase(mongo.getUri('brigade_e2e'));
+  // Password-reset emails are switched off (sendResetLink does nothing) in tests.
   const app = createApp({ db, bananaApi: fakeBananaApi, sessionSecret: 'e2e-only-secret', sendResetLink: () => {} });
   const server = http.createServer(app);
   attachRealtime(server, app);
   server.listen(PORT, () => console.log(`E2E server on http://localhost:${PORT}`));
+  // When Playwright stops the server, shut everything down cleanly.
   const stop = async () => { server.close(); await db.close(); await mongo.stop(); process.exit(0); };
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);

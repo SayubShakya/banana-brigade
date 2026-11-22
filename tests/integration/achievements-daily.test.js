@@ -1,13 +1,17 @@
+// Integration tests for achievements and the daily challenge.
+// They prove the server, not the browser, decides rewards, so players cannot cheat them.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, client, fakeApi } = require('./helpers');
 
+// Registers a new player and returns a client that carries their session cookie.
 async function login(s, username) {
   const c = client(s.base);
   await c.post('/api/auth/register', { username, password: 'bananas123' });
   return c;
 }
 
+// Proves achievements are worked out on the server from checked numbers and only unlock once.
 test('saving a score unlocks achievements once, from numbers the server checks', async () => {
   const s = await startServer();
   try {
@@ -22,6 +26,7 @@ test('saving a score unlocks achievements once, from numbers the server checks',
   } finally { await s.close(); }
 });
 
+// Proves a streak of correct Banana API answers unlocks the Banana Brain achievement.
 test('five correct puzzles in a row unlock Banana Brain', async () => {
   const s = await startServer({ bananaApi: fakeApi(4) });
   try {
@@ -35,6 +40,8 @@ test('five correct puzzles in a row unlock Banana Brain', async () => {
   } finally { await s.close(); }
 });
 
+// Proves the daily challenge rules: 5 puzzles, doubling points, one try per day,
+// and the solution is never sent to the browser (so it cannot be read in DevTools).
 test('the daily challenge: 5 puzzles, doubling points, one attempt a day, no solution sent', async () => {
   const s = await startServer({ bananaApi: fakeApi(6) });
   try {
@@ -62,6 +69,7 @@ test('the daily challenge: 5 puzzles, doubling points, one attempt a day, no sol
   } finally { await s.close(); }
 });
 
+// Proves two answers sent at the same moment cannot score the same puzzle twice (race condition).
 test('daily: answers sent at the same time cannot score one puzzle twice', async () => {
   const s = await startServer({ bananaApi: fakeApi(3) });
   try {
@@ -76,6 +84,7 @@ test('daily: answers sent at the same time cannot score one puzzle twice', async
   } finally { await s.close(); }
 });
 
+// Proves a Banana API outage does not cost the player their one daily attempt.
 test('daily: a Banana API outage does not use up the day\'s attempt', async () => {
   let down = true;
   const api = { fetchPuzzle: async () => { if (down) throw new Error('offline'); return { image: 'data:image/png;base64,AAAA', solution: 2 }; } };

@@ -1,14 +1,18 @@
+// Integration tests for online room settings: match length and friends-only rooms.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { io } = require('socket.io-client');
 const { startServer, client } = require('./helpers');
 
+// Waits for one socket event and fails the test if it does not arrive in time.
 const once = (socket, event, ms = 4000) => new Promise((resolve, reject) => {
   const t = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), ms);
   socket.once(event, (data) => { clearTimeout(t); resolve(data); });
 });
+// Sends a socket event and waits for the server's acknowledgement reply.
 const call = (socket, event, data) => new Promise((resolve) => (data === undefined ? socket.emit(event, resolve) : socket.emit(event, data, resolve)));
 
+// Registers a player and opens a logged-in WebSocket for them.
 async function player(s, username) {
   const c = client(s.base);
   await c.post('/api/auth/register', { username, password: 'bananas123' });
@@ -17,6 +21,7 @@ async function player(s, username) {
   return { socket, c };
 }
 
+// Proves the server only accepts the listed match lengths, so a client cannot send any number it likes.
 test('the host picks the match length; the server only accepts the listed lengths and runs the match with them', async () => {
   const s = await startServer();
   const a = await player(s, 'timehost');
@@ -56,6 +61,7 @@ test('the host picks the match length; the server only accepts the listed length
   } finally { a.socket.close(); b.socket.close(); await s.close(); }
 });
 
+// Proves friends-only rooms have no bots, need two players, and only include players who joined.
 test('friends-only rooms: no bots by default, need two players, and the match has only the players who joined', async () => {
   const s = await startServer();
   const a = await player(s, 'friend_a');

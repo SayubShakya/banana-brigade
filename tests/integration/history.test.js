@@ -1,14 +1,17 @@
+// Integration tests for match history, battle logs, the leaderboard and data export.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Types } = require('mongoose');
 const { startServer, client } = require('./helpers');
 
+// Registers a player and returns their logged-in client and user details.
 async function player(s, username) {
   const c = client(s.base);
   const { user } = (await c.post('/api/auth/register', { username, password: 'bananas123' })).body;
   return { c, user };
 }
 
+// Sample battle log and scoreboard (roster) used by several tests below.
 const LOG = [
   { t: 1.24, type: 'join', by: 'sayub' },
   { t: 12.5, type: 'kill', by: 'sayub', target: 'Bot Kiwi', weapon: 'sniper' },
@@ -20,6 +23,7 @@ const ROSTER = [
   { name: 'Bot Kiwi', kills: 2, deaths: 3, bot: true },
 ];
 
+// Proves a saved battle log appears in history and is private to the players who were in that match.
 test('a saved battle log shows in the history and only players in the match can open it', async () => {
   const s = await startServer();
   try {
@@ -66,6 +70,7 @@ test('a saved battle log shows in the history and only players in the match can 
   } finally { await s.close(); }
 });
 
+// Proves old logs without a roster still display, and campaign results also save a log.
 test('a log without a roster gets a one-row scoreboard; campaign results save a log too', async () => {
   const s = await startServer();
   try {
@@ -89,6 +94,7 @@ test('a log without a roster gets a one-row scoreboard; campaign results save a 
   } finally { await s.close(); }
 });
 
+// Proves history can be filtered and paged with a cursor, so large histories load in small pieces.
 test('history filters and pages with a cursor', async () => {
   const s = await startServer();
   try {
@@ -124,6 +130,7 @@ test('history filters and pages with a cursor', async () => {
   } finally { await s.close(); }
 });
 
+// Proves the leaderboard shows one row per player, a career view and my rank, and leaves guests out.
 test('the leaderboard has one row per player, a career view, my own rank, and no guests', async () => {
   const s = await startServer();
   try {
@@ -174,6 +181,8 @@ test('the leaderboard has one row per player, a career view, my own rank, and no
   } finally { await s.close(); }
 });
 
+// Proves account deletion removes solo matches and anonymises the player in shared online matches,
+// so other players keep their history but the deleted person is not named.
 test('deleting an account removes its solo matches and anonymises it in online matches', async () => {
   const s = await startServer();
   try {
@@ -207,6 +216,7 @@ test('deleting an account removes its solo matches and anonymises it in online m
   } finally { await s.close(); }
 });
 
+// Proves bad roster or log data is refused or cleaned, and the request size limit still protects the server.
 test('bad roster and log input is refused or cleaned, and the body size limit still applies', async () => {
   const s = await startServer();
   try {
@@ -248,6 +258,7 @@ test('bad roster and log input is refused or cleaned, and the body size limit st
   } finally { await s.close(); }
 });
 
+// Proves "download my data" includes match history and battle logs (a data protection right).
 test('download my data includes the match history and battle logs', async () => {
   const s = await startServer();
   try {
@@ -263,6 +274,7 @@ test('download my data includes the match history and battle logs', async () => 
   } finally { await s.close(); }
 });
 
+// Proves the winner rule for a lost solo battle: most kills wins, fewer deaths breaks a tie.
 test('a lost solo battle names the best other soldier as winner, fewer deaths breaking a kill tie', async () => {
   const s = await startServer();
   try {

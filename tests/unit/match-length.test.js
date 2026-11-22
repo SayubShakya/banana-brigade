@@ -1,10 +1,14 @@
+// Unit tests for match length: the player picks 30 s to 5 min, and each length has its
+// own time limit and kill target.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createWorld, updateWorld } = require('../../client/src/game/world.js');
 const { MODES, MATCH_LENGTHS, matchRules } = require('../../client/src/game/config.js');
 
+// One game tick at 60 frames per second.
 const STEP = 1 / 60;
 
+// Creates a quick match world and records every event it emits.
 function makeWorld(opts = {}) {
   const events = [];
   const world = createWorld({
@@ -15,6 +19,7 @@ function makeWorld(opts = {}) {
   return { world, events };
 }
 
+// Proves each length has the right time and kill target, and only the listed lengths are allowed.
 test('match length: each length sets the time and a kill target that grows with it', () => {
   assert.deepEqual(MATCH_LENGTHS.map((l) => l.seconds), [30, 60, 120, 180, 300]);
   assert.deepEqual(MATCH_LENGTHS.map((l) => l.kills.quick), [4, 6, 10, 15, 20]);
@@ -29,6 +34,7 @@ test('match length: each length sets the time and a kill target that grows with 
   assert.equal(matchRules('campaign', 30), null);
 });
 
+// Proves the world really uses the chosen time and kill limit.
 test('match length: the world uses the chosen time and kill limit', () => {
   const rules = matchRules('quick', 60);
   const { world } = makeWorld(rules);
@@ -42,6 +48,7 @@ test('match length: the world uses the chosen time and kill limit', () => {
   assert.equal(plain.cfg.killLimit, MODES.quick.killLimit);
 });
 
+// Proves each world gets its own copy of the settings, so one match cannot change the next.
 test('match length: every world gets its own settings, so one match cannot change the next', () => {
   const a = makeWorld(matchRules('quick', 30)).world;
   const b = makeWorld().world;
@@ -52,6 +59,7 @@ test('match length: every world gets its own settings, so one match cannot chang
   assert.equal(b.cfg.killLimit, 20);
 });
 
+// Proves reaching the kill target ends the match early with reason "kill limit".
 test('match length: the kill target ends the match early', () => {
   const { world, events } = makeWorld(matchRules('quick', 30));
   const [player, bot] = world.soldiers;
@@ -64,6 +72,7 @@ test('match length: the kill target ends the match early', () => {
   assert.equal(events.find((e) => e.name === 'match:ended')?.payload.reason, 'kill limit');
 });
 
+// Proves a 30 s match ends on time, counts down the last 10 seconds and the clock stops at the end.
 test('match length: a 30 s match ends by time and counts down the last 10 seconds', () => {
   const { world, events } = makeWorld(matchRules('quick', 30));
   for (const s of world.soldiers) { s.alive = false; s.respawnTimer = Infinity; }
@@ -77,6 +86,7 @@ test('match length: a 30 s match ends by time and counts down the last 10 second
   assert.ok(Math.abs(world.endedAt - 30) < 0.1, 'the battle time stops at the final whistle');
 });
 
+// Proves an online match uses the chosen map, or a random valid one if the name is unknown.
 test('an online match uses the chosen map, or a random one', () => {
   const { createMatch } = require('../../server/realtime/match.js');
   const opts = { players: [{ userId: '1', username: 'a', parts: {}, team: 'blue' }], teamMode: false, send: () => {}, onEnd: () => {} };

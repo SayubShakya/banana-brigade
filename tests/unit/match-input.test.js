@@ -1,8 +1,12 @@
+// Unit tests for checking match data sent by the browser before it is saved to MongoDB.
+// The server never trusts the client, so bad or extra fields must be cleaned or refused.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { cleanLog, cleanRoster, LIMITS } = require('../../server/models/match');
 const { parseMatchInput, soloWinner } = require('../../server/services/matchService');
 
+// Proves the battle log is cleaned: unknown types and fields (like $where) are dropped,
+// text is trimmed, times are rounded and the list is capped at a safe length.
 test('cleanLog keeps known types, rounds t to 1 decimal, trims text and caps the length', () => {
   assert.deepEqual(cleanLog('nope'), []);
   assert.deepEqual(cleanLog([{ t: 3.14159, type: 'puzzle', by: ' a\u0007b ', ok: false, detail: 'crate', $where: 'x' }]), [{ t: 3.1, type: 'puzzle', by: 'ab', ok: false, detail: 'crate' }]);
@@ -10,12 +14,16 @@ test('cleanLog keeps known types, rounds t to 1 decimal, trims text and caps the
   assert.equal(cleanLog(Array.from({ length: 500 }, () => ({ t: 1, type: 'end' }))).length, LIMITS.log);
 });
 
+// Proves roster rows are cleaned: empty names dropped, numbers made whole and not negative,
+// unknown teams removed and the list capped at 12.
 test('cleanRoster drops nameless rows, clamps numbers, checks the team and caps at 12', () => {
   assert.deepEqual(cleanRoster([{ name: 'kiwi', team: 'red', kills: 2.4, deaths: -1, bot: 1 }]), [{ name: 'kiwi', team: 'red', kills: 2, deaths: 0, bot: false }]);
   assert.deepEqual(cleanRoster([{ name: '   ' }, { name: 'x', team: 'pink' }]), [{ name: 'x', kills: 0, deaths: 0, bot: false }]);
   assert.equal(cleanRoster(Array.from({ length: 30 }, (_, i) => ({ name: `b${i}` }))).length, LIMITS.roster);
 });
 
+// Proves wrong types are refused, a userId sent by the browser is never trusted, and only
+// one roster row can be marked as "me".
 test('parseMatchInput refuses wrong types, never trusts a userId and only asks for a match when a roster or log is sent', () => {
   assert.throws(() => parseMatchInput({ log: {} }), /log must be a list/);
   assert.throws(() => parseMatchInput({ roster: 'x' }), /roster must be a list/);
@@ -28,6 +36,7 @@ test('parseMatchInput refuses wrong types, never trusts a userId and only asks f
   assert.deepEqual(parseMatchInput({ roster: [{ name: 'a', me: true }, { name: 'b', me: true, bot: true }] }).roster.map((r) => !!r.me), [true, false]);
 });
 
+// Proves the server works out the winner itself instead of trusting the browser.
 test('soloWinner: nobody wins survival, a failed mission or a battle ended with no kills; a quit team battle goes to the team ahead', () => {
   const me = { name: 'me', kills: 1, deaths: 0, me: true };
   const bots = [{ name: 'Rex', kills: 3, deaths: 1 }, { name: 'Kiwi', kills: 3, deaths: 2 }];
