@@ -1,21 +1,36 @@
+// Battle log: records the key moments of one match (kills, respawns, powers, crates, puzzles, end)
+// and builds the final scoreboard roster. It listens by wrapping world.emit.
 import { POWERS, WEAPONS } from './config.js';
 
+// Limits so a long match cannot make the saved log too big.
 export const LOG_CAP = 300;
 export const ROSTER_CAP = 12;
+// Friendly text for each reason a match can end.
 export const END_TEXT = { time: 'Time up', 'kill limit': 'Kill limit', target: 'Target reached', quit: 'Ended early', down: 'Player down', out: 'Out of lives', host: 'Host ended it' };
 const PURPOSE_TEXT = { deploy: 'deploy', respawn: 'respawn', crate: 'crate' };
 
+// Small helpers: clip long names to 40 chars, round times to 0.1 s, look up display names.
 const clip = (v) => (v == null ? undefined : String(v).slice(0, 40));
 const tenth = (n) => Math.round((Number(n) || 0) * 10) / 10;
 const weaponName = (w) => WEAPONS[w]?.name ?? w;
 const powerName = (p) => POWERS[p]?.name ?? p;
 const isHuman = (s) => !!s.isPlayer || String(s.id).startsWith('u');
 
+/**
+ * Creates a battle log attached to a world.
+ * It "taps" world.emit, so every game event also passes through record() before
+ * going to the normal event bus. Listens to: soldier:killed, soldier:respawned,
+ * power:start, pickup:taken, banana:drop, survival:wave, match:ended.
+ * @param {object} world the game world to watch
+ * @param {{clock?: Function}} options clock() gives the match time for each entry
+ * @returns {object} { add, puzzle, opening, entries, roster, detach }
+ */
 export function createBattleLog(world, { clock = () => world.time } = {}) {
   const list = [];
   const known = new Set(world.soldiers);
   let end = null;
 
+  // Adds one entry. After the 'end' entry nothing else is recorded; the end entry is always kept last.
   function add(type, fields = {}) {
     if (end) return null;
     const entry = { t: tenth(clock()), type };
@@ -26,6 +41,7 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
     return entry;
   }
 
+  // Turns a world event into a log entry. Training dummies are ignored.
   const record = (event, p = {}) => {
     switch (event) {
       case 'soldier:killed':
@@ -35,6 +51,7 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
         break;
       case 'soldier:respawned':
         if (!p.soldier || p.soldier.isDummy) break;
+        // The first spawn of a soldier is not a "respawn", it just makes the soldier known.
         if (known.has(p.soldier)) add('respawn', { by: p.soldier.name });
         else known.add(p.soldier);
         break;
@@ -47,19 +64,25 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
     }
   };
 
+  // Wrap world.emit: record the event first, then call the original emit.
+  // The try/catch makes sure a logging error can never break the game itself.
   const original = world.emit;
   world.emit = (event, payload) => { try { record(event, payload); } catch { } return original(event, payload); };
 
+  // Records a Banana API puzzle attempt (solved or not) and what it was for: deploy, respawn or crate.
   const puzzle = (by, ok, purpose) => add('puzzle', { by, ok: !!ok, detail: PURPOSE_TEXT[purpose] ?? purpose });
 
   return {
     add,
     puzzle,
+    // Adds the puzzles solved before the match started, plus the current wave in survival mode.
     opening(by, { attempts = 0, solved = 0 } = {}) {
       for (let i = 0; i < attempts; i++) puzzle(by, i >= attempts - solved, 'deploy');
       if (world.mode === 'survival' && world.wave > 0) add('wave', { detail: `Wave ${world.wave}` });
     },
     entries: () => (end ? [...list, end] : [...list]),
+    // Scoreboard: everyone who took part, ranked by kills then fewest deaths.
+    // If the local player is not in the top rows, they replace the last row so they always see themselves.
     roster(meName = null) {
       const isMe = (s) => s === world.player || (meName != null && s.name === meName);
       const ranked = [...new Set([...known, ...world.soldiers])].filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
@@ -74,6 +97,7 @@ export function createBattleLog(world, { clock = () => world.time } = {}) {
         return row;
       });
     },
+    // Puts the original world.emit back when the match is over.
     detach() { world.emit = original; },
   };
 }

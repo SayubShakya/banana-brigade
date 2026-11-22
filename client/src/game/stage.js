@@ -1,3 +1,5 @@
+// The "stage": one shared canvas, renderer, input, HUD and FPS meter for every match.
+// It is created once (lazily) and reused, so we never attach input listeners twice.
 import { createRenderer } from './render.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
@@ -6,6 +8,11 @@ import { initMusic } from './music.js';
 
 let stage = null;
 
+/**
+ * Small FPS counter. tick(now) is called every frame; twice a second it
+ * writes frames-per-second into the element.
+ * @param {HTMLElement} el the element that shows the FPS text
+ */
 function createMeter(el) {
   let visible = false;
   let frames = 0;
@@ -26,6 +33,11 @@ function createMeter(el) {
   };
 }
 
+/**
+ * Returns the shared stage, creating it on first use (singleton).
+ * Also starts the sound and music systems once.
+ * @returns {{canvas, renderer, input, hud, meter}}
+ */
 export function getStage() {
   if (!stage) {
     const canvas = document.getElementById('battle-canvas');

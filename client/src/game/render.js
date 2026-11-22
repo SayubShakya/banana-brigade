@@ -1,8 +1,16 @@
+// Canvas renderer: draws one frame of the world (sky, parallax layers, terrain, pickups, soldiers,
+// bullets, effects, scope, minimap, crosshair) and runs the camera. It also converts between
+// screen and world coordinates for the input system.
 import { VIEW, TILE, WEAPONS, SOLDIER, POWERS } from './config.js';
 
+// Camera settings. LEAD: the camera looks a little ahead in the aim direction.
 const LEAD = { distance: 60, rate: 4 };
+// Zoom scale for each zoom state: normal, sniper scope (zoom in) and far (zoom out for other guns).
 export const ZOOM_SCALE = { normal: 1, scope: 1.6, far: 0.85 };
+// How much the mouse pulls the camera towards where you aim (more with the scope).
 export const LOOK = { normal: 0.3, far: 0.35, scope: 0.55 };
+// Where the player may sit on screen (fractions of the screen). SAFE_BOX is the soft target area,
+// HARD_BOX is a hard limit so the player never leaves the screen even when the camera lags.
 export const SAFE_BOX = { left: 0.3, right: 0.62, top: 0.3, bottom: 0.6 };
 export const HARD_BOX = { left: 0.12, right: 0.8, top: 0.12, bottom: 0.78 };
 const ANCHOR = { x: 0.47, y: 0.45 };
@@ -19,6 +27,11 @@ import { createMinimap } from './minimap.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+/**
+ * Where the player should appear on screen: a bit left of and above centre, moved away from the
+ * mouse and the aim lead so you see more in the aim direction. Kept inside SAFE_BOX.
+ * @returns {{x:number,y:number}} screen position in view pixels
+ */
 export function playerScreenTarget({ mouse, lead, scale, look, view = VIEW }) {
   const sx = view.width * ANCHOR.x - (mouse.x - view.width / 2) * look - lead.x * scale;
   const sy = view.height * ANCHOR.y - (mouse.y - view.height / 2) * look - lead.y * scale;
@@ -28,6 +41,10 @@ export function playerScreenTarget({ mouse, lead, scale, look, view = VIEW }) {
   };
 }
 
+/**
+ * The camera position (top-left corner in world pixels) that puts the player at playerScreenTarget(),
+ * clamped so the camera never shows outside the map.
+ */
 export function cameraTarget({ px, py, mouse, lead, scale, look, map, view = VIEW }) {
   const s = playerScreenTarget({ mouse, lead, scale, look, view });
   return {
@@ -36,6 +53,7 @@ export function cameraTarget({ px, py, mouse, lead, scale, look, map, view = VIE
   };
 }
 
+// Hard clamp: moves the camera so the player is always inside HARD_BOX, and the camera inside the map.
 export function keepInBox(cam, px, py, scale, map, view = VIEW, box = HARD_BOX) {
   const x = clamp(cam.x, px - (view.width * box.right) / scale, px - (view.width * box.left) / scale);
   const y = clamp(cam.y, py - (view.height * box.bottom) / scale, py - (view.height * box.top) / scale);
@@ -45,6 +63,12 @@ export function keepInBox(cam, px, py, scale, map, view = VIEW, box = HARD_BOX) 
   };
 }
 
+/**
+ * Creates the renderer for the game canvas.
+ * The game is drawn at a fixed 1280 x 720 "view" size and scaled for the screen (and high-DPI screens).
+ * @param {HTMLCanvasElement} canvas
+ * @returns {object} render(world, mouse, dt, zoom), toView, toWorld, toViewFromWorld, toggleMinimap, setLaser, setBanners
+ */
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   const cam = { x: 0, y: 0 };
@@ -55,6 +79,7 @@ export function createRenderer(canvas) {
   const vw = () => VIEW.width / scale;
   const vh = () => VIEW.height / scale;
 
+  // Match the canvas pixels to the screen's pixel ratio (max 2x) so it looks sharp without being too slow.
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = VIEW.width * dpr;
@@ -63,6 +88,7 @@ export function createRenderer(canvas) {
   resize();
   window.addEventListener('resize', resize);
 
+  // Coordinate helpers: browser pixels -> view pixels, view -> world (camera + zoom), world -> view.
   function toView(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
     return { x: ((clientX - r.left) / r.width) * VIEW.width, y: ((clientY - r.top) / r.height) * VIEW.height };
@@ -76,6 +102,10 @@ export function createRenderer(canvas) {
   let scoped = false;
   let look = LOOK.normal;
 
+  /**
+   * Moves the camera smoothly towards its target each frame (exponential easing with CAMERA_RATE),
+   * then hard-clamps it so the player stays on screen.
+   */
   function updateCamera(world, mouse, dt) {
     const p = world.player;
     const px = p.x + p.w / 2;
@@ -92,6 +122,7 @@ export function createRenderer(canvas) {
     Object.assign(cam, keepInBox(cam, px, py, scale, world.map));
   }
 
+  // Small integer hash: gives "random" but repeatable values, so trees and windows do not flicker between frames.
   const hash = (a, b = 0) => {
     let h = Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663);
     h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -99,6 +130,7 @@ export function createRenderer(canvas) {
   };
   const tri = (t) => 1 - 2 * Math.abs(t - Math.floor(t) - 0.5);
 
+  // Draws one parallax background layer. Far layers move slower (speed < 1) than the camera, which gives depth.
   function drawLayer(layer) {
     const { kind, speed, base, amp, color } = layer;
     const ox = cam.x * speed;
@@ -167,6 +199,7 @@ export function createRenderer(canvas) {
     }
   }
 
+  // Sky gradient, stars, sun or moon, clouds, parallax layers and snowfall from the map theme.
   function drawBackground(time, map) {
     const theme = map.theme;
     const g = ctx.createLinearGradient(0, 0, 0, VIEW.height);
@@ -228,6 +261,7 @@ export function createRenderer(canvas) {
     }
   }
 
+  // Small decorations on top of ground tiles (bushes, palms, cactus, lamps...). Lamp positions are saved to draw their glow later.
   function drawDecor(kind, x, y, h, lamps) {
     switch (kind) {
       case 'bush':
@@ -303,6 +337,7 @@ export function createRenderer(canvas) {
     }
   }
 
+  // Draws only the tiles the camera can see (plus a margin), not the whole 90 x 36 map, to keep it fast.
   function drawTerrain(map) {
     const { theme } = map;
     const palette = [null, theme.ground, theme.platform, theme.block];
@@ -318,6 +353,7 @@ export function createRenderer(canvas) {
         const y = r * TILE - cam.y;
         const kind = map.kinds[r][c];
         const look = palette[kind] ?? theme.ground;
+        // A tile with air above it gets a grass/snow top and maybe a decoration.
         const exposedTop = r > 0 && map.grid[r - 1][c] === 0;
         const h = hash(c, r);
         ctx.fillStyle = look.body;
@@ -374,10 +410,12 @@ export function createRenderer(canvas) {
     }
   }
 
+  // True if the player is close enough to use a pickup (same reach as in world.js).
   function inReach(pl, p) {
     return pl.alive && Math.abs(p.x - (pl.x + pl.w / 2)) <= REACH.x && Math.abs(p.y - (pl.y + pl.h / 2)) <= REACH.y;
   }
 
+  // Glow around a pickup in reach; crates that need the E key also get a key badge.
   function drawReach(p, x, y, time) {
     const pulse = effects.calm() ? 0.75 : 0.6 + 0.4 * Math.sin(time * 7);
     const glow = ctx.createRadialGradient(x, y, 4, x, y, 46);
@@ -407,6 +445,7 @@ export function createRenderer(canvas) {
     ctx.textBaseline = 'alphabetic';
   }
 
+  // Draws pickups bobbing up and down. A used banana crate shows a countdown until it returns.
   function drawPickups(world, time) {
     const me = world.player;
     badges.length = 0;
@@ -495,6 +534,7 @@ export function createRenderer(canvas) {
     }
   }
 
+  // Text with a dark outline, readable on any background.
   function label(text, x, y, size = 12, color = '#fff') {
     ctx.font = `bold ${size}px "Trebuchet MS", sans-serif`;
     ctx.textAlign = 'center';
@@ -505,6 +545,7 @@ export function createRenderer(canvas) {
     ctx.fillText(text, x, y);
   }
 
+  // Bubble over a soldier who is solving a Banana puzzle (they are shielded while busy).
   function drawSolvingBubble(cx, cy, iconY, time) {
     const calm = effects.calm();
     ctx.fillStyle = 'rgba(255,225,53,0.16)';
@@ -525,12 +566,14 @@ export function createRenderer(canvas) {
     ctx.textBaseline = 'alphabetic';
   }
 
+  // Draws every living soldier with power glow, name tag and health bar. effects.applyPose adds animation (recoil, lean...).
   function drawSoldiers(world, time) {
     for (const s of world.soldiers) {
       if (!s.alive) continue;
       const view = { ...s, x: s.x - cam.x, y: s.y - cam.y, weapon: activeGun(s).key, shielded: s.shieldTimer > 0 && !s.busy, recoil: effects.recoilOf(s) };
       effects.applyPose(s, view);
       const pw = s.power && POWERS[s.power.id ?? s.power];
+      // The power glow blinks during the last 2 seconds as a warning.
       if (pw && !(s.power.timer < 2 && Math.floor(time * 8) % 2)) {
         const gx = view.x + s.w / 2;
         const gy = view.y + s.h / 2;
@@ -559,6 +602,7 @@ export function createRenderer(canvas) {
     }
   }
 
+  // Bullets with a fading tail (longer for the sniper), rockets, flames and blinking grenades.
   function drawProjectiles(world) {
     ctx.lineCap = 'round';
     for (const b of world.bullets) {
@@ -625,6 +669,7 @@ export function createRenderer(canvas) {
     ctx.globalAlpha = 1;
   }
 
+  // Follows the laser sight in 8 px steps until it hits a wall or a soldier.
   function laserEnd(world, p, x0, y0, ang, range) {
     const dx = Math.cos(ang), dy = Math.sin(ang);
     for (let d = 0; d <= range; d += 8) {
@@ -637,6 +682,7 @@ export function createRenderer(canvas) {
     return { x: x0 + dx * range, y: y0 + dy * range, hit: false };
   }
 
+  // Red laser sight from the gun muzzle towards the mouse (can be turned off in settings).
   function drawLaser(mouse, world) {
     const p = world.player;
     if (!laser || !p.alive) return;
@@ -672,6 +718,7 @@ export function createRenderer(canvas) {
     ctx.lineCap = 'butt';
   }
 
+  // Blinking FUEL / NO FUEL warning under the player when the jetpack is low.
   function drawFuelWarning(world, time) {
     const p = world.player;
     if (!p.alive || p.fuel >= LOW_FUEL || p.busy) return;
@@ -687,6 +734,7 @@ export function createRenderer(canvas) {
     ctx.fillRect(x - 20, y + 8, 40 * Math.max(0, p.fuel) / LOW_FUEL, 2);
   }
 
+  // Sniper scope overlay: black around a circle at the mouse, with crosshair lines. scopeT fades it in and out.
   function drawScope(mouse) {
     if (scopeT < 0.01) return;
     const ease = 1 - (1 - scopeT) * (1 - scopeT);
@@ -732,6 +780,7 @@ export function createRenderer(canvas) {
     ctx.globalAlpha = 1;
   }
 
+  // Crosshair that opens up with weapon spread and recoil. Hidden while the scope is up.
   function drawCrosshair(mouse, world) {
     if (scopeT > 0.5) return;
     const p = world.player;
@@ -761,6 +810,13 @@ export function createRenderer(canvas) {
     ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill();
   }
 
+  /**
+   * Draws one frame. Called every animation frame by the game loop.
+   * Zoom state: zoomTarget < 1 means zoom is engaged; with the sniper it is the scope (zoom in),
+   * otherwise "far" (zoom out). Scale, look and scope fade all ease towards their targets.
+   * Draw order: background -> terrain -> pickups -> soldiers -> projectiles -> particles -> effects
+   * -> laser -> scope -> minimap -> crosshair -> HUD effects.
+   */
   function render(world, mouse, dt, zoomTarget = 1) {
     const p = world.player;
     const engaged = p.alive && zoomTarget < 1;
@@ -768,16 +824,19 @@ export function createRenderer(canvas) {
     const wantScale = scoped ? ZOOM_SCALE.scope : engaged ? ZOOM_SCALE.far : ZOOM_SCALE.normal;
     const wantLook = scoped ? LOOK.scope : engaged ? LOOK.far : LOOK.normal;
     const ks = Math.min(1, dt * 6 || 1);
+    // effects.frozen = a short hit-stop after the player gets a kill: the camera and zoom hold still for a moment.
     if (!effects.frozen) scale += (wantScale - scale) * ks;
     look += (wantLook - look) * ks;
     scopeT += ((scoped ? 1 : 0) - scopeT) * Math.min(1, dt * 7);
     if (!effects.frozen) updateCamera(world, mouse, dt);
     effects.update(world, dt);
+    // Screen shake: shift the camera for this frame only, and undo it after drawing the world.
     const { offset } = effects;
     cam.x += offset.x;
     cam.y += offset.y;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawBackground(world.time, world.map);
+    // World drawing uses the zoom scale; screen overlays (scope, minimap, crosshair) do not.
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
     drawTerrain(world.map);
     effects.drawUnder(ctx, cam, world.time);

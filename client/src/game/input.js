@@ -1,15 +1,20 @@
+// Player input. Turns keyboard, mouse, wheel and touch joysticks into the player's "controls"
+// object (left, right, jet, fire, aim...) and emits input:* events on the event bus.
 import { emit, on } from '../services/eventBus.js';
 import { isAimedAtEnemy, assistAim } from './autoFire.js';
 import { tutorialTick } from './tutorial.js';
 import { activeGun } from './world.js';
 
+// Keys that are held down (true while pressed).
 const MOVE_KEYS = {
   KeyA: 'left', ArrowLeft: 'left',
   KeyD: 'right', ArrowRight: 'right',
   KeyW: 'jet', ArrowUp: 'jet', Space: 'jet',
 };
+// Keys that trigger a one-off action (handled once on the next tick).
 const ACTION_KEYS = { KeyR: 'reload', KeyQ: 'swap', KeyG: 'grenade', KeyF: 'melee', KeyV: 'melee', KeyE: 'pickup' };
 
+// H key: shows or fades out the controls help panel. Returns true if it is now showing.
 export function toggleHelp(el = document.getElementById('hud-help')) {
   if (!el) return false;
   const showing = !el.hidden && !el.classList.contains('fade');
@@ -18,19 +23,34 @@ export function toggleHelp(el = document.getElementById('hud-help')) {
   return !showing;
 }
 
+// Zoom level index (into ZOOM_LEVELS in config.js) used while zoom or scope is on.
 export const ZOOM_ENGAGED_LEVEL = 2;
 
+// Text for the HUD: '1x' when not zoomed, 'SCOPE' for the sniper, 'FAR' for other guns.
 export function zoomLabel(engaged, sniper) {
   if (!engaged) return '1x';
   return sniper ? 'SCOPE' : 'FAR';
 }
 
+/**
+ * Aim and facing: when the player starts walking the other way, flip the mouse aim
+ * to that side (at least 160 px away) so the soldier faces where it walks.
+ * If the mouse is already on that side, nothing changes.
+ * @returns {number} the new mouse x in screen space
+ */
 export function faceToward(mouse, center, dir) {
   const dx = mouse.x - center.x;
   if (!dir || Math.sign(dx) === dir) return mouse.x;
   return center.x + dir * Math.max(Math.abs(dx), 160);
 }
 
+/**
+ * Zoom / scope state machine. Two inputs: "toggled" (Z key, wheel) and "holding" (right mouse).
+ * Zoom is engaged if either is on. With the sniper it is a SCOPE, with other guns it zooms OUT (FAR).
+ * onChange(state) is called only when the engaged state or label really changes.
+ * Changing gun turns zoom off.
+ * @param {Function} onChange callback with { engaged, scoped, zoomLabel, level }
+ */
 export function createZoom(onChange = () => {}) {
   let toggled = false;
   let holding = false;
@@ -43,6 +63,7 @@ export function createZoom(onChange = () => {}) {
     zoomLabel: zoomLabel(engaged(), sniper()),
     level: engaged() ? ZOOM_ENGAGED_LEVEL : 0,
   });
+  // Runs a change, then compares the state before and after so onChange only fires on a real change.
   const change = (fn) => {
     const before = state();
     fn();
@@ -54,8 +75,10 @@ export function createZoom(onChange = () => {}) {
     get scoped() { return state().scoped; },
     get zoomLabel() { return state().zoomLabel; },
     get level() { return state().level; },
+    // Z key: flip zoom on/off (and forget a held right button).
     toggle() { change(() => { toggled = !engaged(); holding = false; }); },
     hold(down) { change(() => { holding = !!down; }); },
+    // Mouse wheel: for the sniper, wheel up scopes in; for other guns, wheel down zooms out.
     wheel(deltaY) {
       if (!deltaY) return;
       const zoomIn = deltaY < 0;
@@ -68,6 +91,7 @@ export function createZoom(onChange = () => {}) {
     setGun(key) {
       if (key === gun) return;
       change(() => {
+        // Switching weapon always drops the zoom.
         if (gun !== null) { toggled = false; holding = false; }
         gun = key;
       });
@@ -76,6 +100,10 @@ export function createZoom(onChange = () => {}) {
   };
 }
 
+/**
+ * On-screen touch joystick. Tracks one pointer, keeps the knob inside the circle and
+ * calls onMove(x, y) with values from -1 to 1 (0, 0 when released).
+ */
 function joystick(base, onMove) {
   const knob = base.querySelector('.knob');
   let id = null;
@@ -102,7 +130,17 @@ function joystick(base, onMove) {
   base.addEventListener('pointercancel', end);
 }
 
+/**
+ * Creates the input system and attaches the DOM event listeners (once per page).
+ * Emits on the event bus: input:pause, input:scoreboard, input:minimap, input:banana,
+ * input:help, input:zoom, input:move, input:jet.
+ * Listens to: soldier:killed, weapon:reloading, weapon:switched (to reset zoom).
+ * @param {HTMLCanvasElement} canvas the game canvas
+ * @param {object} renderer used to convert screen <-> world coordinates
+ * @returns {object} apply(player, world) copies the input into the player's controls every tick
+ */
 export function createInput(canvas, renderer) {
+  // "held" = keys held down right now; "pending" = one-shot actions waiting for the next tick.
   const held = { left: false, right: false, jet: false, fire: false };
   const pending = { reload: false, swap: false, grenade: false, melee: false, pickup: false };
   const mouse = { x: 640, y: 360 };
@@ -117,10 +155,12 @@ export function createInput(canvas, renderer) {
 
   const press = (action) => { if (enabled) pending[action] = true; };
   const mine = (s) => s && s === me;
+  // Zoom turns off when the player dies, reloads or switches weapon.
   on('soldier:killed', ({ victim }) => { if (mine(victim)) zoom.reset(); });
   on('weapon:reloading', ({ soldier }) => { if (mine(soldier)) zoom.reset(); });
   on('weapon:switched', ({ soldier }) => { if (mine(soldier)) zoom.reset(); });
 
+  // Keyboard: Escape always pauses; other keys only work during play and not while typing in a text box.
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') { emit('input:pause'); return; }
     if (!enabled || e.target.tagName === 'INPUT') return;
@@ -137,6 +177,7 @@ export function createInput(canvas, renderer) {
     if (MOVE_KEYS[e.code]) held[MOVE_KEYS[e.code]] = false;
   });
 
+  // Mouse: position is stored in screen (view) space; left button = fire, right button = hold zoom.
   canvas.addEventListener('mousemove', (e) => Object.assign(mouse, renderer.toView(e.clientX, e.clientY)));
   canvas.addEventListener('mousedown', (e) => {
     if (!enabled) return;
@@ -149,8 +190,10 @@ export function createInput(canvas, renderer) {
   });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('wheel', (e) => { if (enabled) zoom.wheel(e.deltaY); e.preventDefault(); }, { passive: false });
+  // If the window loses focus, release every key so the soldier does not keep running or firing.
   window.addEventListener('blur', () => { Object.keys(held).forEach((k) => { held[k] = false; }); zoom.hold(false); });
 
+  // Touch buttons on screen (reload, grenade, zoom, pause...).
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -164,6 +207,7 @@ export function createInput(canvas, renderer) {
 
   window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') document.body.classList.add('touch'); }, { once: false });
   if (window.matchMedia?.('(pointer: coarse)').matches) document.body.classList.add('touch');
+  // Left stick moves and flies, right stick aims (and fires when pushed far).
   joystick(document.getElementById('stick-move'), (x, y) => { touchMove.x = x; touchMove.y = y; });
   joystick(document.getElementById('stick-aim'), (x, y) => {
     stickAim.active = Math.hypot(x, y) > 0.15;
@@ -181,6 +225,10 @@ export function createInput(canvas, renderer) {
       if (!isOn) { Object.keys(held).forEach((k) => { held[k] = false; }); zoom.hold(false); }
     },
     setAutoFire(on) { autoFire = on !== false; },
+    /**
+     * Called every game tick: writes the current input into player.controls.
+     * Steps: movement -> facing -> aim (mouse or stick) -> aim assist -> input events -> auto-fire -> one-shot actions.
+     */
     apply(player, world) {
       const c = player.controls;
       me = player;
@@ -190,6 +238,7 @@ export function createInput(canvas, renderer) {
       c.jet = held.jet || touchMove.y < -0.45;
       c.fire = held.fire || (stickAim.active && Math.hypot(stickAim.x, stickAim.y) > 0.75);
       const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
+      // Facing: when the walk direction changes, turn the aim to that side (25 px = gun height).
       if (dir && dir !== lastDir && !stickAim.active) mouse.x = faceToward(mouse, renderer.toViewFromWorld(player.x + player.w / 2, player.y + 25), dir);
       if (stickAim.active) {
         const cx = player.x + player.w / 2;
@@ -199,6 +248,7 @@ export function createInput(canvas, renderer) {
         const v = renderer.toViewFromWorld(c.aimX, c.aimY);
         mouse.x = v.x; mouse.y = v.y;
       } else {
+        // Convert the mouse from screen space to world space, because the camera moves and zooms.
         const aim = renderer.toWorld(mouse.x, mouse.y);
         c.aimX = aim.x;
         c.aimY = aim.y;
@@ -206,10 +256,13 @@ export function createInput(canvas, renderer) {
       const assisted = assistAim(world, player, { x: c.aimX, y: c.aimY });
       c.aimX = assisted.x;
       c.aimY = assisted.y;
+      // Emit input events only when something changed (used by the Boot Camp tutorial).
       if (dir !== lastDir) { lastDir = dir; emit('input:move', { dir, time: world?.time ?? 0 }); }
       if (c.jet !== lastJet) { lastJet = c.jet; emit('input:jet', { on: c.jet, time: world?.time ?? 0 }); }
       tutorialTick(world);
+      // Auto-fire: shoot automatically when the crosshair is on a visible enemy.
       if (autoFire && !c.fire && world) c.fire = isAimedAtEnemy(player, world);
+      // One-shot actions are passed to the controls once, then cleared.
       for (const k of Object.keys(pending)) {
         if (pending[k]) { c[k] = true; pending[k] = false; }
       }

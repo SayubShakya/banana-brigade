@@ -1,6 +1,10 @@
+// Makes a smooth hill: a sine-shaped bump of the given height between two columns.
+// Map definitions. Each map is data: a ground height function, platforms and blocks as
+// [column, row, width, height] tiles, spawn/health/crate/banana spots and a visual theme.
 const bump = (c, from, to, height) =>
   (c >= from && c <= to ? Math.round(height * Math.sin(((c - from) / (to - from)) * Math.PI)) : 0);
 
+// ground(c) returns the row where the ground starts in column c (smaller row = higher ground).
 export const MAPS = {
   jungle: {
     id: 'jungle',
@@ -81,6 +85,7 @@ export const MAPS = {
       if (c >= 30 && c <= 60) return 31 - Math.round(10 * (1 - Math.abs(c - 45) / 15));
       return 31;
     },
+    // carve cuts a hole out of the ground (a cave under the snow peak).
     carve: [[35, 27, 21, 3]],
     platforms: [
       [5, 25, 6, 1], [15, 20, 8, 1], [25, 15, 8, 1], [41, 10, 9, 1], [57, 15, 8, 1],
@@ -145,6 +150,7 @@ export const MAPS = {
   },
 };
 
+// Helpers: list of map ids, a map's display name, and a random map id (rng can be seeded for tests).
 export const MAP_IDS = Object.keys(MAPS);
 export const mapName = (id) => MAPS[id]?.name ?? MAPS.jungle.name;
 export const randomMapId = (rng = Math.random) => MAP_IDS[Math.floor(rng() * MAP_IDS.length) % MAP_IDS.length];
