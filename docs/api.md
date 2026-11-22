@@ -36,6 +36,7 @@ The table lists paths without `/v1`; both forms work.
 |---|---|---|---|---|
 | POST | `/api/auth/register` | `{ username, password }` | `201 { user: { id, username, role } }` + cookie | 400 bad name/password, 409 name taken |
 | POST | `/api/auth/login` | `{ username, password, remember }` | `200 { user }` + new cookie | 400 missing, 401 wrong (tries left), 429 locked |
+| POST | `/api/auth/admin-login` | `{ username, password }` | `200 { user }` + new cookie, admins only | 401 wrong, 403 not an admin (no session), 429 locked |
 | POST | `/api/auth/logout` | none | `{ ok: true }`, cookie cleared | |
 | POST | `/api/auth/logout-all` (login) | none | `{ ok: true, ended }`, cookie cleared | |
 | POST | `/api/auth/password` (login) | `{ current, next }` | `{ ok: true, ended }` | 400 new password too short/long, 403 current password wrong |

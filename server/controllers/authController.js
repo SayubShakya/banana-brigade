@@ -17,6 +17,12 @@ function createAuthController({ authService }) {
       res.json({ user: publicUser(user) });
     },
 
+    async adminLogin(req, res) {
+      const { username, password } = req.body ?? {};
+      const user = await authService.login({ username, password, ip: req.ip, requireRole: 'admin' }, sessionPort(req, res));
+      res.json({ user: publicUser(user) });
+    },
+
     async logout(req, res) {
       await authService.logout(req.session.username, sessionPort(req, res));
       res.json({ ok: true });

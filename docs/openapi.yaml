@@ -388,6 +388,57 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+  "/auth/admin-login":
+    post:
+      tags:
+        - "auth"
+      summary: "Admin-only login: admins get a session, players get 403 and no session"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                username:
+                  type: "string"
+                  pattern: "^[A-Za-z0-9_]{3,16}$"
+                password:
+                  type: "string"
+                  minLength: 8
+                  maxLength: 72
+              required:
+                - "username"
+                - "password"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        "401":
+          description: "Wrong name or password"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Admins only"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "429":
+          description: "Too many tries"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
   "/auth/logout":
     post:
       tags:
