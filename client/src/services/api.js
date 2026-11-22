@@ -19,7 +19,7 @@ async function call(method, path, body, { quiet = false } = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if ((res.status === 401 && !/\/auth\/(login|register|forgot|reset)$/.test(path)) || data.suspended) {
+    if ((res.status === 401 && !/\/auth\/(login|admin-login|register|forgot|reset)$/.test(path)) || data.suspended) {
       emit('session:ended', { text: data.suspended ? data.error : 'You were signed out. Please log in again.' });
     }
     if (res.status >= 500 && !quiet) emit('toast:error', { text: data.error ? `Server problem: ${data.error}` : `The server had a problem (${res.status}). Try again.` });
@@ -33,6 +33,7 @@ export const api = {
   me: () => call('GET', '/api/auth/me', undefined, { quiet: true }),
   login: (username, password, remember = false) => call('POST', '/api/auth/login', { username, password, remember }),
   register: (username, password) => call('POST', '/api/auth/register', { username, password }),
+  adminLogin: (username, password) => call('POST', '/api/auth/admin-login', { username, password }),
   forgot: (username) => call('POST', '/api/auth/forgot', { username }),
   checkReset: (token) => call('POST', '/api/auth/reset/check', { token }),
   resetPassword: (token, password) => call('POST', '/api/auth/reset', { token, password }),

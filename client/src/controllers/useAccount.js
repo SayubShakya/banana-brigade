@@ -9,7 +9,7 @@ import { DEFAULT_AVATAR } from '../game/characters.js';
 import { closeSocket } from '../net/socket.js';
 import { game, netIfStarted } from './gameEngine.js';
 
-export function useAccount({ screen, setScreen, clearHash }) {
+export function useAccount({ screen, setScreen, setParent, clearHash }) {
   const [account, setAccount] = useState(null);
   const accountRef = useRef(null);
   accountRef.current = account;
@@ -27,6 +27,7 @@ export function useAccount({ screen, setScreen, clearHash }) {
   const signIn = (user, created) => { setAccount(user); setIsNew(created); setScreen('menu'); };
   const onLogin = (user, created) => { clearHash(); signIn(user, created); };
   const onSaved = (user) => signIn(user, true);
+  const onAdminLogin = (user) => { clearHash(); setAccount(user); setIsNew(false); setParent('menu'); setScreen('admin'); };
 
   const signedOut = () => { game().quit(); netIfStarted()?.leave(); closeSocket(); setAccount(null); setScreen('home'); };
 
@@ -46,5 +47,5 @@ export function useAccount({ screen, setScreen, clearHash }) {
     try { await api.logout(); } finally { signedOut(); }
   };
 
-  return { account, accountRef, isNew, parts, setParts, restore, onLogin, onSaved, signedOut, playAsGuest, logout };
+  return { account, accountRef, isNew, parts, setParts, restore, onLogin, onAdminLogin, onSaved, signedOut, playAsGuest, logout };
 }
