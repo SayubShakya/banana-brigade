@@ -100,8 +100,8 @@ releases since then are `v1.0.0` to `v1.4.0`). List tags with `git tag -n`.
 
 ## AI-assisted code
 
-Generative AI may be used for code (not for the assessment video). Every file it helped with carries this line
-as its one-line header comment: "Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya."
+Generative AI may be used for code (not for the assessment video). AI help is acknowledged once, in the
+README "Use of AI" note under Credits (until 22 Nov 2026 each code file also carried a one-line header saying so).
 Code from other people or websites is credited in a comment where it is used.
 
 _Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

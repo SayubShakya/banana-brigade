@@ -459,7 +459,9 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
   in-game art only and not the assessed video.
   The story clips in `client/public/media/clips/` (videos and poster frames) are short cuts from the clips
   generated with Google Flow.
-- Code written with help from Claude (Anthropic), an AI coding assistant, and reviewed by Sayub Shakya; every
-  source file says so in its one-line header comment.
+- **Use of AI:** the code was written with help from Claude (Anthropic), an AI coding assistant. Every change was
+  reviewed, tested (234 automated tests plus browser tests and CI) and committed by Sayub Shakya. Until 22 Nov 2026
+  each code file carried a one-line header saying so (visible in the git history); it was then replaced by this
+  note and by explanatory comments in the code. The assessed video is Sayub's own work, without AI.
 
 _Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

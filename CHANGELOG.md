@@ -6,6 +6,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Changed (`docs/code-comments`)
+- Explanatory comments added across the server, game engine, client UI, tests and tooling (what each file,
+  function and key piece of logic does). The per-file AI header line was removed from code files and replaced by
+  the README "Use of AI" note.
+
 ### Added (`docs/faq-alignment`)
 - Aligned with the unit FAQ: `docs/evidence/` with 10 screenshots and test results (Q7), outside work referenced
   in a comment where it is used in the code (Q7/Q19), up-to-date numbers in `docs/evaluation.md`.
