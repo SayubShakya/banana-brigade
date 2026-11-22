@@ -243,6 +243,7 @@ waits up to 8 seconds and turns `{ error }` into an exception.
 | `room:leave` | none | none | a bot takes over your soldier if a match is running |
 | `room:ready` | `{ ready }` | none | lobby only |
 | `room:start` | none | `{ ok: true }` or `{ error }` | host only, everyone ready |
+| `room:end` | none | `{ ok: true }` or `{ error }` | host only, while a match is running; ends it for everyone with reason `host` |
 | `input` | `{ left, right, jet, fire, aimX, aimY, reload, swap, grenade, melee, pickup }` | none | sent on change and at least every 50 ms |
 | `puzzle:get` | `{ purpose: 'respawn'\|'crate' }` | `{ puzzleId, image, purpose, source }` or `{ error }` | only when the server allows it (`canAsk`) |
 | `puzzle:answer` | `{ puzzleId, answer }` | `{ correct, solution, purpose, ms, grade }` or `{ error }` | only the player the puzzle was given to; the server applies the reward |

@@ -38,6 +38,8 @@ export function createNetGame() {
   let near = false;
   let level = DIFFICULTY.medium;
   let crateOpen = false;
+  let myUserId = null;
+  let hostId = null;
 
   const soldierById = (id) => view?.soldiers.find((s) => s.id === id) ?? null;
 
@@ -57,6 +59,7 @@ export function createNetGame() {
     };
     me = soldierById(myId);
     view.player = me;
+    myUserId = myId.slice(1);
     snaps = [];
     stats = { solved: 0, attempts: 0, streak: 0, best: 0, byPurpose: { deploy: { solved: 0, attempts: 0 }, respawn: { solved: 0, attempts: 0 }, crate: { solved: 0, attempts: 0 } } };
     started = performance.now();
@@ -67,6 +70,8 @@ export function createNetGame() {
     input.setEnabled(true);
     emit('game:state', { state: 'playing', online: true });
   });
+
+  socket.on('room:update', (room) => { hostId = room.host; });
 
   socket.on('match:snapshot', (snap) => {
     if (!view) return;
@@ -261,6 +266,8 @@ export function createNetGame() {
 
   const net = {
     get active() { return active; },
+    get isHost() { return !!myUserId && myUserId === hostId; },
+    endForAll: () => request('room:end'),
     resume() {
       if (!paused) return;
       paused = false;

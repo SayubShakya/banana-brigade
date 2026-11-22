@@ -129,6 +129,7 @@ Full payloads are in [api.md](api.md#socketio-protocol-serverrealtimeroomsjs).
 | Message | Direction | Sent at | Handled at |
 |---|---|---|---|
 | `rooms:list`, `room:create`, `room:join`, `room:start` (ack) | browser → server | `client/src/views/Lobby.jsx:26`, `:50`, `:51`, `:52` | `server/realtime/rooms.js:140`, `:142`, `:162`, `:187` |
+| `room:end` (ack) | browser → server (host only) | `client/src/net/NetGame.js:270` | `server/realtime/rooms.js:223` |
 | `room:leave` | browser → server | `client/src/views/Lobby.jsx:53`, `client/src/controllers/useBattle.js:115`, `client/src/net/NetGame.js:265` | `server/realtime/rooms.js:178` |
 | `room:ready` | browser → server | `client/src/views/Lobby.jsx:123` | `server/realtime/rooms.js:180` |
 | `input` | browser → server | `client/src/net/NetGame.js:230` | `server/realtime/rooms.js:197` → `server/realtime/match.js:127` |

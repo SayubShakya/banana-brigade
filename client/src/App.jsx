@@ -67,7 +67,7 @@ export default function App() {
       {screen === 'difficulty' && <Difficulty mode={battle.pendingMode} current={settings.difficulty} onPick={(d, len, map) => battle.deployWith(battle.pendingMode, d, len, map)} onBack={back} />}
       {screen === 'daily' && <Daily me={account.username} onBack={back} />}
       {screen === 'lobby' && <Lobby account={account} parts={parts} onBack={battle.toMenu} />}
-      {screen === 'pause' && <Pause sound={!settings.muted} online={battle.online} onResume={battle.resume}
+      {screen === 'pause' && <Pause sound={!settings.muted} online={battle.online} canEnd={battle.canEnd()} onResume={battle.resume}
         onToggleSound={() => prefs.toggle('muted')} onEnd={battle.endNow} onQuit={battle.toMenu} />}
       {screen === 'results' && battle.over && <Results game={battle.over} me={account.username} onMenu={battle.toMenu} onMission={battle.playMission} onMap={battle.toMap}
         onAgain={battle.playAgain} />}

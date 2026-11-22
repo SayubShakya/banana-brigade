@@ -220,6 +220,16 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       ack(cb)({ ok: true });
     });
 
+    socket.on('room:end', (cb) => {
+      const room = rooms.get(roomOf.get(userId));
+      if (!room) return ack(cb)({ error: 'You are not in a room' });
+      if (room.host !== userId) return ack(cb)({ error: 'Only the host can end the match' });
+      if (room.state !== 'playing' || !room.match || room.match.over) return ack(cb)({ error: 'No match is running' });
+      eventLog?.record('room', room.players.get(userId)?.username, `ended the match in room ${room.code}`);
+      room.match.end('host');
+      ack(cb)({ ok: true });
+    });
+
     socket.on('input', (controls) => {
       const room = rooms.get(roomOf.get(userId));
       if (room?.match && controls && typeof controls === 'object') room.match.setControls(userId, controls);
