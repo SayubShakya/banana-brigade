@@ -69,3 +69,20 @@ test('a preview link opens once: Back then refresh stays on the menu', async ({ 
   await expect(page.locator('.name-tag')).toContainText(name);
   await expect(page.getByText('Choose Difficulty')).toBeHidden();
 });
+
+test('the admin login page refuses a player account and links back to the player login', async ({ page, playwright }) => {
+  const name = `pl_${Date.now().toString(36).slice(-6)}`;
+  const password = 'E2e-banana-run-2026';
+  const other = await playwright.request.newContext({ baseURL: 'http://localhost:3199' });
+  expect((await other.post('/api/auth/register', { data: { username: name, password } })).status()).toBe(201);
+  await other.dispose();
+
+  await page.goto('/#admin-login');
+  await expect(page.getByRole('heading', { name: /Admin login/ })).toBeVisible();
+  await page.getByLabel('Username').fill(name);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in as admin' }).click();
+  await expect(page.getByRole('alert')).toContainText('admins only');
+  await page.getByRole('button', { name: 'Player login' }).click();
+  await expect(page.getByRole('tab', { name: 'Log in' })).toBeVisible();
+});
