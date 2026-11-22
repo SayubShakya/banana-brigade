@@ -411,6 +411,17 @@ API, and talks to the real Express and Socket.io server over HTTP. They cover:
 
 GitHub Actions runs the tests and the Vite build on every push and pull request.
 
+## Supporting material (unit FAQ Q7)
+
+No report is required. To help check the video against the code, the repository includes:
+- **Screenshots and test results:** [`docs/evidence/`](docs/evidence/README.md) (10 screenshots, unit/API, browser
+  and CI results).
+- **Design documents:** [`docs/architecture.md`](docs/architecture.md), [`docs/events.md`](docs/events.md),
+  [`docs/api.md`](docs/api.md), [`docs/resilience.md`](docs/resilience.md), [`docs/evaluation.md`](docs/evaluation.md).
+- **References in the source code:** outside work is credited in a comment on the line that uses it (Banana API in
+  `server/services/bananaApi.js`, gun samples in `client/src/game/sound.js`, Google Fonts in `client/index.html`,
+  Swagger UI in `server/controllers/docsController.js`), as well as in Credits below.
+
 ## Submitting the code
 
 The code is submitted separately from the video. Make the zip from the committed code:

@@ -6,6 +6,10 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`docs/faq-alignment`)
+- Aligned with the unit FAQ: `docs/evidence/` with 10 screenshots and test results (Q7), outside work referenced
+  in a comment where it is used in the code (Q7/Q19), up-to-date numbers in `docs/evaluation.md`.
+
 ## [1.4.0] - 2026-11-22
 
 Match history, battle logs, a per-player leaderboard, a separate admin login and many playtest fixes since 1.3.2.
