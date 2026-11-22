@@ -1,11 +1,11 @@
-/* Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. */
-
+/* logo.css: the animated emblem next to the BANANA BRIGADE title (float + shine). */
 .brand { position: relative; }
 
 .brand .emblem {
   animation: emblem-in 0.6s ease-out, emblem-float 4s ease-in-out 0.6s infinite;
 }
 
+/* Shine effect: a light stripe masked to the logo shape slides across it */
 .brand:has(> .emblem:first-child)::before {
   content: '';
   position: absolute;
@@ -36,6 +36,7 @@
   30%, 100% { background-position: -50% 0; }
 }
 
+/* No animation in calm / reduced motion mode */
 body.a11y-calm .brand .emblem { animation: none; }
 body.a11y-calm .brand:has(> .emblem:first-child)::before { content: none; }
 

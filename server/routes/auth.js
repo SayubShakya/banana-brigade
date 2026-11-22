@@ -1,8 +1,10 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Routes layer: /api/auth URLs for identity (register, login, logout, guest, password reset,
+// sessions, data export). Routes that change an existing account use requireLogin.
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
 
+/** Builds the auth router. Public routes have no guard; account routes need requireLogin. */
 function createAuthRouter({ authController: auth, accountController: account }) {
   const router = express.Router();
 

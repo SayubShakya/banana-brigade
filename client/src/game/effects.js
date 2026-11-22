@@ -1,10 +1,11 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Visual "game feel" effects: muzzle flashes, recoil, shell casings, sparks, smoke, explosions, ragdoll
+// corpses, damage numbers, hit markers, kill banners and screen shake. Driven entirely by game events.
 import { on } from '../services/eventBus.js';
 import { VIEW, WEAPONS, TILE } from './config.js';
 import { raycast, isSolid } from './map.js';
 import { drawSoldier } from './characters.js';
 
+// Gun recoil per weapon: how far the gun kicks back (KICK) and how much the camera kicks (CAM_KICK).
 const KICK = { magnum: 5, smg: 2.5, rifle: 3.5, shotgun: 9, sniper: 12, rocket: 10, flamer: 0 };
 const CAM_KICK = { magnum: 2, smg: 1, rifle: 1.5, shotgun: 5, sniper: 7, rocket: 6, flamer: 0 };
 const FLASH_LIFE = { magnum: 0.06, smg: 0.04, rifle: 0.05, shotgun: 0.08, sniper: 0.1, rocket: 0.09 };
@@ -12,14 +13,21 @@ const GRAVITY = 1400;
 const BANANA = '#ffe135';
 const GOLD = '#ffc300';
 
+// How long each animation pose lasts in seconds.
 const POSE = { melee: 0.32, throw: 0.4, swap: 0.35, land: 0.28, flinch: 0.18 };
 const CORPSE_LIFE = 2.2;
 const NO_MAG = new Set(['rocket', 'flamer']);
+// Screen shake uses "trauma" (0 to 1) that decays over time; shake strength = trauma squared.
+// HIT_STOP: after the player's kill the game slows down for 0.05 s to make the hit feel heavy.
 const TRAUMA = { max: 16, decay: 1.7, perPixel: 1 / 14 };
 const HIT_STOP = 0.05;
 const HIT_FLASH = 0.09;
 const KILL_FLASH = 0.12;
 
+/**
+ * Object pool: creates a fixed number of effect objects once and reuses them in a ring.
+ * This avoids creating garbage every frame (smoother frame rate). When full, the oldest is reused.
+ */
 function makePool(size, make) {
   const items = Array.from({ length: size }, () => ({ ...make(), active: false }));
   let next = 0;
@@ -32,6 +40,7 @@ function makePool(size, make) {
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
+// Line vs box test (same Liang-Barsky idea as in world.js), used to guess where a shot lands for visual effects.
 function segmentHitsBox(x0, y0, x1, y1, b) {
   let t0 = 0, t1 = 1;
   const dx = x1 - x0, dy = y1 - y0;
@@ -47,6 +56,13 @@ function segmentHitsBox(x0, y0, x1, y1, b) {
   return t0;
 }
 
+/**
+ * Creates the effects system used by the renderer.
+ * Listens to (event bus): match:started, melee:swing, grenade:thrown, weapon:reloading,
+ * soldier:respawned, weapon:fired, soldier:damaged, soldier:killed, soldier:landed, explosion.
+ * @param {{toViewFromWorld: Function, onScreen: Function}} view coordinate helpers from the renderer
+ * @returns {object} update, drawUnder, drawWorld, drawScreen, drawHud, applyPose, calm, frozen, offset...
+ */
 export function createEffects(view) {
   let world = null;
 
@@ -82,8 +98,10 @@ export function createEffects(view) {
   const offset = { x: 0, y: 0 };
 
   const reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  // Reduced motion: respects the OS setting and the game's "calm" accessibility option (no shake, fewer flashes).
   const calm = () => reduced?.matches || document.body.classList.contains('a11y-calm');
 
+  // Clears every effect (new match).
   function reset() {
     for (const p of [flashes, beams, impacts, sparks, shells, numbers, arrows, corpses, spawnRings, smoke, fireballs, shockwaves, debris, scorches]) p.clear();
     recoil.clear();
@@ -94,6 +112,7 @@ export function createEffects(view) {
     lastKillAt = -99;
   }
 
+  // Per-soldier animation timers (hit, melee, throw, swap, landing, flinch, lean). Timers start at 9 = "not playing".
   function animOf(s) {
     let a = anims.get(s);
     if (!a) {
@@ -110,9 +129,11 @@ export function createEffects(view) {
 
   const isMe = (s) => !!s && !!world && s === world.player;
 
+  // Adds screen shake (skipped in calm mode).
   function addShake(amount) { if (!calm() && amount > 0) trauma = Math.min(1, trauma + amount * TRAUMA.perPixel); }
   const wobble = (t, seed) => Math.sin(t * 37 + seed) * 0.6 + Math.sin(t * 23.3 + seed * 2.1) * 0.4;
 
+  // Predicts where a shot will hit (wall or soldier) to place the impact sparks and the sniper beam.
   function traceImpact(shooter, x, y, angle, w) {
     const ex = x + Math.cos(angle) * w.range;
     const ey = y + Math.sin(angle) * w.range;
@@ -155,6 +176,7 @@ export function createEffects(view) {
     }
   });
 
+  // Shot fired: muzzle flash, gun recoil, camera kick for the player, impact sparks and an ejected shell.
   on('weapon:fired', ({ soldier, weapon, x, y }) => {
     if (!world || !soldier) return;
     const w = WEAPONS[weapon];
@@ -179,6 +201,7 @@ export function createEffects(view) {
       }
       if (hit.wall) {
         const im = impacts.spawn();
+        // Sparks appear when the bullet would arrive (distance / bullet speed), not instantly.
         im.x = hit.x; im.y = hit.y; im.delay = Math.hypot(hit.x - x, hit.y - y) / w.speed;
       }
     }
@@ -192,6 +215,8 @@ export function createEffects(view) {
     sh.color = weapon === 'shotgun' ? '#c0392b' : '#d4a017';
   });
 
+  // Damage: flinch, floating damage number (quick hits are added together), hit marker,
+  // shake when the player is hurt, and an arrow pointing to an off-screen attacker.
   on('soldier:damaged', ({ victim, attacker, amount, headshot }) => {
     if (!world || !victim) return;
     if (amount > 0) {
@@ -223,6 +248,7 @@ export function createEffects(view) {
     }
   });
 
+  // Kill: ragdoll corpse, kill marker, hit-stop, and DOUBLE KILL / TRIPLE KILL / RAMPAGE banners for quick kills.
   on('soldier:killed', ({ victim, killer, headshot }) => {
     if (!world) return;
     if (victim) spawnCorpse(victim, killer, headshot);
@@ -240,6 +266,7 @@ export function createEffects(view) {
     }
   });
 
+  // The corpse flies away from the killer (harder for a headshot) and spins.
   function spawnCorpse(victim, killer, headshot) {
     const c = corpses.spawn();
     c.x = victim.x + victim.w / 2; c.y = victim.y + victim.h / 2;
@@ -263,6 +290,7 @@ export function createEffects(view) {
 
   const halfHeight = (c) => Math.abs(Math.cos(c.rot)) * c.h / 2 + Math.abs(Math.sin(c.rot)) * c.w / 2;
 
+  // Simple ragdoll physics: gravity, bounce off walls and floor a few times, then lie flat and fade.
   function updateCorpse(c, dt) {
     if ((c.age += dt) > CORPSE_LIFE) { c.active = false; return; }
     if (c.resting) {
@@ -294,6 +322,7 @@ export function createEffects(view) {
     } else c.y = ny;
   }
 
+  // Hard landing: squash the soldier and kick up dust.
   on('soldier:landed', ({ soldier, speed, x, y }) => {
     if (soldier && speed > 200) {
       const a = animOf(soldier);
@@ -309,6 +338,7 @@ export function createEffects(view) {
     }
   });
 
+  // Explosion: fireball, shockwave ring, smoke, flying debris, a scorch mark and shake based on distance.
   on('explosion', ({ x, y, radius }) => {
     if (!world) return;
     const quiet = calm();
@@ -342,6 +372,10 @@ export function createEffects(view) {
     if (d < reach) addShake(12 * (1 - d / reach) + 2);
   });
 
+  /**
+   * Advances every effect by dt seconds (called every frame by the renderer).
+   * During hit-stop time runs at 15% speed. At the end it works out the camera offset (kick + shake).
+   */
   function update(w, dt) {
     if (w !== world) { world = w; reset(); }
     if (hitStop > 0) { hitStop = Math.max(0, hitStop - dt); dt *= 0.15; }
@@ -402,11 +436,13 @@ export function createEffects(view) {
     kick.x -= kick.x * k; kick.y -= kick.y * k;
     if (calm()) trauma = 0;
     trauma = Math.max(0, trauma - TRAUMA.decay * dt);
+    // Shake offset: smooth wobble (two sine waves) scaled by trauma squared, plus the recoil kick.
     const amp = TRAUMA.max * trauma * trauma;
     offset.x = kick.x + (amp ? amp * wobble(clock, 1.3) : 0);
     offset.y = kick.y + (amp ? amp * wobble(clock, 7.9) : 0);
   }
 
+  // Updates animation timers, a lean based on speed, and jetpack smoke puffs.
   function updateSoldiers(dt) {
     for (const s of world.soldiers) {
       const a = animOf(s);
@@ -427,6 +463,12 @@ export function createEffects(view) {
     }
   }
 
+  /**
+   * Adds animation values to a soldier's draw state: lean, hit flash, flinch, landing squash,
+   * melee swing, grenade throw and gun tilt (reload / weapon swap).
+   * @param {object} s the soldier
+   * @param {object} v the draw state copy (changed and returned)
+   */
   function applyPose(s, v) {
     const a = anims.get(s);
     v.lean = 0; v.squash = 0; v.gunTilt = 0; v.swing = 0; v.throwArm = 0; v.hitFlash = 0;
@@ -465,6 +507,7 @@ export function createEffects(view) {
     ctx.beginPath(); ctx.arc(2, 0, kind === 'smg' ? 3 : kind === 'shotgun' ? 7 : 5, 0, Math.PI * 2); ctx.fill();
   }
 
+  // Draws world-space effects in front of soldiers: beams, flashes, sparks, shells, debris, smoke, fireballs, rings.
   function drawWorld(ctx, cam) {
     ctx.lineCap = 'round';
     for (const b of beams.items) {
@@ -564,6 +607,7 @@ export function createEffects(view) {
 
   const corpseView = { x: 0, y: 0, w: 28, h: 50, facing: 1, aim: 0, walkPhase: 0, onGround: false, jetting: false, weapon: 'magnum', hurtFlash: 0, hitFlash: 0, shielded: false, recoil: 0 };
 
+  // Draws behind soldiers: scorch marks and corpses.
   function drawUnder(ctx, cam, time) {
     for (const sc of scorches.items) {
       if (!sc.active) continue;
@@ -587,6 +631,7 @@ export function createEffects(view) {
     }
   }
 
+  // Floating damage numbers (gold for headshots).
   function drawScreen(ctx) {
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
@@ -606,6 +651,7 @@ export function createEffects(view) {
     ctx.globalAlpha = 1;
   }
 
+  // Screen-space overlays: red low-health vignette, attacker arrows, hit marker, KILL / HEADSHOT pops and banners.
   function drawHud(ctx, mouse) {
     ctx.textAlign = 'center';
     const p = world?.player;

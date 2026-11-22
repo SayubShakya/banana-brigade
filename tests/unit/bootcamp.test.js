@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Unit tests for Boot Camp (the tutorial), aim assist on Easy, and the short pause
+// before easy bots start shooting.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createTutorial, STEPS, JET_HOLD, setUpRange, tutorialTick, CRATE_RETURN, CRATE_STEP, BOOT_CAMP } = require('../../client/src/game/tutorial.js');
@@ -8,10 +8,12 @@ const { updateBots, EASY_HESITATION, hesitating } = require('../../client/src/ga
 const { createWorld } = require('../../client/src/game/world.js');
 const { DIFFICULTY } = require('../../client/src/game/config.js');
 
+// Stand-in soldiers used as event payloads: the player, a training dummy and a bot.
 const me = { isPlayer: true };
 const dummy = { isDummy: true };
 const bot = { isPlayer: false };
 
+// The list of events that completes every tutorial step in the right order.
 const RUN = [
   ['input:move', { dir: -1 }], ['input:move', { dir: 1 }],
   ['input:jet', { on: true, time: 1 }], ['input:jet', { on: false, time: 1 + JET_HOLD }],
@@ -22,6 +24,7 @@ const RUN = [
   ['power:start', { soldier: me }],
 ];
 
+// Proves the tutorial is event-driven: the right events move it through every step to the end.
 test('boot camp: the right events walk through every step in order', () => {
   const t = createTutorial();
   assert.equal(t.step.id, 'move');
@@ -31,12 +34,14 @@ test('boot camp: the right events walk through every step in order', () => {
   assert.equal(t.index, STEPS.length - 1);
 });
 
+// Proves steps must be done in order; doing a later step early does nothing.
 test('boot camp: a later step cannot be done early', () => {
   const t = createTutorial();
   for (const [name, payload] of RUN.slice(4)) assert.equal(t.handle(name, payload), false);
   assert.equal(t.step.id, 'move');
 });
 
+// Proves the move step needs both left and right before it is done.
 test('boot camp: moving needs both directions', () => {
   const t = createTutorial();
   t.handle('input:move', { dir: 1 });
@@ -47,6 +52,7 @@ test('boot camp: moving needs both directions', () => {
   assert.equal(t.step.id, 'jet');
 });
 
+// Proves the jetpack step needs a real hold, not a quick tap.
 test('boot camp: a tap on the jetpack is not enough, a hold is', () => {
   const t = createTutorial();
   for (const [name, payload] of RUN.slice(0, 2)) t.handle(name, payload);
@@ -58,6 +64,7 @@ test('boot camp: a tap on the jetpack is not enough, a hold is', () => {
   assert.equal(t.step.id, 'shoot');
 });
 
+// Proves only the player shooting a dummy counts, not a bot or another target.
 test('boot camp: only the player hitting a dummy counts as a shot', () => {
   const t = createTutorial();
   for (const [name, payload] of RUN.slice(0, 4)) t.handle(name, payload);
@@ -68,6 +75,7 @@ test('boot camp: only the player hitting a dummy counts as a shot', () => {
   assert.equal(t.step.id, 'gun');
 });
 
+// Proves a wrong crate answer sends the player back to the crate step to try again.
 test('boot camp: a wrong crate answer sends you back to the crate step', () => {
   const t = createTutorial();
   for (const [name, payload] of RUN.slice(0, 7)) t.handle(name, payload);
@@ -81,6 +89,7 @@ test('boot camp: a wrong crate answer sends you back to the crate step', () => {
   assert.equal(t.step.id, 'power');
 });
 
+// Creates a world for these tests (quick match on Easy unless opts say otherwise).
 function world(opts = {}) {
   return createWorld({
     mode: 'quick', playerName: 'Tester', playerAvatar: {}, difficulty: 'easy',
@@ -88,6 +97,7 @@ function world(opts = {}) {
   });
 }
 
+// Proves the shooting range keeps two dummies and used crates come back quickly.
 test('boot camp: the range keeps two dummies and crates come back fast', () => {
   const w = world({ mode: 'training', mission: BOOT_CAMP });
   assert.equal(w.map.id, 'jungle');
@@ -100,6 +110,8 @@ test('boot camp: the range keeps two dummies and crates come back fast', () => {
   assert.equal(crate.timer, CRATE_RETURN);
 });
 
+// Proves banana crates are hidden until the tutorial reaches the crate step,
+// and that this only happens in Boot Camp, not in a normal match.
 test('boot camp: banana crates stay hidden until the crate step', () => {
   const w = world({ mode: 'training', mission: BOOT_CAMP });
   const crates = w.pickups.filter((p) => p.kind === 'banana');
@@ -114,6 +126,7 @@ test('boot camp: banana crates stay hidden until the crate step', () => {
   assert.deepEqual(quick.pickups.map((p) => p.x), before);
 });
 
+// Sets up the player with one enemy in an open map and an aim 2 degrees off the enemy.
 function aimSetup(difficulty, mode = 'quick') {
   const w = world({ difficulty });
   w.mode = mode;
@@ -134,6 +147,7 @@ function aimSetup(difficulty, mode = 'quick') {
   return { w, p, aim, sx, sy, enemyAngle, aimAngle };
 }
 
+// Proves aim assist on Easy bends the shot toward the enemy, but by no more than 3 degrees.
 test('aim assist: on Easy offline the shot bends toward the enemy, by no more than 3 degrees', () => {
   const { w, p, aim, sx, sy, enemyAngle, aimAngle } = aimSetup('easy');
   assert.equal(aimAssistOn(w, p), true);
@@ -143,6 +157,7 @@ test('aim assist: on Easy offline the shot bends toward the enemy, by no more th
   assert.ok(Math.abs(bent - aimAngle) <= AIM_ASSIST.maxBend + 1e-9);
 });
 
+// Proves aim assist is off on Medium and Hard.
 test('aim assist: off on Medium and Hard', () => {
   for (const d of ['medium', 'hard']) {
     const { w, p, aim } = aimSetup(d);
@@ -151,6 +166,7 @@ test('aim assist: off on Medium and Hard', () => {
   }
 });
 
+// Proves aim assist is never used online, so online play stays fair.
 test('aim assist: never in online play', () => {
   const { w, p, aim } = aimSetup('easy', 'online');
   assert.equal(aimAssistOn(w, p), false);
@@ -159,6 +175,7 @@ test('aim assist: never in online play', () => {
   assert.equal(aimAssistOn(view, p), false);
 });
 
+// Proves aim assist ignores enemies well away from where the player is aiming.
 test('aim assist: ignores enemies far outside the aim cone', () => {
   const { w, p, sx, sy, enemyAngle } = aimSetup('easy');
   const away = enemyAngle + Math.PI / 2;
@@ -166,6 +183,7 @@ test('aim assist: ignores enemies far outside the aim cone', () => {
   assert.deepEqual(assistAim(w, p, aim), aim);
 });
 
+// Proves easy bots do not shoot or throw grenades in the first 30 seconds.
 test('bots on Easy hold fire for the first 30 seconds only', () => {
   const w = world({ difficulty: 'easy' });
   assert.equal(EASY_HESITATION, 30);
@@ -182,6 +200,7 @@ test('bots on Easy hold fire for the first 30 seconds only', () => {
   assert.equal(hesitating(w), false);
 });
 
+// Proves Medium bots shoot straight away.
 test('bots on Medium do not hesitate', () => {
   const w = world({ difficulty: 'medium' });
   assert.equal(w.difficulty, DIFFICULTY.medium);

@@ -1,5 +1,4 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// History.jsx: the player's match history table with filters, paging and battle logs.
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { Panel, SkeletonRows } from '../components/common.jsx';
@@ -10,6 +9,12 @@ import '../styles/history.css';
 const COLS = 8;
 const EMPTY = { all: 'No battles yet. Deploy from the menu to start your record.', solo: 'No solo battles yet.', online: 'No online battles yet. Try Play Online with a friend.' };
 
+/**
+ * History: lists my past battles, newest first.
+ * @param {{account: object, onBack: Function}} props
+ * API: GET /api/v1/scores/history?filter=...&before=... (20 rows per page).
+ * The "Battle log" button opens BattleLogDialog for that match.
+ */
 export default function History({ account, onBack }) {
   const [filter, setFilter] = useState('all');
   const [rows, setRows] = useState(null);
@@ -20,6 +25,7 @@ export default function History({ account, onBack }) {
   const shown = useRef(filter);
   shown.current = filter;
 
+  // Reload from page 1 whenever the filter tab changes. `alive` ignores replies for an old filter.
   useEffect(() => {
     let alive = true;
     setMore(false);
@@ -31,6 +37,7 @@ export default function History({ account, onBack }) {
     return () => { alive = false; };
   }, [filter]);
 
+  // loadMore: fetch the next page using the `next` cursor from the server; skip duplicate rows.
   const loadMore = () => {
     const asked = filter;
     const still = () => shown.current === asked;

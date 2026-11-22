@@ -1,7 +1,9 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Routes layer: the OpenAPI 3 description of the whole REST API (interoperability theme).
+// It is plain data, served as JSON and shown by Swagger UI at /api/v1/docs.
 
 const { version } = require('../../package.json');
 
+// Small helpers so each endpoint can be described in one line.
 const json = (schema, description = 'OK') => ({ description, content: { 'application/json': { schema } } });
 const obj = (properties, required) => ({ type: 'object', properties, ...(required ? { required } : {}) });
 const str = { type: 'string' };
@@ -12,6 +14,13 @@ const err = (description) => json(ref('Error'), description);
 const body = (schema) => ({ required: true, content: { 'application/json': { schema } } });
 const login = [{ session: [] }];
 
+/**
+ * Describes one API operation.
+ * @param {string} tag group name, e.g. 'auth'
+ * @param {string} summary one-line description
+ * @param {object} opts req (body schema), ok (reply), status, errors, auth (needs the cookie?), params
+ * @returns {object} an OpenAPI operation object
+ */
 function op(tag, summary, { req, ok = json(obj({ ok: bool })), status = 200, errors = {}, auth = true, params } = {}) {
   return {
     tags: [tag], summary,
@@ -27,6 +36,7 @@ const credentials = obj({ username: { type: 'string', pattern: '^[A-Za-z0-9_]{3,
 const userReply = json(obj({ user: ref('User') }));
 const reasonBody = obj({ reason: { type: 'string', minLength: 3, maxLength: 200 } }, ['reason']);
 
+// The full OpenAPI document.
 const spec = {
   openapi: '3.0.3',
   info: {

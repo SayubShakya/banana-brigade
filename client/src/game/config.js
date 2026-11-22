@@ -1,8 +1,11 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// The game is drawn at 1280 x 720 and scaled to fit the window. One map tile is 40 px.
+// Game settings in one place: screen size, physics, soldier stats, weapons, modes, powers,
+// difficulty and puzzle rules. Shared by the browser game and the Node server.
 export const VIEW = { width: 1280, height: 720 };
 export const TILE = 40;
 
+// Movement physics in pixels and seconds (speeds in px/s, accelerations in px/s^2).
+// Fuel burns while the jetpack is on and refills after a short delay on the ground.
 export const PHYSICS = {
   gravity: 1900,
   walkSpeed: 270,
@@ -15,6 +18,7 @@ export const PHYSICS = {
   jetEase: 0.35,
   takeoffKick: 230,
   takeoffFuel: 3,
+  // Coyote time: you can still take off just after walking off a ledge. Jump buffer: a press just before landing still counts.
   coyoteTime: 0.12,
   jumpBuffer: 0.15,
   landMinSpeed: 260,
@@ -27,6 +31,7 @@ export const PHYSICS = {
   fuelRegenDelay: 0.35,
 };
 
+// Size and basic stats of every soldier (players and bots).
 export const SOLDIER = {
   width: 28,
   height: 50,
@@ -39,6 +44,8 @@ export const SOLDIER = {
   meleeCooldown: 0.8,
 };
 
+// Every gun: damage per hit, seconds between shots (rate), magazine size, reload time,
+// bullet speed, random spread (radians), pellets per shot, range and headshot multiplier.
 export const WEAPONS = {
   magnum:  { name: 'Magnum',          type: 'bullet', damage: 25, rate: 0.34, mag: 8,   spareMags: Infinity, reload: 1.2, speed: 1600, spread: 0.025, pellets: 1, range: 950,  color: '#ffe08a', headshot: 1.5 },
   smg:     { name: 'SMG',             type: 'bullet', damage: 10, rate: 0.07, mag: 32,  spareMags: 3, reload: 1.6, speed: 1600, spread: 0.09, pellets: 1, range: 800,  color: '#ffd166', headshot: 1.3 },
@@ -49,13 +56,16 @@ export const WEAPONS = {
   flamer:  { name: 'Flamethrower',    type: 'flame',  damage: 4,  rate: 0.04, mag: 100, spareMags: 1, reload: 2.2, speed: 620,  spread: 0.15, pellets: 1, range: 320,  color: '#ff7b00', drag: 1.0 },
 };
 
+// Headshot hitbox: the top 45% of the body, plus a small cap above the head.
 export const HEADSHOT_ZONE = 0.45;
 export const HEAD_CAP_ABOVE = 6;
 export const HEAD_CAP_HALF_WIDTH = 9;
 
+// Everyone always carries the magnum; crates hand out the other guns.
 export const SIDEARM = 'magnum';
 export const CRATE_WEAPONS = ['smg', 'rifle', 'shotgun', 'sniper', 'rocket', 'flamer'];
 
+// Camera zoom steps for the scope (1 = normal, smaller = see more of the map).
 export const ZOOM_LEVELS = [1, 0.8, 0.65];
 export const HEALTH_REGEN = { delay: 4, perSecond: 8 };
 
@@ -78,6 +88,7 @@ export const MATCH = {
   timeLimit: 300,
 };
 
+// Settings for each game mode.
 export const MODES = {
   quick:    { name: 'Quick Play',  bots: 5, killLimit: 20, timeLimit: 300, respawn: 6 },
   survival: { name: 'Survival',    firstWave: 2, maxBots: 7, waveBreak: 4 },
@@ -87,6 +98,7 @@ export const MODES = {
   online:   { name: 'Online',      size: 6, killLimit: 20, timeLimit: 300, respawn: 6 },
 };
 
+// Match length options, with the kill limit that fits each length for each timed mode.
 export const MATCH_LENGTHS = [
   { seconds: 30,  label: '30 s',  kills: { quick: 4,  team: 6,  online: 4 } },
   { seconds: 60,  label: '1 min', kills: { quick: 6,  team: 9,  online: 6 } },
@@ -97,14 +109,22 @@ export const MATCH_LENGTHS = [
 export const DEFAULT_MATCH_LENGTH = 300;
 export const TIMED_MODES = ['quick', 'team', 'online'];
 
+/**
+ * Looks up the time and kill limit for a mode and match length.
+ * @param {string} mode 'quick' | 'team' | 'online'
+ * @param {number} seconds chosen match length
+ * @returns {{timeLimit:number,killLimit:number,label:string}|null} null if the mode is not timed
+ */
 export function matchRules(mode, seconds = DEFAULT_MATCH_LENGTH) {
   const length = MATCH_LENGTHS.find((l) => l.seconds === seconds);
   const killLimit = length?.kills[mode];
   return killLimit ? { timeLimit: length.seconds, killLimit, label: length.label } : null;
 }
 
+// Banana crate: respawn time, number of weapon choices and seconds to pick.
 export const BANANA_CRATE = { respawn: 40, choices: 3, pickSeconds: 6, randomBonus: 3 };
 
+// Banana Meter: filled by solving Banana API puzzles; full meter = a supply drop (key X).
 export const BANANA_METER = {
   max: 100,
   gain: { gold: 40, silver: 30, bronze: 20 },
@@ -118,8 +138,10 @@ export const BANANA_METER = {
   key: 'KeyX',
 };
 
+// Puzzle answer grade by speed: under 5 s = gold, under 10 s = silver, otherwise bronze.
 export const PUZZLE_GRADES = { gold: { label: 'GOLD', under: 5 }, silver: { label: 'SILVER', under: 10 }, bronze: { label: 'BRONZE', under: Infinity } };
 
+// Banana Powers chosen after a crate puzzle. Each lasts a few seconds.
 export const POWERS = {
   rage:      { name: 'Banana Rage',   icon: '💥', color: '#ff5d3a', seconds: 8,  text: 'Double damage', damage: 2 },
   overdrive: { name: 'Jet Overdrive', icon: '🚀', color: '#4cc9f0', seconds: 10, text: 'Endless jet fuel and 40% more speed', speed: 1.4 },
@@ -128,12 +150,15 @@ export const POWERS = {
   heal:      { name: 'Banana Juice',  icon: '💚', color: '#52b788', seconds: 8,  text: 'Full health and fast healing', regen: 30 },
 };
 
+// Bot difficulty: aim accuracy range, reaction time, damage multiplier, burst/pause timing,
+// grenade chance, "smarts" (how often bots use tactics) and puzzle timers in seconds.
 export const DIFFICULTY = {
   easy:   { name: 'Easy',   accuracy: [0.08, 0.28], reaction: 1.4,  damage: 0.3,  burst: 0.5, pause: 1.1, grenades: 0.03, smarts: 0.25, puzzle: { deploy: 45, respawn: 25, crate: 30 } },
   medium: { name: 'Medium', accuracy: [0.22, 0.45], reaction: 0.95, damage: 0.5,  burst: 0.7, pause: 0.7, grenades: 0.08, smarts: 0.6,  puzzle: { deploy: 30, respawn: 15, crate: 20 } },
   hard:   { name: 'Hard',   accuracy: [0.45, 0.75], reaction: 0.5,  damage: 0.8,  burst: 1.2, pause: 0.4, grenades: 0.25, smarts: 1,    puzzle: { deploy: 20, respawn: 10, crate: 12 } },
 };
 
+// Tuning for bot tactics: when to retreat, how far to spread out, how long to dodge.
 export const BOT_TACTICS = {
   retreatHealth: 35,
   retreatTime: 3,
@@ -145,6 +170,7 @@ export const BOT_TACTICS = {
 
 export const BOT_NAMES = ['Rex', 'Viper', 'Ghost', 'Blaze', 'Tank', 'Shadow', 'Ace', 'Bolt'];
 
+// Default puzzle rules for each purpose: time limit and whether a wrong answer can be retried.
 export const PUZZLE_RULES = {
   deploy:  { seconds: 30, retry: true,  rule: 'Unlimited tries' },
   respawn: { seconds: 15, retry: false, rule: 'One try' },

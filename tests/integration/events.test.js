@@ -1,17 +1,19 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Tests for the live event log that admins watch over Socket.io (event-driven programming).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { io } = require('socket.io-client');
 const { createEventLog } = require('../../server/services/eventLog');
 const { startServer, client } = require('./helpers');
 
+// Waits for one socket event and fails the test if it does not arrive in time.
 const once = (socket, event, ms = 4000) => new Promise((resolve, reject) => {
   const t = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), ms);
   socket.once(event, (data) => { clearTimeout(t); resolve(data); });
 });
+// Sends a socket event and waits for the server's acknowledgement reply.
 const call = (socket, event) => new Promise((resolve) => socket.emit(event, resolve));
 
+// Registers a user (optionally made admin) and opens a WebSocket that sends their session cookie.
 async function connect(s, username, admin = false) {
   const c = client(s.base);
   const { user } = (await c.post('/api/auth/register', { username, password: 'bananas123' })).body;
@@ -21,6 +23,7 @@ async function connect(s, username, admin = false) {
   return { socket, c };
 }
 
+// Unit check: the log keeps only the latest events and notifies every listener when a new one is added.
 test('the log keeps the last events and tells listeners', () => {
   const log = createEventLog({ size: 3 });
   const heard = [];
@@ -32,6 +35,7 @@ test('the log keeps the last events and tells listeners', () => {
   assert.equal(heard.length, 5);
 });
 
+// Proves admins get the recent events plus new ones pushed live, and normal players are refused.
 test('an admin watching gets recent events and new ones live; a player is refused', async () => {
   const s = await startServer();
   const admin = await connect(s, 'boss', true);

@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Integration tests for admin actions: the audit log, suspending players and health history.
+// They prove admin power is limited, recorded and checked on every request.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { io } = require('socket.io-client');
@@ -7,6 +7,7 @@ const { startServer, client } = require('./helpers');
 const { createPuzzlePool } = require('../../server/services/pool');
 
 const PW = 'bananas123';
+// Creates an admin ("boss") and a normal player ("cheater"), each with their own logged-in client.
 async function setup(s) {
   const admin = client(s.base);
   const boss = (await admin.post('/api/auth/register', { username: 'boss', password: PW })).body.user;
@@ -16,6 +17,7 @@ async function setup(s) {
   return { admin, boss, player, cheat };
 }
 
+// Proves every admin action needs a written reason and leaves a record in the audit log.
 test('admin actions need a reason and are written to the audit log', async () => {
   const s = await startServer();
   try {
@@ -34,6 +36,7 @@ test('admin actions need a reason and are written to the audit log', async () =>
   } finally { await s.close(); }
 });
 
+// Proves suspending a player takes effect at once (sessions and sockets end) and can be undone.
 test('a suspended player is signed out at once, cannot log in or connect, and can be restored', async () => {
   const s = await startServer();
   try {
@@ -66,6 +69,7 @@ test('a suspended player is signed out at once, cannot log in or connect, and ca
   } finally { await s.close(); }
 });
 
+// Proves the health history is capped at 120 samples (so memory cannot grow forever) and only admins can read it.
 test('the health history keeps one sample per tick, at most 120, and is admins only', async () => {
   const clock = { t: Date.parse('2026-11-01T10:00:00Z') };
   const pool = createPuzzlePool({ fetchPuzzle: async () => ({ image: 'x', solution: 3 }), size: 0, now: () => clock.t });

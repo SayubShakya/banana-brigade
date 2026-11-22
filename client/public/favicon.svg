@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t">
-  <!-- Banana Brigade favicon: the emblem badge with just the helmeted banana soldier, bold enough for 16 px.
-       Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya. -->
+  <!-- Banana Brigade favicon: the emblem badge with just the helmeted banana soldier, bold enough for 16 px. -->
   <title id="t">Banana Brigade</title>
   <defs>
     <linearGradient id="bb-olive" x1="0" y1="0" x2="0" y2="1">

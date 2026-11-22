@@ -1,7 +1,8 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Routes layer: /api/status, the public Banana API health check.
 
 const express = require('express');
 
+/** Builds the status router. */
 function createStatusRouter({ puzzleController: puzzles }) {
   const router = express.Router();
 

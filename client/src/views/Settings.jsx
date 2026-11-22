@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Settings.jsx: game, sound, accessibility and account settings.
+// Game options are stored in the browser; account actions call the server.
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { closeSocket } from '../net/socket.js';
@@ -12,6 +12,10 @@ const OPTIONS = [['autoFire', 'Auto-fire when aimed at an enemy'], ['laser', 'Si
 const ACCESSIBILITY = [['contrast', 'High contrast'], ['largeText', 'Large text'], ['calm', 'Reduced motion']];
 const VOLUMES = [['musicVolume', 'Music volume'], ['sfxVolume', 'Effects volume']];
 
+/**
+ * useApiStatus: reads GET /api/v1/status and returns a line about the Banana API
+ * (online, offline with reserve puzzles, or paused by the circuit breaker) plus a health summary.
+ */
 function useApiStatus() {
   const [s, setS] = useState(null);
   useEffect(() => { api.status().then(setS).catch(() => setS({ online: false, ready: 0, reserve: 0 })); }, []);
@@ -23,6 +27,7 @@ function useApiStatus() {
   return { line, health: describeHealth(s) };
 }
 
+/** describeHealth: plain-English summary of Banana API latency, success rate and retries. */
 function describeHealth(s) {
   if (!s.calls) return 'No calls to the Banana API yet.';
   const worked = Math.round((s.successRate / 100) * s.calls);
@@ -39,6 +44,10 @@ const ago = (iso) => {
   const min = Math.round((Date.now() - Date.parse(iso)) / 60000);
   return min < 1 ? 'just now' : min < 60 ? `${min} min ago` : min < 1440 ? `${Math.round(min / 60)} h ago` : `${Math.round(min / 1440)} days ago`;
 };
+/**
+ * Devices: list of my active sessions (GET /api/v1/auth/sessions) with a Sign out button
+ * for each other device (DELETE /api/v1/auth/sessions/:handle).
+ */
 function Devices() {
   const [list, setList] = useState(null);
   const [error, setError] = useState('');
@@ -64,6 +73,12 @@ function Devices() {
   );
 }
 
+/**
+ * Account: the account tab (virtual identity theme).
+ * Change password (POST /auth/password, which logs out other sessions), log out everywhere
+ * (POST /auth/logout-all), download my data (GET /auth/export), delete account (DELETE /auth/account).
+ * The Admin tools button only shows for admins; the server still checks the role.
+ */
 function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy }) {
   const [open, setOpen] = useState('');
   const [current, setCurrent] = useState('');
@@ -133,6 +148,7 @@ function Account({ account, onLogout, onSignedOut, onAdmin, onSave, onPrivacy })
   );
 }
 
+/** Toggle: one On/Off setting row. */
 function Toggle({ label, value, onClick }) {
   return (
     <div className="setting">
@@ -144,6 +160,10 @@ function Toggle({ label, value, onClick }) {
 
 const TABS = [['game', 'Game'], ['sound', 'Sound'], ['access', 'Accessibility'], ['account', 'Account']];
 
+/**
+ * Settings: the settings screen with four tabs.
+ * @param {object} props  settings, account and callbacks from useSettings / useAccount / useNavigation.
+ */
 export default function Settings({ settings, account, onToggle, onSet, onControls, onLogout, onSignedOut, onAdmin, onSave, onPrivacy, onBack }) {
   const apiStatus = useApiStatus();
   const [isFullscreen, canFullscreen] = useFullscreen();

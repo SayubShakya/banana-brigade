@@ -1,14 +1,15 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Tests for the breached password check (Have I Been Pwned range API).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { createPwnedCheck } = require('../../server/services/pwned');
 const { startServer, client } = require('./helpers');
 
+// Upper case SHA-1 hash, the format the range API uses.
 const sha1 = (s) => crypto.createHash('sha1').update(s).digest('hex').toUpperCase();
 const BREACHED = 'password123';
 
+// A fake range API: it records each URL it is called with and answers like the real service.
 function fakeRangeApi() {
   const calls = [];
   const fetchImpl = async (url) => {
@@ -23,6 +24,7 @@ function fakeRangeApi() {
 }
 const quiet = { warn: () => {} };
 
+// Proves only the first 5 characters of the hash leave the server, so the password itself is never sent.
 test('only the first 5 characters of the SHA-1 hash are sent', async () => {
   const { fetchImpl, calls } = fakeRangeApi();
   const check = createPwnedCheck({ fetchImpl, log: quiet });
@@ -34,6 +36,7 @@ test('only the first 5 characters of the SHA-1 hash are sent', async () => {
   assert.equal((await check('a-much-better-banana-password')).pwned, false);
 });
 
+// Proves an outage of the outside service does not block sign-ups; it only logs a warning.
 test('when the service is down the password is allowed and a warning is logged', async () => {
   const warnings = [];
   const check = createPwnedCheck({ fetchImpl: async () => { throw new TypeError('fetch failed'); }, log: { warn: (m) => warnings.push(m) } });
@@ -41,6 +44,7 @@ test('when the service is down the password is allowed and a warning is logged',
   assert.match(warnings[0], /check skipped, password allowed/);
 });
 
+// Proves every place a password is set refuses a known breached password.
 test('register, change password and reset refuse a breached password', async () => {
   const sent = [];
   const check = createPwnedCheck({ fetchImpl: fakeRangeApi().fetchImpl, log: quiet });

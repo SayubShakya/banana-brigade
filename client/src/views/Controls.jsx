@@ -1,8 +1,8 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Controls.jsx: help screen listing the keyboard/mouse controls and the touch layout.
 import { Panel } from '../components/common.jsx';
 import '../styles/bootcamp.css';
 
+// [keys, description, isBananaKey] for each control; banana keys are highlighted.
 const KEYS = [
   [['A', 'D'], 'Move'], [['W', 'Space'], 'Jetpack'], [['Mouse'], 'Aim (auto-fires on enemies)'], [['Click'], 'Shoot'],
   [['Q'], 'Switch weapon'], [['R'], 'Reload'], [['G'], 'Grenade'], [['F'], 'Melee'], [['Z'], 'Zoom / scope (or hold right mouse)'], [['M'], 'Minimap'],
@@ -10,6 +10,7 @@ const KEYS = [
   [['Tab'], 'Scoreboard'], [['H'], 'Show or hide this help in battle'], [['Esc'], 'Pause'],
 ];
 
+/** Controls: static help screen. @param {{onBack: Function}} props */
 export default function Controls({ onBack }) {
   return (
     <Panel wide title="Controls" subtitle="Keyboard and mouse, or the dual sticks on a touch screen."

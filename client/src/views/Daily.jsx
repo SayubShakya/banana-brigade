@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Daily.jsx: the Daily Banana Challenge: the same 5 Banana API puzzles for everyone each day.
+// All scoring and answer checking happens on the server (/api/v1/daily/...).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { emit } from '../services/eventBus.js';
@@ -8,6 +8,12 @@ import { playCutscene } from '../services/cutsceneBridge.js';
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
+/**
+ * Daily: start screen, puzzle run and today's leaderboard.
+ * @param {{me: string, onBack: Function}} props  me = my username (highlighted on the board).
+ * API: GET /daily, GET /daily/leaderboard, POST /daily/start, GET /daily/current, POST /daily/answer.
+ * Emits 'banana:answered', 'puzzle:shown' and 'puzzle:hidden' like the normal puzzle modal.
+ */
 export default function Daily({ me, onBack }) {
   const [info, setInfo] = useState(null);
   const [board, setBoard] = useState([]);
@@ -26,6 +32,7 @@ export default function Daily({ me, onBack }) {
 
   const showPuzzle = (p, seconds) => { deadline.current = performance.now() + seconds * 1000; setLeft(seconds); setRun((r) => ({ ...r, ...p })); };
 
+  // start: the Start/Continue button handler. Continue picks up a run left half-way.
   async function start() {
     setError('');
     setBusy(true);
@@ -42,6 +49,8 @@ export default function Daily({ me, onBack }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
 
+  // answer: keypad click or digit key -> POST /api/v1/daily/answer. The server replies with
+  // correct/solution, the new score and the next puzzle (or finished: true after the 5th).
   const answer = useCallback(async (n) => {
     if (!run || run.finished || busy) return;
     setBusy(true);
@@ -60,6 +69,7 @@ export default function Daily({ me, onBack }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }, [run, busy, info, refresh]);
 
+  // While a puzzle is showing: run the 20 s countdown and listen for digit keys.
   useEffect(() => {
     if (!run || run.finished) return undefined;
     const id = setInterval(() => {

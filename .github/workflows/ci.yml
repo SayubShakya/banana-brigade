@@ -1,5 +1,5 @@
-# Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+# Continuous integration on GitHub Actions: every push and pull request runs the
+# unit and integration tests, builds the React app, and runs the Playwright browser tests.
 name: CI
 
 on:
@@ -7,21 +7,25 @@ on:
   pull_request:
 
 jobs:
+  # Job 1: run all node:test tests (npm test), then check the React app builds.
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Where mongodb-memory-server downloads its MongoDB binary (cached below).
     env:
       MONGOMS_DOWNLOAD_DIR: /home/runner/.cache/mongodb-binaries
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
 
+      # cache: npm reuses downloaded packages between runs to make CI faster.
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
+      # Keep the MongoDB binary between runs; the key changes when package-lock.json changes.
       - name: Cache the MongoDB binary for the tests
         uses: actions/cache@v4
         with:
@@ -30,6 +34,7 @@ jobs:
           restore-keys: |
             mongodb-binaries-${{ runner.os }}-
 
+      # npm ci installs the exact versions in package-lock.json.
       - name: Install packages
         run: npm ci
 
@@ -39,6 +44,7 @@ jobs:
       - name: Build the React app
         run: npx vite build
 
+  # Job 2: end-to-end tests in a real Chromium browser (runs in parallel with job 1).
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -65,15 +71,19 @@ jobs:
       - name: Install packages
         run: npm ci
 
+      # --with-deps also installs the Linux libraries Chromium needs.
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
 
+      # The test server serves the built client, so build it first.
       - name: Build the React app
         run: npx vite build
 
+      # Playwright starts tests/e2e/server.js on port 3199 by itself (see playwright.config.js).
       - name: Run the end-to-end tests
         run: npx playwright test
 
+      # Only if something failed: upload the HTML report so it can be downloaded from the run page for 7 days.
       - name: Keep the report if a test failed
         if: failure()
         uses: actions/upload-artifact@v4

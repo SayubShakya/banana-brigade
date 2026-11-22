@@ -1,9 +1,13 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Toasts.jsx: small pop-up messages in the corner of the screen.
 import { useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
 import { Icon } from './common.jsx';
 
+/**
+ * Toasts: no props. Listens to three event bus events and shows a toast for each:
+ * 'achievement:unlocked' (trophy), 'toast:error' (error, e.g. from api.js) and 'toast:info'.
+ * Each toast removes itself after a few seconds; identical errors are not repeated.
+ */
 export default function Toasts() {
   const [items, setItems] = useState([]);
   const show = (item, ms) => {

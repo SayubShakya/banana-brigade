@@ -345,35 +345,35 @@ verification.
 | Version control | Feature branches merged with `--no-ff`, small commits, CI | `git log --oneline --graph`, `CHANGELOG.md`, `CONTRIBUTING.md`, `.github/workflows/ci.yml` |
 | Version control | Annotated release tags for each milestone: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`, `v0.4-multiplayer`, `v0.5-campaign`, `v1.0.0` … `v1.4.0` | `git tag -n` |
 | Version control | SQLite to MongoDB swap kept in history | commits `fadda7c` and `75afbbd` (then `server/db.js`, today `server/repositories/`) |
-| Event-driven | Browser event bus (observer pattern) | `client/src/services/eventBus.js:3-23` |
-| Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:206`, `client/src/game/world.js:305`, `client/src/game/hud.js:76`, `client/src/game/sound.js:343` |
-| Event-driven | React subscribes with a hook | `client/src/hooks/useBus.js:6-10`, `client/src/controllers/useBattle.js:45-55` |
-| Event-driven | Music crossfades on `game:state` | `client/src/game/music.js:124-127` |
-| Event-driven | DOM events to bus events | `client/src/game/input.js:120-134` |
-| Event-driven | Banana Meter and supply drop: answer → meter → X → drop | `client/src/game/GameSession.js:64-92`, `client/src/game/world.js:224-250`, `client/src/game/hud.js:102-107` |
-| Event-driven | Boot Camp driven by bus events | `client/src/game/tutorial.js:26`, `client/src/game/tutorial.js:83-100` |
-| Event-driven | Server `EventEmitter` achievements | `server/services/achievements.js:32-100` |
-| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/services/eventLog.js:14-44`, `server/realtime/socket.js:29-38`, `client/src/views/Admin/LiveEvents.jsx` |
-| Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:124-247`, `server/realtime/match.js:166-168` |
-| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:62-126` (`createBananaApi` to `fetchPuzzle`) |
-| Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:18-54` |
-| Interoperability | Pool, reserve, deadline, circuit breaker | `server/services/pool.js:51-58`, `server/services/pool.js:116-146` |
-| Interoperability | Reserve saved in MongoDB and loaded at start-up | `server/services/pool.js:33-44`, `server/index.js:35-40`, `server/repositories/reservePuzzleRepository.js` |
-| Interoperability | API health in `/api/status` | `server/services/pool.js:148-161` |
-| Interoperability | Our own REST API for the browser (server-timed grade) | `server/services/puzzleService.js:7-32`, `server/services/puzzles.js:5-36`, `server/controllers/puzzleController.js`, `client/src/services/api.js:7-30` |
-| Interoperability | API versioning, OpenAPI 3 + Swagger UI, public CORS leaderboard | `server/middleware/apiVersion.js:3-6`, `server/app.js:56-57`, `server/routes/openapi.js`, `tests/integration/openapi.test.js` |
-| Interoperability | WebSocket protocol | `docs/api.md` (Socket.io protocol), `server/realtime/rooms.js`, `client/src/net/socket.js:22-28` |
-| Virtual identity | Session cookie settings | `server/middleware/session.js:7-21` |
-| Virtual identity | Register, hash, login, limits per name+IP and per IP, logout | `server/routes/auth.js:9-11`, `server/services/authService.js:34-38`, `:53-101`, `server/services/rateLimiter.js:16-34`, `server/repositories/rateLimitRepository.js:5-19` (`bumpCounter`) |
-| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/services/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js:21-23`, `server/services/accountService.js`, `server/repositories/userRepository.js` (`exportUser`) |
-| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/services/authService.js:166-202`, `client/src/views/Login/Login.jsx` |
-| Virtual identity | Session regeneration, remember me | `server/lib/httpSession.js:7-23` |
-| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/services/authService.js:103-126`, `:204-213`, `server/services/sessions.js:5-70` |
-| Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:3-42` |
-| Virtual identity | Suspend/restore (sessions and sockets ended, login refused) and the audit log | `server/routes/admin.js`, `server/services/adminService.js:55-75`, `server/middleware/auth.js:15-20` (suspended check), `server/models/auditLog.js` |
-| Virtual identity | Admin roles | `server/services/adminService.js:43-53`, `client/src/views/Admin/Admin.jsx` |
-| Virtual identity | Sessions in MongoDB | `server/index.js:31-33` |
-| Virtual identity | Login on the WebSocket | `server/realtime/socket.js:14-25` |
+| Event-driven | Browser event bus (observer pattern) | `client/src/services/eventBus.js:5-36` |
+| Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:257`, `client/src/game/world.js:379`, `client/src/game/hud.js:93`, `client/src/game/sound.js:375` |
+| Event-driven | React subscribes with a hook | `client/src/hooks/useBus.js:12-16`, `client/src/controllers/useBattle.js:59-70` |
+| Event-driven | Music crossfades on `game:state` | `client/src/game/music.js:82-85` |
+| Event-driven | DOM events to bus events | `client/src/game/input.js:156-172` |
+| Event-driven | Banana Meter and supply drop: answer → meter → X → drop | `client/src/game/GameSession.js:79-110`, `client/src/game/world.js:282-315`, `client/src/game/hud.js:121-126` |
+| Event-driven | Boot Camp driven by bus events | `client/src/game/tutorial.js:29`, `client/src/game/tutorial.js:100-118` |
+| Event-driven | Server `EventEmitter` achievements | `server/services/achievements.js:41-126` |
+| Event-driven | Live event feed: server `EventEmitter` → Socket.io room `admins` → React | `server/services/eventLog.js:20-60`, `server/realtime/socket.js:43-57`, `client/src/views/Admin/LiveEvents.jsx` |
+| Event-driven | Socket.io handlers, 30 Hz timer | `server/realtime/rooms.js:158-306`, `server/realtime/match.js:214-217` |
+| Interoperability | Calling the Banana API (timeout, up to 2 retries with backoff and jitter) | `server/services/bananaApi.js:89-170` (`createBananaApi` to `fetchPuzzle`) |
+| Interoperability | Parsing JSON, CSV and base64 | `server/services/bananaApi.js:34-74` |
+| Interoperability | Pool, reserve, deadline, circuit breaker | `server/services/pool.js:73-85`, `server/services/pool.js:165-196` |
+| Interoperability | Reserve saved in MongoDB and loaded at start-up | `server/services/pool.js:53-65`, `server/index.js:41-46`, `server/repositories/reservePuzzleRepository.js` |
+| Interoperability | API health in `/api/status` | `server/services/pool.js:199-212` |
+| Interoperability | Our own REST API for the browser (server-timed grade) | `server/services/puzzleService.js:13-54`, `server/services/puzzles.js:7-54`, `server/controllers/puzzleController.js`, `client/src/services/api.js:17-48` |
+| Interoperability | API versioning, OpenAPI 3 + Swagger UI, public CORS leaderboard | `server/middleware/apiVersion.js:8-11`, `server/app.js:71-72`, `server/routes/openapi.js`, `tests/integration/openapi.test.js` |
+| Interoperability | WebSocket protocol | `docs/api.md` (Socket.io protocol), `server/realtime/rooms.js`, `client/src/net/socket.js:37-43` |
+| Virtual identity | Session cookie settings | `server/middleware/session.js:15-33` |
+| Virtual identity | Register, hash, login, limits per name+IP and per IP, logout | `server/routes/auth.js:11-13`, `server/services/authService.js:47-51`, `:80-143`, `server/services/rateLimiter.js:28-46`, `server/repositories/rateLimitRepository.js:16-33` (`bumpCounter`) |
+| Virtual identity | Signed-in devices list, sign out one device, download my data | `server/services/sessions.js` (`listSessionsFor`, `endSessionByHandle`), `server/routes/auth.js:23-25`, `server/services/accountService.js`, `server/repositories/userRepository.js` (`exportUser`) |
+| Virtual identity | Forgot password: single-use, hashed, 30-minute reset link | `server/services/authService.js:230-279`, `client/src/views/Login/Login.jsx` |
+| Virtual identity | Session regeneration, remember me | `server/lib/httpSession.js:17-33` |
+| Virtual identity | Log out everywhere (`/logout-all`), change password (`/password`), delete account (`/account`), username check (`/available`), active sessions (`/sessions`) | `server/services/authService.js:146-180`, `:281-295`, `server/services/sessions.js:11-93` |
+| Virtual identity | Authorisation middleware (user loaded from the database) | `server/middleware/auth.js:12-63` |
+| Virtual identity | Suspend/restore (sessions and sockets ended, login refused) and the audit log | `server/routes/admin.js`, `server/services/adminService.js:77-99`, `server/middleware/auth.js:26-31` (suspended check), `server/models/auditLog.js` |
+| Virtual identity | Admin roles | `server/services/adminService.js:60-71`, `client/src/views/Admin/Admin.jsx` |
+| Virtual identity | Sessions in MongoDB | `server/index.js:36-38` |
+| Virtual identity | Login on the WebSocket | `server/realtime/socket.js:24-38` |
 
 Fuller notes: [docs/events.md](docs/events.md), [docs/api.md](docs/api.md),
 [docs/evaluation.md](docs/evaluation.md), [docs/VIDEO-GUIDE.md](docs/VIDEO-GUIDE.md).
@@ -459,7 +459,9 @@ It runs `git archive` on the current commit (`HEAD`), so only committed files go
   in-game art only and not the assessed video.
   The story clips in `client/public/media/clips/` (videos and poster frames) are short cuts from the clips
   generated with Google Flow.
-- Code written with help from Claude (Anthropic), an AI coding assistant, and reviewed by Sayub Shakya; every
-  source file says so in its one-line header comment.
+- **Use of AI:** the code was written with help from Claude (Anthropic), an AI coding assistant. Every change was
+  reviewed, tested (234 automated tests plus browser tests and CI) and committed by Sayub Shakya. Until 22 Nov 2026
+  each code file carried a one-line header saying so (visible in the git history); it was then replaced by this
+  note and by explanatory comments in the code. The assessed video is Sayub's own work, without AI.
 
 _Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya._

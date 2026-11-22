@@ -1,18 +1,31 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Service layer: campaign missions (progress, stars, unlocking the next mission).
+// Mission rules are shared with the client so both sides agree.
 
 const { badRequest, forbidden } = require('../lib/errors');
 const { cleanPowers } = require('./achievements');
 const { parseMatchInput } = require('./matchService');
 const { CHAPTERS, MISSIONS, missionById, isUnlocked, starsFor, totalStars, chapterOf } = require('../../client/src/game/campaign.js');
 
+// Validation: a whole number from 0 to max, otherwise null.
 const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
 
+/**
+ * Creates the campaign service.
+ * @param {object} deps db, achievements (event bus), matchService
+ */
 function createCampaignService({ db, achievements, matchService }) {
+  /** Returns all chapters, missions and this player's stars. */
   async function overview(userId) {
     const progress = await db.campaignProgress(userId);
     return { chapters: CHAPTERS, missions: MISSIONS, progress, stars: totalStars(progress) };
   }
 
+  /**
+   * Saves a finished mission.
+   * The server decides the result: stars use the puzzle tally kept in the session,
+   * and "won" needs the mission's kill target, so a player cannot just claim a win.
+   * @throws 400 for invalid numbers; 403 if the mission is still locked
+   */
   async function finishMission(userId, b, tally) {
     const mission = missionById(b.mission);
     const kills = int(b.kills, 200);
@@ -35,6 +48,7 @@ function createCampaignService({ db, achievements, matchService }) {
       userId, ...game, map: input.map, puzzlesSolved: p.solved, puzzlesAttempted: p.attempted, ...(matchId ? { matchId } : {}),
     });
     const next = missionById(mission.id + 1);
+    // Fire events so achievements and the live feed can react.
     const unlocked = await achievements.emit('mission:finished', userId, { mission: mission.id, stars });
     const powers = cleanPowers(b.powers);
     if (powers.length) unlocked.push(...await achievements.emit('power:used', userId, { powers }));

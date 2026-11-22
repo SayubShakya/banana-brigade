@@ -1,5 +1,6 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// App.jsx: the root React component of the Banana Brigade UI.
+// It wires the controller hooks (navigation, settings, account, battle) to the views
+// and shows exactly one screen at a time, plus the always-mounted overlays.
 import { useNavigation, useStartRoute } from './controllers/useNavigation.js';
 import { useSettings } from './controllers/useSettings.js';
 import { useAccount } from './controllers/useAccount.js';
@@ -31,6 +32,13 @@ import Toasts from './components/Toasts.jsx';
 import Cutscene from './components/Cutscene.jsx';
 import BootCampCoach from './components/BootCampCoach.jsx';
 
+/**
+ * App: the top-level component (the "controller glue" in our MVC layout).
+ * - useNavigation keeps the current screen name; useAccount keeps the logged-in user;
+ *   useBattle starts and ends matches; useStartRoute decides the first screen on page load.
+ * Renders: the view whose name matches `screen`, then the overlays (puzzle, power picker,
+ * cutscene, toasts, boot camp coach) which open themselves through the event bus / bridges.
+ */
 export default function App() {
   const nav = useNavigation();
   const prefs = useSettings();
@@ -43,6 +51,9 @@ export default function App() {
   const { settings } = prefs;
   const leavePublic = () => nav.leavePublic(!!account);
 
+  // Simple screen switch: each line renders a view only when `screen` matches its name.
+  // The admin screen also checks account.role === 'admin', but that is only a UI check;
+  // the server checks the role again on every /api/v1/admin request (the real guard).
   return (
     <>
       {screen === 'home' && <Home onPlay={() => nav.setScreen('login')} onGuest={player.playAsGuest} onOpen={nav.setScreen} />}

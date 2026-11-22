@@ -1,5 +1,4 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Tests for the "my devices" session list and the "download my data" export.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, client } = require('./helpers');
@@ -8,6 +7,7 @@ const { describeDevice } = require('../../server/lib/device');
 const MAC_CHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
+// Proves a readable device name (browser and system) is worked out from the User-Agent header.
 test('the device name is read from the User-Agent', () => {
   assert.equal(describeDevice(MAC_CHROME), 'Chrome on macOS');
   assert.equal(describeDevice(IPHONE), 'Safari on iOS');
@@ -15,6 +15,7 @@ test('the device name is read from the User-Agent', () => {
   assert.equal(describeDevice(''), 'Unknown device');
 });
 
+// Proves the session list shows each device, marks the current one, and another device can be signed out.
 test('the list shows each device, marks this one, and one other device can be signed out', async () => {
   const s = await startServer();
   try {
@@ -45,6 +46,7 @@ test('the list shows each device, marks this one, and one other device can be si
   } finally { await s.close(); }
 });
 
+// Proves the data export has the profile, scores and sessions but never the password hash.
 test('download my data has the profile, scores and sessions, and no password hash', async () => {
   const s = await startServer();
   try {

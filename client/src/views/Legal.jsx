@@ -1,7 +1,7 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Legal.jsx: the Privacy page, the Terms page and the 404 page (plain static screens).
 import { Panel } from '../components/common.jsx';
 
+/** Privacy: explains the session cookie and what data is stored, where and for how long. */
 export function Privacy({ onBack }) {
   return (
     <Panel wide title="Privacy" subtitle="What Banana Brigade stores about you, and for how long."
@@ -36,6 +36,7 @@ export function Privacy({ onBack }) {
   );
 }
 
+/** Terms: short rules for using the game. */
 export function Terms({ onBack }) {
   return (
     <Panel wide title="Terms" subtitle="Short and plain."
@@ -55,6 +56,7 @@ export function Terms({ onBack }) {
   );
 }
 
+/** NotFound: shown when the URL path is not "/". */
 export function NotFound({ onHome }) {
   return (
     <Panel narrow title="404" subtitle="That page does not exist."

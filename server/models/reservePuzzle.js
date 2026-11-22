@@ -1,4 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Model layer: the reserve pool of Banana API puzzles saved in MongoDB.
+// If the Banana API is down, the game can still serve these stored puzzles.
 
 const { Schema } = require('mongoose');
 

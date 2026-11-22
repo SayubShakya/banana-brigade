@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// The in-match HUD (HTML on top of the canvas): health, fuel, ammo, timer, kill feed, mini scoreboard,
+// Banana Meter, toasts and prompts. It is event-driven: it listens to game events on the event bus.
 import { on, emit } from '../services/eventBus.js';
 import { WEAPONS, SOLDIER, PHYSICS, PICKUPS, POWERS, BANANA_METER } from './config.js';
 import { activeGun } from './world.js';
@@ -7,12 +7,18 @@ import { drawAvatarPreview } from './characters.js';
 import '../styles/match.css';
 
 const $ = (id) => document.getElementById(id);
+// Escapes HTML so player names cannot inject markup into the page.
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtTime = (sec) => { const s = Math.ceil(sec); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const MINI_ROWS = 5;
 const LIVE_MODES = ['quick', 'team', 'online'];
+// True when the user wants less motion (setting or OS "reduce motion").
 const calm = () => document.body.classList.contains('a11y-calm') || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+/**
+ * Rows for the live mini scoreboard: team totals in team mode, otherwise the top 5 players.
+ * If the local player is not in the top 5, their row is added at the end with a gap marker.
+ */
 function miniRows(world) {
   const p = world.player;
   if (world.teamMode) {
@@ -29,6 +35,14 @@ function miniRows(world) {
   return mine && !top.includes(mine) ? [...top, { ...mine, gap: true }] : top;
 }
 
+/**
+ * Creates the HUD controller.
+ * Listens to (event bus): soldier:killed, soldier:damaged, pickup:available, pickup:taken,
+ * banana:meter, banana:drop, survival:wave, power:start, power:warning, power:end,
+ * survival:cleared, campaign:ramp, soldier:respawned, input:zoom, input:scoreboard.
+ * Emits: input:supply (supply drop button).
+ * @returns {{attach, setBanners, hide, update}} update() is called every frame
+ */
 export function createHud() {
   const el = {
     hud: $('hud'), badge: $('hud-avatar'), hp: $('hp-fill'), hpText: $('hp-text'), fuel: $('fuel-fill'),
@@ -54,6 +68,7 @@ export function createHud() {
   let zoomLabelNow = '1x';
   let zoomText = '';
 
+  // Shows a short message. Removing the class and reading offsetWidth restarts the CSS animation.
   function toast(text) {
     el.toast.textContent = text;
     el.toast.classList.remove('show');
@@ -61,6 +76,7 @@ export function createHud() {
     el.toast.classList.add('show');
   }
 
+  // Adds a row to the kill feed (max 4 rows); each row fades out after 4 s.
   function feed(html) {
     const row = document.createElement('div');
     row.className = 'feed-row';
@@ -73,18 +89,21 @@ export function createHud() {
   const nameTag = (s) => `<span class="${s.isPlayer ? 'me' : s.team === 'blue' ? 'team-blue' : s.team === 'red' ? 'team-red' : ''}">${esc(s.name)}</span>`;
 
   const headTag = '<span class="headshot-tag" title="Headshot">🎯 HEADSHOT</span>';
+  // Kill feed entry for each kill (with a headshot tag), plus a kill-streak toast for the player.
   on('soldier:killed', ({ victim, killer, weapon, headshot }) => {
     if (victim.isDummy) return;
     if (killer && killer !== victim) feed(`${nameTag(killer)} <span class="weapon">[${esc(weapon)}]</span>${headshot ? ` ${headTag}` : ''} ${nameTag(victim)}`);
     else feed(`${nameTag(victim)} <span class="weapon">blew themselves up</span>`);
     if (banners && killer?.isPlayer && killer !== victim && killer.streak >= 3) toast(killer.streak >= 5 ? `Banana Rampage! ${killer.streak} kills` : `${killer.streak}-kill streak!`);
   });
+  // Red screen flash when the player is hit.
   on('soldier:damaged', ({ victim }) => {
     if (!victim.isPlayer) return;
     el.flash.classList.remove('on');
     void el.flash.offsetWidth;
     el.flash.classList.add('on');
   });
+  // The world emits this every frame while the player stands on a pickup, so the prompt stays for 150 ms.
   on('pickup:available', ({ weapon, banana, supply }) => {
     if (banana) { crateNearUntil = performance.now() + 150; crateSupply = !!supply; return; }
     pickupText = `E · pick up ${WEAPONS[weapon].name}`;
@@ -117,6 +136,7 @@ export function createHud() {
   on('input:zoom', ({ level, zoomLabel }) => { zoomLevel = level; zoomLabelNow = zoomLabel ?? '1x'; });
   on('input:scoreboard', ({ show }) => { if (world) el.board.hidden = !show; });
 
+  // Updates the mini scoreboard only when the rows changed. Rows slide to their new place (FLIP animation).
   function renderMini() {
     if (!LIVE_MODES.includes(world.mode)) { el.mini.hidden = true; return; }
     el.mini.hidden = false;
@@ -155,12 +175,14 @@ export function createHud() {
     }
   }
 
+  // Full scoreboard (Tab key), sorted by kills then deaths.
   function renderBoard() {
     const rows = world.soldiers.filter((s) => !s.isDummy).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
     el.boardBody.innerHTML = rows.map((s, i) => `<tr class="${s.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${nameTag(s)}</td><td>${s.kills}</td><td>${s.deaths}</td></tr>`).join('');
   }
 
   return {
+    // Connects the HUD to a new match world and resets everything.
     attach(w) {
       zoomLabelNow = '1x';
       world = w;
@@ -185,6 +207,7 @@ export function createHud() {
     },
     setBanners(on) { banners = on; },
     hide() { world = null; el.hud.hidden = true; el.board.hidden = true; el.help.hidden = true; el.mini.hidden = true; el.timer.classList.remove('final'); },
+    // Refreshes the HUD from the world state. Values are only written to the DOM when they change, to keep it fast.
     update() {
       if (!world) return;
       const p = world.player;
@@ -217,6 +240,7 @@ export function createHud() {
 
       el.score.textContent = `Kills ${p.kills} · Deaths ${p.deaths}`;
       const players = world.soldiers.filter((s) => !s.isDummy);
+      // The timer and rank line depend on the game mode.
       switch (world.mode) {
         case 'training':
           el.timer.textContent = 'TRAINING';
@@ -248,6 +272,7 @@ export function createHud() {
       el.timer.classList.toggle('final', timed && world.timeLeft > 0 && world.timeLeft <= 10);
       renderMini();
 
+      // Death message: how to come back (respawn timer, Banana API puzzle respawn, or out of lives).
       if (!p.alive && !world.over) {
         const by = p.lastAttacker && p.lastAttacker !== p ? `Killed by ${esc(p.lastAttacker.name)}` : 'You went down';
         el.msg.innerHTML = world.mode === 'campaign' && p.lives <= 0 ? `${by}: <b>out of lives</b>`

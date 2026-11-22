@@ -1,9 +1,12 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// LoopVideo.jsx: a small silent looping video (e.g. power card art) from /media/loops.
 import { useEffect, useRef, useState } from 'react';
 
 const calm = () => document.body.classList.contains('a11y-calm') || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+/**
+ * LoopVideo: plays <name>.mp4 on a loop, or shows <name>.jpg in calm / reduced motion mode.
+ * @param {{name: string, className?: string, label?: string}} props  label = accessible text.
+ */
 export default function LoopVideo({ name, className = '', label }) {
   const ref = useRef(null);
   const [still] = useState(calm);

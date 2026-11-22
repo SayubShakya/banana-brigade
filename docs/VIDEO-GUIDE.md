@@ -38,30 +38,30 @@ filling → X for a Supply Drop → Results **Banana report** (live vs reserve p
 ## Interoperability
 **Facts**
 - Third-party service: Banana API by Marc Conrad, `https://marcconrad.com/uob/banana/api.php`, HTTPS GET, JSON.
-- Request: `?out=json&base64=yes` → `{ "question": "<base64 PNG>", "solution": 7 }` (`server/services/bananaApi.js:83`), with
-  `Accept: application/json` and `Cache-Control: no-store` (`server/services/bananaApi.js:88`).
+- Request: `?out=json&base64=yes` → `{ "question": "<base64 PNG>", "solution": 7 }` (`server/services/bananaApi.js:117`), with
+  `Accept: application/json` and `Cache-Control: no-store` (`server/services/bananaApi.js:123`).
 - Each puzzle is a picture of a sum in which every banana hides the same digit; the answer is that digit (0–9).
-- Timeout 5 s per attempt with an `AbortController`, covering the body too (`server/services/bananaApi.js:82-102`,
+- Timeout 5 s per attempt with an `AbortController`, covering the body too (`server/services/bananaApi.js:116-138`,
   timer at `:86`).
-- **Up to 2 retries** (`retries = 2`, `server/services/bananaApi.js:67`) with exponential backoff and jitter: 300 ms, then
-  900 ms, plus up to 30% (`server/services/bananaApi.js:109-112`). Only network errors, timeouts, HTTP 5xx and 429 are retried
-  (`server/services/bananaApi.js:56-60`, `:90`); bad data stops at once (`server/services/bananaApi.js:121`).
-- `BananaApiError` with `retryable` and a public `kind` (`server/services/bananaApi.js:6-14`).
+- **Up to 2 retries** (`retries = 2`, `server/services/bananaApi.js:94`) with exponential backoff and jitter: 300 ms, then
+  900 ms, plus up to 30% (`server/services/bananaApi.js:152-155`). Only network errors, timeouts, HTTP 5xx and 429 are retried
+  (`server/services/bananaApi.js:77-81`, `:126`); bad data stops at once (`server/services/bananaApi.js:165`).
+- `BananaApiError` with `retryable` and a public `kind` (`server/services/bananaApi.js:14-22`).
 - Validation and normalising of the reply: JSON, base64 pattern, digit 0–9, a digit sent as a string
-  (`server/services/bananaApi.js:18-54`). CSV is also supported.
-- Call statistics for `/api/status` (`server/services/bananaApi.js:128-138`).
-- Pool (`pool.js`): 3 ready, reserve of 25, 2.5 s deadline on `take()` (`server/services/pool.js:116-146`), at most 3 calls in
-  flight, circuit breaker after 3 failures in a row, 30 s pause, one probe (`server/services/pool.js:51-58`, opened at `:79`),
-  status numbers (`server/services/pool.js:148-161`). Choices and alternatives: `docs/resilience.md`.
-- The reserve is saved in MongoDB and loaded at start-up (`server/services/pool.js:33-44`, `server/index.js:35-40`), so a
+  (`server/services/bananaApi.js:34-74`). CSV is also supported.
+- Call statistics for `/api/status` (`server/services/bananaApi.js:173-183`).
+- Pool (`pool.js`): 3 ready, reserve of 25, 2.5 s deadline on `take()` (`server/services/pool.js:165-196`), at most 3 calls in
+  flight, circuit breaker after 3 failures in a row, 30 s pause, one probe (`server/services/pool.js:73-85`, opened at `:111`),
+  status numbers (`server/services/pool.js:199-212`). Choices and alternatives: `docs/resilience.md`.
+- The reserve is saved in MongoDB and loaded at start-up (`server/services/pool.js:53-65`, `server/index.js:41-46`), so a
   restart with the API down still has puzzles.
 - Worst case for one failing call: three 5 s timeouts plus backoff, about 16 s. The deadline means the player
   waits at most 2.5 s when there is a reserve.
-- Our own API for the browser: `GET /api/puzzle` (`server/services/puzzleService.js:8-18`) returns `{ puzzleId, image, purpose, source }`
-  without the solution; `POST /api/puzzle/answer` (`server/services/puzzleService.js:20-27`); solutions kept in
-  `server/services/puzzles.js:21-36`, which also times the answer and gives the GOLD/SILVER/BRONZE grade (`:5-10`).
+- Our own API for the browser: `GET /api/puzzle` (`server/services/puzzleService.js:20-30`) returns `{ puzzleId, image, purpose, source }`
+  without the solution; `POST /api/puzzle/answer` (`server/services/puzzleService.js:40-48`); solutions kept in
+  `server/services/puzzles.js:34-54`, which also times the answer and gives the GOLD/SILVER/BRONZE grade (`:7-18`).
 - Second protocol: Socket.io for online matches (`docs/api.md` (Socket.io protocol), `server/realtime/rooms.js` lists every message).
-- Shared code across machines: the server runs `client/src/game/world.js` (`server/realtime/match.js:4`).
+- Shared code across machines: the server runs `client/src/game/world.js` (`server/realtime/match.js:6`).
 
 **On-screen ideas**
 - DevTools → Network → `puzzle?purpose=deploy` → Response: show there is no `solution` field. Then the
@@ -113,73 +113,73 @@ discussion) as a limit; tags for milestones. See `docs/evaluation.md` section 1.
 
 ## Event-driven programming
 **Facts**
-- The bus: `on`, `off`, `emit` (`client/src/services/eventBus.js:3-23`), with try/catch per listener (`:17-21`).
-- Generated: DOM key press → `input:banana` (`client/src/game/input.js:126`); the world emits `soldier:killed`
-  (`client/src/game/world.js:206`) and `match:ended` (`client/src/game/world.js:305`).
-- Handled: kill feed (`client/src/game/hud.js:76`), sound (`client/src/game/sound.js:343`), respawn puzzle
-  (`client/src/game/GameSession.js:119` → `bananaRespawn` at `:104-118`), results (`client/src/game/GameSession.js:172`
-  → `game:over` at `:178` → `client/src/controllers/useBattle.js:50`).
-- One event, two independent listeners: `game:state` switches the screen (`client/src/controllers/useBattle.js:45-49`) and crossfades the
-  music (`client/src/game/music.js:124-127`).
-- `banana:answered` (`client/src/components/PuzzleModal.jsx:116`) is heard by battle stats and the Banana Meter
-  (`client/src/game/GameSession.js:64-81`), the lifetime record (`client/src/services/storage.js:12`), the chime or buzzer
-  (`client/src/game/sound.js:264`) and Boot Camp (`client/src/game/tutorial.js:26`).
-- Banana Meter chain: answer → `bananaAnswered` emits `banana:meter` (`client/src/game/world.js:224-230`) → HUD toast
-  (`client/src/game/hud.js:102`); X key → `input:supply` (`client/src/game/GameSession.js:90-93`) → `callSupplyDrop`
-  (`:85-89`, `client/src/game/world.js:239-250`) → `banana:drop` → HUD (`client/src/game/hud.js:107`). The HUD DROP
-  button emits the same `input:supply` (`client/src/game/hud.js:45`).
+- The bus: `on`, `off`, `emit` (`client/src/services/eventBus.js:5-36`), with try/catch per listener (`:30-34`).
+- Generated: DOM key press → `input:banana` (`client/src/game/input.js:164`); the world emits `soldier:killed`
+  (`client/src/game/world.js:257`) and `match:ended` (`client/src/game/world.js:379`).
+- Handled: kill feed (`client/src/game/hud.js:93`), sound (`client/src/game/sound.js:375`), respawn puzzle
+  (`client/src/game/GameSession.js:145` → `bananaRespawn` at `:128-144`), results (`client/src/game/GameSession.js:202`
+  → `game:over` at `:178` → `client/src/controllers/useBattle.js:65`).
+- One event, two independent listeners: `game:state` switches the screen (`client/src/controllers/useBattle.js:59-63`) and crossfades the
+  music (`client/src/game/music.js:82-85`).
+- `banana:answered` (`client/src/components/PuzzleModal.jsx:143`) is heard by battle stats and the Banana Meter
+  (`client/src/game/GameSession.js:79-98`), the lifetime record (`client/src/services/storage.js:15`), the chime or buzzer
+  (`client/src/game/sound.js:289`) and Boot Camp (`client/src/game/tutorial.js:29`).
+- Banana Meter chain: answer → `bananaAnswered` emits `banana:meter` (`client/src/game/world.js:282-288`) → HUD toast
+  (`client/src/game/hud.js:121`); X key → `input:supply` (`client/src/game/GameSession.js:108-111`) → `callSupplyDrop`
+  (`:85-89`, `client/src/game/world.js:298-315`) → `banana:drop` → HUD (`client/src/game/hud.js:126`). The HUD DROP
+  button emits the same `input:supply` (`client/src/game/hud.js:59`).
 - Boot Camp is a listener too: it subscribes to the events in `BOOT_CAMP_EVENTS` while it runs and moves to the next
-  step when the right one arrives (`client/src/game/tutorial.js:26`, `:83-100`).
-- React bridge: `useBus` (`client/src/hooks/useBus.js:6-10`).
-- Same engine on the server with a different `emit` (`client/src/game/world.js:69`, `server/realtime/match.js:51-76`): engine events become
+  step when the right one arrives (`client/src/game/tutorial.js:29`, `:100-118`).
+- React bridge: `useBus` (`client/src/hooks/useBus.js:12-16`).
+- Same engine on the server with a different `emit` (`client/src/game/world.js:97`, `server/realtime/match.js:81-106`): engine events become
   snapshot events.
-- Server `EventEmitter` and achievement rules (`server/services/achievements.js:32-100`; emit at `:81-92`); fired from
-  `server/services/puzzleService.js:25`, `server/services/scoreService.js:33`, `server/services/campaignService.js:35`,
-  `server/services/dailyService.js:51`, `:71`, `server/realtime/rooms.js:83`, `:229`. The admin live feed listens to the same
-  emitter (`server/services/eventLog.js:27-36`).
-- Socket.io handlers (`server/realtime/rooms.js:124-247`); 30 Hz `setInterval` tick (`server/realtime/match.js:166-168`).
-- Timeouts and retries (Week 4): Banana API timeout (`server/services/bananaApi.js:84-86`), backoff (`server/services/bananaApi.js:109-112`),
-  `take()` deadline (`server/services/pool.js:126-127`), socket request timeout 8 s (`client/src/net/socket.js:25-26`).
+- Server `EventEmitter` and achievement rules (`server/services/achievements.js:41-126`; emit at `:104-117`); fired from
+  `server/services/puzzleService.js:46`, `server/services/scoreService.js:52`, `server/services/campaignService.js:48`,
+  `server/services/dailyService.js:66`, `:94`, `server/realtime/rooms.js:111`, `:281`. The admin live feed listens to the same
+  emitter (`server/services/eventLog.js:41-51`).
+- Socket.io handlers (`server/realtime/rooms.js:158-306`); 30 Hz `setInterval` tick (`server/realtime/match.js:214-217`).
+- Timeouts and retries (Week 4): Banana API timeout (`server/services/bananaApi.js:118-121`), backoff (`server/services/bananaApi.js:152-155`),
+  `take()` deadline (`server/services/pool.js:175-176`), socket request timeout 8 s (`client/src/net/socket.js:40-41`).
 - Full catalogue: `docs/events.md`.
 
 **On-screen ideas**
-- Put a breakpoint or `console.log` in `client/src/game/hud.js:76` and get a kill: the handler runs without `world.js`
+- Put a breakpoint or `console.log` in `client/src/game/hud.js:93` and get a kill: the handler runs without `world.js`
   knowing about the HUD.
 - Start a battle and listen: the music changes because `music.js` listens to `game:state`, not because the
   battle code calls it.
-- Unlock an achievement and point at the toast (`client/src/components/Toasts.jsx:14`) and the `unlocked` field in the Network reply.
+- Unlock an achievement and point at the toast (`client/src/components/Toasts.jsx:18`) and the `unlocked` field in the Network reply.
 
 **Evaluate:** observer bus vs direct calls; React for screens vs canvas loop; synchronous bus limits; listeners
 not yet used. See `docs/evaluation.md` section 2.
 
 ## Virtual identity
 **Facts**
-- Register: validation (`server/services/authService.js:34-38`), `bcrypt.hash` cost 10 (`server/services/authService.js:57`), unique index race
-  (`server/services/authService.js:59-64`). The sign-up form checks names live (`/available`, `server/services/authService.js:205-213`, 20 checks a minute).
-- Login: limits per name+IP and per IP, counted before the password check (`server/services/authService.js:75-79`,
-  `server/services/rateLimiter.js:16-34`, atomic `$inc` in `server/repositories/rateLimitRepository.js:5-19`),
-  dummy-hash compare (`server/services/authService.js:81-82`), wrong password (`server/services/authService.js:83-86`),
-  a correct password gives its tries back (`:87`), session regenerated (`server/lib/httpSession.js:7-23`),
-  "remember me" sets 30 days (`server/lib/httpSession.js:5`, `:18`).
-- Logout destroys the session and clears the cookie (`server/services/authService.js:98-101`, `server/lib/httpSession.js:25-34`).
-- Log out everywhere (`server/services/authService.js:103-107`), change password, needing the current one (`server/services/authService.js:109-117`), delete
-  account and all data (`server/services/authService.js:119-126`), active sessions (`server/services/accountService.js:6-11`).
+- Register: validation (`server/services/authService.js:47-51`), `bcrypt.hash` cost 10 (`server/services/authService.js:85`), unique index race
+  (`server/services/authService.js:87-93`). The sign-up form checks names live (`/available`, `server/services/authService.js:282-295`, 20 checks a minute).
+- Login: limits per name+IP and per IP, counted before the password check (`server/services/authService.js:112-116`,
+  `server/services/rateLimiter.js:28-46`, atomic `$inc` in `server/repositories/rateLimitRepository.js:16-33`),
+  dummy-hash compare (`server/services/authService.js:119-120`), wrong password (`server/services/authService.js:122-125`),
+  a correct password gives its tries back (`:87`), session regenerated (`server/lib/httpSession.js:17-33`),
+  "remember me" sets 30 days (`server/lib/httpSession.js:6`, `:28`).
+- Logout destroys the session and clears the cookie (`server/services/authService.js:140-143`, `server/lib/httpSession.js:40-49`).
+- Log out everywhere (`server/services/authService.js:146-151`), change password, needing the current one (`server/services/authService.js:153-166`), delete
+  account and all data (`server/services/authService.js:168-180`), active sessions (`server/services/accountService.js:15-20`).
 - Ending sessions: one MongoDB query on the session store, then the player's sockets are closed
-  (`server/services/sessions.js:5-70`). Sockets join `user:<id>` and `sid:<id>` rooms for this (`server/realtime/socket.js:22-23`).
-- Cookie: `brigade.sid`, HttpOnly, SameSite=Lax, Secure in production, 2 hours (`server/middleware/session.js:7-21`).
-- Sessions stored in MongoDB (`server/index.js:31-33`); login counters expire by TTL index (`server/models/rateLimit.js:5-11`).
+  (`server/services/sessions.js:11-93`). Sockets join `user:<id>` and `sid:<id>` rooms for this (`server/realtime/socket.js:35-36`).
+- Cookie: `brigade.sid`, HttpOnly, SameSite=Lax, Secure in production, 2 hours (`server/middleware/session.js:15-33`).
+- Sessions stored in MongoDB (`server/index.js:36-38`); login counters expire by TTL index (`server/models/rateLimit.js:6-13`).
 - Authorisation: `loadUser` reads the user and role from the database on every request, so a deleted, demoted or
-  suspended account loses access at once (`server/middleware/auth.js:3-23`); `requireLogin`, `requireAdmin` (`:25-42`).
-- Admin routes (`server/routes/admin.js:8`); promote or demote, but not yourself (`server/services/adminService.js:43-53`); Admin screen
-  (`client/src/views/Admin/Admin.jsx`), offered only to admins in Settings (`client/src/views/Settings.jsx:126`).
-- WebSocket uses the same session (`server/realtime/socket.js:14-25`).
-- Identity from the session, not the body: puzzle counts (`server/services/scoreService.js:29-31`, `puzzleTally` in
-  `server/lib/httpSession.js:44-60`), online scores written by the server (`server/realtime/rooms.js:75-88`).
-- Tests: `tests/integration/auth.test.js:8` (cookie flags), `:25` (bcrypt in the database), `:63` (session fixation),
-  `:75` (five wrong passwords from one IP), `:133` (admin 403); `tests/integration/password-reset.test.js:91` (a stranger
+  suspended account loses access at once (`server/middleware/auth.js:12-34`); `requireLogin`, `requireAdmin` (`:40-63`).
+- Admin routes (`server/routes/admin.js:10`); promote or demote, but not yourself (`server/services/adminService.js:60-71`); Admin screen
+  (`client/src/views/Admin/Admin.jsx`), offered only to admins in Settings (`client/src/views/Settings.jsx:141`).
+- WebSocket uses the same session (`server/realtime/socket.js:24-38`).
+- Identity from the session, not the body: puzzle counts (`server/services/scoreService.js:48-50`, `puzzleTally` in
+  `server/lib/httpSession.js:69-86`), online scores written by the server (`server/realtime/rooms.js:102-116`).
+- Tests: `tests/integration/auth.test.js:10` (cookie flags), `:28` (bcrypt in the database), `:69` (session fixation),
+  `:75` (five wrong passwords from one IP), `:133` (admin 403); `tests/integration/password-reset.test.js:98` (a stranger
   cannot lock the owner out), `:102` (20 per IP across names), `:114` (12 parallel guesses, only 5 checked);
-  `tests/integration/identity.test.js:29` (remember me), `:40` (log out everywhere, sockets too), `:64` (password change),
-  `:82` (delete account), `:132` (demoted admin loses access at once); `tests/integration/realtime.test.js:23` (socket
+  `tests/integration/identity.test.js:34` (remember me), `:46` (log out everywhere, sockets too), `:71` (password change),
+  `:82` (delete account), `:132` (demoted admin loses access at once); `tests/integration/realtime.test.js:27` (socket
   without login refused).
 
 **On-screen ideas**

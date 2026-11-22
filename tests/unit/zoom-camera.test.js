@@ -1,11 +1,12 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Unit tests for the zoom controls (client/src/game/input.js) and the camera
+// (client/src/game/render.js) that keeps the player in view while aiming.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createZoom, ZOOM_ENGAGED_LEVEL } = require('../../client/src/game/input.js');
 const { playerScreenTarget, cameraTarget, keepInBox, SAFE_BOX, HARD_BOX, LOOK, ZOOM_SCALE } = require('../../client/src/game/render.js');
 const { VIEW, ZOOM_LEVELS, WEAPONS } = require('../../client/src/game/config.js');
 
+// Creates a zoom controller for the given gun and records each state it reports.
 function zoomWith(gun) {
   const events = [];
   const z = createZoom((st) => events.push(st));
@@ -13,6 +14,7 @@ function zoomWith(gun) {
   return { z, events };
 }
 
+// Proves Z turns the sniper scope on and off and the label updates each time.
 test('Z toggles the sniper scope on and off', () => {
   const { z, events } = zoomWith('sniper');
   z.toggle();
@@ -25,6 +27,7 @@ test('Z toggles the sniper scope on and off', () => {
   assert.deepEqual(events.map((e) => e.zoomLabel), ['SCOPE', '1x']);
 });
 
+// Proves holding the right mouse button scopes only while it is held.
 test('holding the right button scopes only while held', () => {
   const { z } = zoomWith('sniper');
   z.hold(true);
@@ -33,6 +36,7 @@ test('holding the right button scopes only while held', () => {
   assert.equal(z.scoped, false);
 });
 
+// Proves letting go of a hold does not cancel a scope that was toggled on.
 test('releasing a hold keeps a scope that was toggled on', () => {
   const { z } = zoomWith('sniper');
   z.toggle();
@@ -41,6 +45,7 @@ test('releasing a hold keeps a scope that was toggled on', () => {
   assert.equal(z.scoped, true);
 });
 
+// Proves guns other than the sniper get a wider FAR view instead of a scope.
 test('other guns get the FAR view instead of a scope', () => {
   const { z } = zoomWith('rifle');
   z.toggle();
@@ -49,6 +54,7 @@ test('other guns get the FAR view instead of a scope', () => {
   assert.equal(z.zoomLabel, 'FAR');
 });
 
+// Proves changing weapon resets the zoom.
 test('swapping weapon resets the zoom', () => {
   const { z } = zoomWith('sniper');
   z.toggle();
@@ -59,6 +65,7 @@ test('swapping weapon resets the zoom', () => {
   assert.equal(z.engaged, false);
 });
 
+// Proves dying or reloading clears the zoom.
 test('reset (death or reload) clears both toggle and hold', () => {
   const { z } = zoomWith('sniper');
   z.toggle();
@@ -68,6 +75,7 @@ test('reset (death or reload) clears both toggle and hold', () => {
   assert.equal(z.level, 0);
 });
 
+// Proves the mouse wheel zooms in and out within limits and never wraps around.
 test('the wheel zooms in and out within bounds and never wraps', () => {
   const sniper = zoomWith('sniper').z;
   for (let i = 0; i < 5; i++) sniper.wheel(-100);
@@ -81,6 +89,7 @@ test('the wheel zooms in and out within bounds and never wraps', () => {
   assert.equal(rifle.zoomLabel, '1x');
 });
 
+// Proves the zoom level still maps to the old ZOOM_LEVELS table for every weapon.
 test('the engaged level still maps below 1x through the existing ZOOM_LEVELS lookup', () => {
   for (const key of Object.keys(WEAPONS)) {
     const maxZoom = (WEAPONS[key].zoom ?? 2) - 1;
@@ -89,16 +98,20 @@ test('the engaged level still maps below 1x through the existing ZOOM_LEVELS loo
   }
 });
 
+// Proves the scope zooms in and the FAR view zooms out.
 test('the scope zooms in and the FAR view zooms out', () => {
   assert.ok(ZOOM_SCALE.scope > 1);
   assert.ok(ZOOM_SCALE.far < 1);
 });
 
+// Mouse positions at the screen corners and centre, and sample movement leads, used below.
 const corners = [
   { x: 0, y: 0 }, { x: VIEW.width, y: 0 }, { x: 0, y: VIEW.height }, { x: VIEW.width, y: VIEW.height }, { x: VIEW.width / 2, y: VIEW.height / 2 },
 ];
 const leads = [{ x: 60, y: 36 }, { x: -60, y: -36 }, { x: 0, y: 0 }];
 
+// Proves the camera look-ahead never pushes the player outside the safe box on screen,
+// for every zoom, mouse position and movement direction.
 test('look-ahead is capped so the player stays inside the safe box', () => {
   for (const scale of [ZOOM_SCALE.far, 1, ZOOM_SCALE.scope]) {
     for (const look of Object.values(LOOK)) {
@@ -114,6 +127,7 @@ test('look-ahead is capped so the player stays inside the safe box', () => {
   }
 });
 
+// Proves the camera target puts the player exactly where the safe box says.
 test('the camera target puts the player where the safe box says, away from the map edge', () => {
   const map = { width: 3600, height: 1440 };
   const px = 1800;
@@ -127,6 +141,7 @@ test('the camera target puts the player where the safe box says, away from the m
   }
 });
 
+// Proves a lagging camera is pulled back so the player never leaves the hard box.
 test('a lagging camera is pulled back so the player never leaves the hard box', () => {
   const map = { width: 3600, height: 1440 };
   const cam = keepInBox({ x: 0, y: 0 }, 1800, 700, 1, map);
@@ -136,6 +151,7 @@ test('a lagging camera is pulled back so the player never leaves the hard box', 
   assert.ok(sy <= VIEW.height * HARD_BOX.bottom + 1e-6 && sy >= VIEW.height * HARD_BOX.top - 1e-6);
 });
 
+// Proves pressing A or D turns the soldier to that side, even when aiming the other way or straight up.
 test('pressing A or D turns the soldier to that side when the aim points the other way or straight up', () => {
   const { faceToward } = require('../../client/src/game/input.js');
   const me = { x: 600, y: 360 };

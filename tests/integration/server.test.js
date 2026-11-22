@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Integration tests for the Banana API puzzles (interoperability theme):
+// the server calls the Banana API, keeps the solution secret and checks answers.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createPuzzleStore } = require('../../server/services/puzzles');
@@ -10,6 +10,7 @@ const IMAGE = 'https://www.sanfoh.com/uob/banana/data/t1.png';
 
 const { startServer, client, fakeApi, IMAGE: IMG } = require('./helpers');
 
+// Starts a server with the given fake Banana API, logs in a test player, runs the test, then shuts down.
 async function withPlayer(bananaApi, fn) {
   const s = await startServer({ bananaApi });
   try {
@@ -19,6 +20,7 @@ async function withPlayer(bananaApi, fn) {
   } finally { await s.close(); }
 }
 
+// Proves the solution never reaches the browser, so players cannot read the answer in DevTools.
 test('GET /api/puzzle returns the image but never the solution', async () => {
   await withPlayer(fakeApi(7), async (c) => {
     const res = await c.get('/api/puzzle?purpose=crate');
@@ -31,6 +33,7 @@ test('GET /api/puzzle returns the image but never the solution', async () => {
   });
 });
 
+// Proves a correct answer is accepted and the same puzzle cannot be answered again (no replay).
 test('a correct answer is accepted and the puzzle cannot be reused', async () => {
   await withPlayer(fakeApi(7), async (c) => {
     const { puzzleId } = (await c.get('/api/puzzle')).body;
@@ -43,6 +46,7 @@ test('a correct answer is accepted and the puzzle cannot be reused', async () =>
   });
 });
 
+// Proves a wrong answer is rejected and the right answer is shown afterwards.
 test('a wrong answer is rejected and the solution is revealed', async () => {
   await withPlayer(fakeApi(3), async (c) => {
     const { puzzleId } = (await c.get('/api/puzzle?purpose=respawn')).body;
@@ -54,6 +58,7 @@ test('a wrong answer is rejected and the solution is revealed', async () => {
   });
 });
 
+// Proves badly formed answers get 400 Bad Request instead of crashing the server.
 test('bad answers are refused with 400', async () => {
   await withPlayer(fakeApi(), async (c) => {
     assert.equal((await c.post('/api/puzzle/answer', { puzzleId: 'x', answer: '7' })).status, 400);
@@ -61,12 +66,14 @@ test('bad answers are refused with 400', async () => {
   });
 });
 
+// Proves an unknown purpose value safely falls back to the normal deploy puzzle.
 test('an unknown purpose falls back to deploy', async () => {
   await withPlayer(fakeApi(), async (c) => {
     assert.equal((await c.get('/api/puzzle?purpose=hack')).body.purpose, 'deploy');
   });
 });
 
+// Proves a Banana API failure becomes a clear 502 error message, not a crash.
 test('a Banana API failure becomes a 502 with a friendly message', async () => {
   const broken = { fetchPuzzle: async () => { throw new BananaApiError('Banana API is unreachable'); } };
   await withPlayer(broken, async (c) => {
@@ -76,6 +83,7 @@ test('a Banana API failure becomes a 502 with a friendly message', async () => {
   });
 });
 
+// Proves puzzles expire after the time limit, so old puzzles cannot be answered later.
 test('puzzles expire after the time limit', () => {
   let clock = 0;
   const store = createPuzzleStore({ ttlMs: 1000, now: () => clock });
@@ -84,6 +92,7 @@ test('puzzles expire after the time limit', () => {
   assert.equal(store.answer(id, 4), null);
 });
 
+// Proves the Banana API reply can be read in JSON, CSV and base64 formats.
 test('the Banana API response is parsed from JSON, CSV and base64', () => {
   const png = 'iVBORw0KGgo' + 'A'.repeat(120);
   assert.deepEqual(parsePuzzle(JSON.stringify({ question: IMAGE, solution: 2 }), 'json'), { image: IMAGE, solution: 2 });
@@ -94,6 +103,7 @@ test('the Banana API response is parsed from JSON, CSV and base64', () => {
   assert.throws(() => parsePuzzle(JSON.stringify({ question: 'not base64!', solution: 1 }), 'json', true), BananaApiError);
 });
 
+// Proves the pool keeps puzzles fetched in advance, so players do not wait for the API.
 test('the pool keeps puzzles ready so the next one is instant', async () => {
   let calls = 0;
   const pool = createPuzzlePool({ fetchPuzzle: async () => ({ image: `${IMAGE}?n=${++calls}`, solution: 1 }), size: 2 });
@@ -105,6 +115,7 @@ test('the pool keeps puzzles ready so the next one is instant', async () => {
   assert.equal(pool.status().online, true);
 });
 
+// Proves that when the Banana API is down, saved reserve puzzles keep the game playable.
 test('when the Banana API goes down the pool serves reserve puzzles', async () => {
   let up = true;
   const pool = createPuzzlePool({
@@ -120,11 +131,13 @@ test('when the Banana API goes down the pool serves reserve puzzles', async () =
   assert.equal(pool.status().lastError, 'network');
 });
 
+// Proves that with no reserve puzzles an outage is reported as an error.
 test('with no reserve, an outage is reported as an error', async () => {
   const pool = createPuzzlePool({ fetchPuzzle: async () => { throw new BananaApiError('down'); }, size: 0 });
   await assert.rejects(pool.take(), BananaApiError);
 });
 
+// Proves the status endpoint reports whether the Banana API is up.
 test('GET /api/status reports the API state', async () => {
   await withPlayer(fakeApi(), async (c) => {
     await c.get('/api/puzzle');
@@ -137,6 +150,7 @@ test('GET /api/status reports the API state', async () => {
   });
 });
 
+// Proves unknown pages give 404: browsers get the React page, API callers get JSON.
 test('unknown pages are a 404: the React page for browsers, JSON under /api', async () => {
   const s = await startServer();
   try {
@@ -148,6 +162,7 @@ test('unknown pages are a 404: the React page for browsers, JSON under /api', as
   } finally { await s.close(); }
 });
 
+// Proves the reserve stored in MongoDB keeps only the newest 25 puzzles.
 test('the saved puzzle reserve keeps only the newest 25 in MongoDB', async () => {
   const s = await startServer();
   try {
@@ -160,6 +175,7 @@ test('the saved puzzle reserve keeps only the newest 25 in MongoDB', async () =>
   } finally { await s.close(); }
 });
 
+// Proves a too large request body gets a clear 413 JSON error instead of a 500.
 test('an oversized body gets a 413 JSON error, not a 500', async () => {
   const s = await startServer();
   try {

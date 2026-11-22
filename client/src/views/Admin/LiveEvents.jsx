@@ -1,5 +1,4 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// LiveEvents.jsx: admin tab that streams server events in real time over Socket.IO.
 import { useEffect, useRef, useState } from 'react';
 import { getSocket, request } from '../../net/socket.js';
 
@@ -7,6 +6,11 @@ const KINDS = ['all', 'auth', 'security', 'puzzle', 'score', 'kill', 'achievemen
 const MAX = 200;
 const time = (iso) => new Date(iso).toLocaleTimeString();
 
+/**
+ * LiveEvents: no props. Sends 'events:watch' (the server only allows admins) and then
+ * receives every 'server:event' (logins, puzzles, kills, admin actions...) as it happens.
+ * Has a kind filter, Pause/Resume (new events are held while paused) and Clear.
+ */
 export default function LiveEvents() {
   const [events, setEvents] = useState([]);
   const [kind, setKind] = useState('all');
@@ -16,6 +20,7 @@ export default function LiveEvents() {
   const pausedRef = useRef(false);
   pausedRef.current = paused;
 
+  // Subscribe to socket events on mount; watch again after a reconnect; unsubscribe on unmount.
   useEffect(() => {
     const socket = getSocket();
     const onEvent = (e) => {

@@ -1,5 +1,4 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Difficulty.jsx: before a match, the player chooses difficulty, match length and map.
 import { useState } from 'react';
 import { DIFFICULTY, MODES, MATCH_LENGTHS, DEFAULT_MATCH_LENGTH, matchRules } from '../game/config.js';
 import { MAPS, MAP_IDS } from '../game/maps.js';
@@ -10,12 +9,17 @@ import { readJson } from '../services/storage.js';
 import '../styles/bootcamp.css';
 import '../styles/match.css';
 
+// Which modes can pick a length or a map; savedLength / savedMap read the last choice.
 const LENGTH_MODES = ['quick', 'team'];
 export const savedLength = () => readJson('settings', {}).matchLength ?? DEFAULT_MATCH_LENGTH;
 const MAP_MODES = ['quick', 'team', 'survival', 'training'];
 const MAP_CHOICES = ['random', ...MAP_IDS];
 export const savedMap = () => { const m = readJson('settings', {}).mapChoice; return MAP_CHOICES.includes(m) ? m : 'random'; };
 
+/**
+ * MapPicker: radio-style cards for each map (plus Random).
+ * @param {{value: string, onChange: Function}} props
+ */
 export function MapPicker({ value, onChange }) {
   return (
     <div className="map-row">
@@ -38,6 +42,11 @@ export function MapPicker({ value, onChange }) {
   );
 }
 
+/**
+ * LengthPicker: radio pills for the match length (also used by the online lobby).
+ * @param {{mode: string, value: number, onChange: Function}} props
+ * Arrow keys move the choice, like a native radio group.
+ */
 export function LengthPicker({ mode, value, onChange }) {
   const index = Math.max(0, MATCH_LENGTHS.findIndex((l) => l.seconds === value));
   const move = (e) => {
@@ -70,6 +79,13 @@ const ABOUT = {
   hard: ['Sharp, fast bots that fire in short bursts', 'Strong damage', 'Short puzzle timers', 'Win to unlock Hard as Nails'],
 };
 
+/**
+ * Difficulty: the difficulty screen.
+ * @param {{mode, current, onPick, onBack, length?, onLength?}} props
+ * Clicking a level calls onPick(level, length, map), which is useBattle.deployWith
+ * (that then asks the deploy puzzle). Map and length changes are saved with the
+ * 'settings:set' event, which useSettings listens to.
+ */
 export default function Difficulty({ mode, current, onPick, onBack, length: chosen, onLength }) {
   const [stored, setStored] = useState(savedLength);
   const [map, setMap] = useState(savedMap);

@@ -1,9 +1,9 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Integration test for the campaign mode (missions with stars).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, client, fakeApi } = require('./helpers');
 
+// Proves the server enforces mission order: locked missions are refused and wins unlock the next one.
 test('campaign: locked missions are refused, wins earn stars and unlock the next mission', async () => {
   const s = await startServer({ bananaApi: fakeApi(5) });
   try {

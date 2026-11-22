@@ -14,8 +14,8 @@ Errors always have the shape `{ "error": "message" }`.
 
 ## Versioning, OpenAPI and the public endpoint
 
-- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/services/api.js:5`). The old paths without `/v1`
-  are the same handlers and keep working (`server/middleware/apiVersion.js:3-6` rewrites `/api/v1/x` to `/api/x`).
+- **Version 1** lives at `/api/v1/...`; the browser uses it (`client/src/services/api.js:6`). The old paths without `/v1`
+  are the same handlers and keep working (`server/middleware/apiVersion.js:8-11` rewrites `/api/v1/x` to `/api/x`).
 - **OpenAPI 3** description: `/api/v1/openapi.json` (source `server/routes/openapi.js`, also written to
   `docs/openapi.yaml` by `npm run openapi`), shown with Swagger UI at **`/api/docs`** (`server/routes/docs.js`; the
   Swagger UI files come from a CDN, so this page needs internet). `tests/integration/openapi.test.js` fails if a route is added to the code but not to the spec, or the other way round.
@@ -58,7 +58,7 @@ Rules: username `^[A-Za-z0-9_]{3,16}$` (case-insensitive unique, `guest_` is res
 not in a known breach (Have I Been Pwned). Login tries are counted per name+IP and per IP: 5 for one name from one
 IP, or 20 from one IP across all names, in 10 minutes, then 429 until the window ends. Every try is counted before
 the password is checked; a correct password clears its name+IP counter and gives back its per-IP try
-(`server/services/rateLimiter.js:16-34`). There is no per-username lockout, so nobody can lock another player out. A reset link (`/#reset=<token>`) works once, for 30 minutes, and ends
+(`server/services/rateLimiter.js:28-46`). There is no per-username lockout, so nobody can lock another player out. A reset link (`/#reset=<token>`) works once, for 30 minutes, and ends
 every session of the account. `remember: true` keeps the cookie (and the stored session) for
 30 days instead of 2 hours. `logout-all` ends every session of the player and closes their WebSockets;
 `password` does the same for every other device (`ended` is how many sessions were ended). `account` deletes
@@ -93,7 +93,7 @@ The response has **no solution** and is sent with `Cache-Control: no-store`. An 
 answer is that digit.
 
 `ms` is the time the **server** measured between handing out the puzzle and receiving the answer, and `grade` is
-`gold` (under 5 s), `silver` (under 10 s) or `bronze`, or `null` when wrong (`server/services/puzzles.js:5-10`).
+`gold` (under 5 s), `silver` (under 10 s) or `bronze`, or `null` when wrong (`server/services/puzzles.js:7-18`).
 
 ```json
 { "puzzleId": "3f1c9b2e-...", "image": "data:image/png;base64,iVBORw0KGgo...", "purpose": "deploy", "source": "live" }
@@ -219,7 +219,7 @@ a row to the audit log.
 | GET | `/api/docs` | public | Swagger UI page |
 | GET | `/api/public/leaderboard?mode=&limit=` | public, CORS `*` | `{ game, mode, updated, rows }` (see above) |
 
-Any other `/api/...` path returns `404 { error: "Not found" }` (`server/middleware/notFound.js:5-7`). A body that is not valid JSON returns 400.
+Any other `/api/...` path returns `404 { error: "Not found" }` (`server/middleware/notFound.js:6-8`). A body that is not valid JSON returns 400.
 Bodies over 4 KB are refused.
 
 ## Socket.io protocol (`server/realtime/rooms.js`)
@@ -249,7 +249,7 @@ waits up to 8 seconds and turns `{ error }` into an exception.
 | `puzzle:answer` | `{ puzzleId, answer }` | `{ correct, solution, purpose, ms, grade }` or `{ error }` | only the player the puzzle was given to; the server applies the reward |
 | `puzzle:cancel` | `{ purpose: 'crate' }` | none | leave the crate |
 | `power:choose` | `{ power }` (a power id or `'random'`) | `{ power }` or `{ error }` | after `power:offer`; a choice not offered counts as `random` |
-| `events:watch` | none | `{ ok, recent }` or `{ error: 'Admins only' }` | admins join the live event feed (`server/realtime/socket.js:31-36`) |
+| `events:watch` | none | `{ ok, recent }` or `{ error: 'Admins only' }` | admins join the live event feed (`server/realtime/socket.js:49-54`) |
 | `events:stop` | none | none | leave the live event feed |
 
 ### Server → browser
@@ -269,7 +269,7 @@ waits up to 8 seconds and turns `{ error }` into an exception.
 
 `events` inside a snapshot is a list of `[type, data]` pairs from that tick: `killed`, `damaged`, `respawned`,
 `pickup`, `fired`, `reloading`, `reloaded`, `empty`, `explosion`, `fx` (power, landing, bounce and similar
-effects, carrying the original event name) and `left` (`server/realtime/match.js:51-76`). `NetGame.js` turns them back into the
+effects, carrying the original event name) and `left` (`server/realtime/match.js:81-106`). `NetGame.js` turns them back into the
 usual bus events. In a snapshot, a gun's `spare: -1` means unlimited (JSON has no `Infinity`).
 
 ## The external Banana API (`server/services/bananaApi.js`)

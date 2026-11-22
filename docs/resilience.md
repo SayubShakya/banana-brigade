@@ -12,7 +12,7 @@ The Banana API "may be discontinued without notice". Single calls: `server/servi
 - **Deadline on `take()` (2.5 s).** After 2.5 s the player gets a reserve puzzle. Otherwise the worst case would be three attempts that each time out after 5 s, plus about 1.2–1.6 s of backoff: roughly 16 s. The late live puzzle is still kept.
 - **In-flight limit (3 calls).** When no puzzles are ready, extra requests wait for one instead of each calling the API.
 - **Circuit breaker.** After 3 failures in a row, live calls stop for 30 s and the reserve is served. One trial call then checks whether the API has recovered.
-- **Saved reserve.** Every live puzzle is also saved in MongoDB (`server/repositories/reservePuzzleRepository.js`), and the last 25 are loaded as the reserve when the server starts (`server/index.js:35-40`). So even a server started while the API is down can serve puzzles, as long as it has run once before.
+- **Saved reserve.** Every live puzzle is also saved in MongoDB (`server/repositories/reservePuzzleRepository.js`), and the last 25 are loaded as the reserve when the server starts (`server/index.js:41-46`). So even a server started while the API is down can serve puzzles, as long as it has run once before.
 - **Validation.** The base64 PNG and the one-digit answer are checked. Harmless format differences are normalised first.
 
 `/api/status` shows the last, median (p50) and average latency, the success rate over the last 20 calls, the retries used and the circuit state. The last error appears only as a category, such as `timeout`, `network`, `http-5xx` or `bad-data`.

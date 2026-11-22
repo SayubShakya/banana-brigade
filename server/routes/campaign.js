@@ -1,10 +1,12 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Routes layer: /api/campaign URLs.
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
 
+/** Builds the campaign router. */
 function createCampaignRouter({ campaignController: campaign }) {
   const router = express.Router();
+  // Every campaign route needs a logged-in player.
   router.use(requireLogin);
 
   router.get('/', campaign.overview);

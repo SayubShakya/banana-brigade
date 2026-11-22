@@ -1,5 +1,4 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Menu.jsx: the main menu after login: avatar, rank, play options, daily challenge and side rail.
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { emit } from '../services/eventBus.js';
@@ -9,6 +8,7 @@ import { Icon, AvatarCanvas, RankCard, Sky } from '../components/common.jsx';
 import { DEFAULT_MATCH_LENGTH, matchRules } from '../game/config.js';
 import '../styles/bootcamp.css';
 
+// quickText: the Quick Play subtitle, built from the saved match length.
 const quickText = () => {
   const rules = matchRules('quick', readJson('settings', {}).matchLength ?? DEFAULT_MATCH_LENGTH) ?? matchRules('quick');
   return `Free-for-all vs 5 bots · ${rules.label} · first to ${rules.killLimit} kills`;
@@ -21,6 +21,13 @@ const MAIN = [
 ];
 const RAIL = [['profile', 'user', 'Profile'], ['history', 'clock', 'History'], ['scores', 'trophy', 'Scores'], ['avatar', 'helmet', 'Avatar'], ['settings', 'gear', 'Settings']];
 
+/**
+ * Menu: the hub screen.
+ * @param {{account, isNew, parts, onDeploy, onOpen}} props  onDeploy(mode) starts a battle flow,
+ *   onOpen(screen) opens another screen.
+ * API: GET /api/v1/scores/me (for the rank card) and GET /api/v1/daily (daily card text).
+ * The Admin tile only appears for admins; this is cosmetic, the server guards admin routes.
+ */
 export default function Menu({ account, isNew, parts, onDeploy, onOpen }) {
   const [rank, setRank] = useState(rankFor(0));
   const [daily, setDaily] = useState(null);

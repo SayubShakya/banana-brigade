@@ -1,18 +1,28 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Real-time layer: online lobby and rooms (event-driven programming theme).
+// Handles the Socket.io events players send (create/join/ready/start a room, game input,
+// puzzles) and keeps track of which player is in which room. Game rules run in match.js.
 
 const crypto = require('node:crypto');
 const { createMatch } = require('./match');
 const { DIFFICULTY, DEFAULT_MATCH_LENGTH, matchRules } = require('../../client/src/game/config.js');
 const { MAP_IDS } = require('../../client/src/game/map.js');
 
+// Room limits and rules. Room codes use letters only, without I and O, so they are easy to read.
 const MAX_PLAYERS = 6;
 const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const PUZZLE_PURPOSES = ['respawn', 'crate'];
 const DIFFICULTIES = Object.keys(DIFFICULTY);
 
+// A random 6-letter room code made with crypto (hard to guess).
 const makeCode = () => Array.from(crypto.randomBytes(6), (b) => CODE_LETTERS[b % CODE_LETTERS.length]).join('');
+// Socket.io acknowledgement helper: if the client sent no callback, use one that does nothing.
 const ack = (cb) => (typeof cb === 'function' ? cb : () => {});
 
+/**
+ * Validates the avatar parts a player sends (only short strings for known keys).
+ * @param {object} p raw parts from the client
+ * @returns {object} safe parts
+ */
 function cleanParts(p) {
   if (!p || typeof p !== 'object') return {};
   const out = {};
@@ -21,7 +31,14 @@ function cleanParts(p) {
   return out;
 }
 
+/**
+ * Creates the room manager and registers all Socket.io event handlers.
+ * @param {object} deps io (Socket.io server), db, pool (Banana API puzzles), puzzleStore,
+ *   achievements, eventLog, matchOptions
+ * @returns {object} size, room(code) and endMatch(code), mainly for tests
+ */
 function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchOptions = {} }) {
+  // Fires an achievement event and pushes any unlocks to that player's sockets. Never throws.
   const award = async (userId, eventName, data) => {
     try {
       for (const a of await achievements.emit(eventName, userId, data)) io.to(`user:${userId}`).emit('achievement:unlocked', a);
@@ -30,26 +47,36 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     }
   };
 
+  // rooms: code -> room; roomOf: userId -> room code; issued: puzzleId -> who it was given to.
   const rooms = new Map();
   const roomOf = new Map();
   const issued = new Map();
 
+  // The room data that is safe to send to clients.
   const view = (room) => ({
     code: room.code, host: room.host, teamMode: room.teamMode, isPublic: room.isPublic, difficulty: room.difficulty, bots: room.bots, state: room.state,
     matchLength: room.rules.timeLimit, killLimit: room.rules.killLimit, map: room.map,
     players: [...room.players.values()].map((p) => ({ userId: p.userId, username: p.username, ready: p.ready, team: p.team, connected: p.connected })),
   });
+  // Broadcast helpers: 'room:update' to everyone in the room, 'rooms:changed' to everyone online.
   const update = (room) => io.to(`room:${room.code}`).emit('room:update', view(room));
   const listChanged = () => io.emit('rooms:changed');
+  // Public rooms that are still in the lobby and not full.
   const publicList = () => [...rooms.values()]
     .filter((r) => r.isPublic && r.state === 'lobby' && r.players.size < MAX_PLAYERS)
     .map((r) => ({ code: r.code, host: r.players.get(r.host)?.username, players: r.players.size, teamMode: r.teamMode, difficulty: r.difficulty, bots: r.bots, matchLength: r.rules.timeLimit, killLimit: r.rules.killLimit, map: r.map, state: r.state }));
 
+  // Puts a new player on the team with fewer players.
   function nextTeam(room) {
     const blue = [...room.players.values()].filter((p) => p.team === 'blue').length;
     return blue <= room.players.size - blue ? 'blue' : 'red';
   }
 
+  /**
+   * Removes a player from their room.
+   * keepSeat: on a disconnect during a match, keep the seat so they can rejoin.
+   * The room is deleted when nobody is connected; the host role passes to someone else.
+   */
   function leaveRoom(userId, sockets, { keepSeat = false } = {}) {
     const code = roomOf.get(userId);
     const room = code && rooms.get(code);
@@ -76,6 +103,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     listChanged();
   }
 
+  // Saves the online match replay. Errors are logged, not thrown, so the game carries on.
   async function saveMatch(summary) {
     try {
       return await db.addMatch({
@@ -88,6 +116,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     }
   }
 
+  // Saves every player's online score and fires 'score:saved' for achievements.
   async function saveResults(summary) {
     const matchId = await saveMatch(summary);
     for (const r of summary.results) {
@@ -104,6 +133,10 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     }
   }
 
+  /**
+   * Starts the match for a room. The match engine (match.js) gets callbacks for its
+   * events: onPower, onKill, onEnd, and send() to emit Socket.io messages to the room or one player.
+   */
   function startMatch(room) {
     room.state = 'playing';
     const players = [...room.players.values()];
@@ -119,6 +152,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       onPower: (userId, power) => award(userId, 'power:used', { powers: [power] }),
       onKill: (killer, victim, weapon, headshot) => eventLog?.record('kill', killer, `${killer ? 'killed' : 'took out'} ${victim} (${weapon}${headshot ? ', headshot' : ''}) in room ${room.code}`),
       send: (event, payload, userId) => io.to(userId ? `user:${userId}` : `room:${room.code}`).emit(event, payload),
+      // When the match ends: save results, return to the lobby, drop players who left.
       onEnd: async (summary) => {
         await saveResults(summary);
         room.state = 'lobby';
@@ -131,6 +165,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
         listChanged();
       },
     });
+    // Tell each player the match has started (each gets their own "me" id).
     for (const p of players) {
       io.to(`user:${p.userId}`).emit('match:start', {
         matchId: room.match.matchId, me: `u${p.userId}`, teamMode: room.teamMode, map: room.match.mapId, difficulty: room.difficulty, timeLimit: room.match.timeLimit, killLimit: room.match.killLimit, roster: room.match.roster(),
@@ -140,11 +175,13 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
     listChanged();
   }
 
+  // A new socket connected (it already passed the login check in socket.js).
   io.on('connection', (socket) => {
     const { userId, username } = socket.data;
     socket.join(`user:${userId}`);
     const userSockets = () => [...io.sockets.sockets.values()].filter((s) => s.data.userId === userId);
 
+    // Reconnect: if this player was in a room, put them back (and back into the running match).
     const existing = rooms.get(roomOf.get(userId));
     if (existing) {
       socket.join(`room:${existing.code}`);
@@ -156,12 +193,17 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       update(existing);
     }
 
+    /** 'rooms:list' handler: replies with the open public rooms. */
     socket.on('rooms:list', (cb) => {
       const mine = rooms.get(roomOf.get(userId));
       if (mine) socket.emit('room:update', view(mine));
       ack(cb)({ rooms: publicList() });
     });
 
+    /**
+     * 'room:create' handler: validates the options (difficulty, match length, map),
+     * makes a unique code and makes this player the host. Replies with the room or an error.
+     */
     socket.on('room:create', (opts, cb) => {
       const difficulty = opts?.difficulty ?? 'medium';
       if (!DIFFICULTIES.includes(difficulty)) return ack(cb)({ error: 'Unknown difficulty' });
@@ -184,6 +226,9 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       listChanged();
     });
 
+    /**
+     * 'room:join' handler: joins a room by code if it exists, is not full and has not started.
+     */
     socket.on('room:join', (opts, cb) => {
       const code = String(opts?.code ?? '').toUpperCase().trim();
       const room = rooms.get(code);
@@ -200,8 +245,10 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       listChanged();
     });
 
+    // 'room:leave' handler.
     socket.on('room:leave', () => leaveRoom(userId, userSockets()));
 
+    // 'room:ready' handler: toggles this player's ready flag in the lobby.
     socket.on('room:ready', (opts) => {
       const room = rooms.get(roomOf.get(userId));
       if (!room || room.state !== 'lobby') return;
@@ -209,6 +256,10 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       update(room);
     });
 
+    /**
+     * 'room:start' handler: only the host can start, everyone must be ready,
+     * and at least two players are needed unless bots are on.
+     */
     socket.on('room:start', (cb) => {
       const room = rooms.get(roomOf.get(userId));
       if (!room) return ack(cb)({ error: 'You are not in a room' });
@@ -220,6 +271,7 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       ack(cb)({ ok: true });
     });
 
+    // 'room:end' handler: the host stops a running match early.
     socket.on('room:end', (cb) => {
       const room = rooms.get(roomOf.get(userId));
       if (!room) return ack(cb)({ error: 'You are not in a room' });
@@ -230,11 +282,18 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       ack(cb)({ ok: true });
     });
 
+    // 'input' handler: the player's controls (move, jump, shoot). Sent many times a second;
+    // the server applies them, it does not trust positions from the client.
     socket.on('input', (controls) => {
       const room = rooms.get(roomOf.get(userId));
       if (room?.match && controls && typeof controls === 'object') room.match.setControls(userId, controls);
     });
 
+    /**
+     * 'puzzle:get' handler: gives a Banana API puzzle for a respawn or crate.
+     * The match must agree the player needs one (canAsk), checked again after the
+     * API call because the match may have changed while waiting. The solution stays on the server.
+     */
     socket.on('puzzle:get', async (opts, cb) => {
       const room = rooms.get(roomOf.get(userId));
       const purpose = opts?.purpose;
@@ -253,6 +312,10 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       }
     });
 
+    /**
+     * 'puzzle:answer' handler: only the player the puzzle was issued to may answer it.
+     * The result is applied to the match (respawn or crate reward) and achievements are checked.
+     */
     socket.on('puzzle:answer', (opts, cb) => {
       const owner = issued.get(opts?.puzzleId);
       if (!owner || owner.userId !== userId || !Number.isInteger(opts?.answer)) return ack(cb)({ error: 'That puzzle is not yours or has expired' });
@@ -266,17 +329,20 @@ function createRooms({ io, db, pool, puzzleStore, achievements, eventLog, matchO
       ack(cb)({ correct: result.correct, solution: result.solution, purpose: owner.purpose, ms: result.ms, grade: result.grade });
     });
 
+    // 'power:choose' handler: picks a Banana Power after a crate puzzle.
     socket.on('power:choose', (opts, cb) => {
       const room = rooms.get(roomOf.get(userId));
       const power = room?.match?.choosePower(userId, String(opts?.power ?? 'random')) ?? null;
       ack(cb)(power ? { power } : { error: 'No power to choose right now' });
     });
 
+    // 'puzzle:cancel' handler: the player closed a crate puzzle.
     socket.on('puzzle:cancel', (opts) => {
       const room = rooms.get(roomOf.get(userId));
       if (opts?.purpose === 'crate') room?.match?.cancelCrate(userId);
     });
 
+    // 'disconnect' handler: only leave once the user's last socket (e.g. last tab) has gone.
     socket.on('disconnect', () => {
       if (!userSockets().length) leaveRoom(userId, [], { keepSeat: true });
     });

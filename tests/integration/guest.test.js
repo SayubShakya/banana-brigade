@@ -1,9 +1,9 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Integration tests for guest accounts (play without registering).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, client } = require('./helpers');
 
+// Proves a guest is a real but temporary account (7 days) that stays off the leaderboard.
 test('a guest gets a temporary account that lasts 7 days and is not on the leaderboard', async () => {
   const s = await startServer();
   try {
@@ -24,6 +24,7 @@ test('a guest gets a temporary account that lasts 7 days and is not on the leade
   } finally { await s.close(); }
 });
 
+// Proves a guest can be upgraded to a full account without losing its id or scores.
 test('saving a guest keeps its id and scores, and it can then log in', async () => {
   const s = await startServer();
   try {
@@ -52,6 +53,7 @@ test('saving a guest keeps its id and scores, and it can then log in', async () 
   } finally { await s.close(); }
 });
 
+// Proves guests cannot steal names, use the reserved guest_ prefix, or log in by name alone.
 test('a guest cannot take a used name, a guest_ name, or log in by name', async () => {
   const s = await startServer();
   try {
@@ -67,6 +69,7 @@ test('a guest cannot take a used name, a guest_ name, or log in by name', async 
   } finally { await s.close(); }
 });
 
+// Proves a guest can delete itself even though it has no password.
 test('a guest can delete itself without a password', async () => {
   const s = await startServer();
   try {

@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// BootCampCoach.jsx: the tutorial coach card and short tip bubbles shown over the game.
+// It is driven only by event bus events, so the tutorial code never touches React directly.
 import { useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
 import { emit } from '../services/eventBus.js';
@@ -10,10 +10,16 @@ import '../styles/bootcamp.css';
 const TIP_MS = 6000;
 const HIDDEN_STATES = ['paused', 'idle', 'over'];
 
+// Keys: shows the keyboard keys for a step (a 0..9 pair is shown as a range).
 const Keys = ({ keys }) => (keys.length === 2 && keys[0] === '0'
   ? <span className="coach-keys"><kbd>0</kbd>–<kbd>9</kbd></span>
   : <span className="coach-keys">{keys.map((k) => <kbd key={k}>{k}</kbd>)}</span>);
 
+/**
+ * BootCampCoach: no props. Listens to 'tutorial:step' (current step), 'game:state'
+ * (hide while paused/over) and 'tip:show' (one-off tips, removed after TIP_MS).
+ * The Skip button emits 'tutorial:skip', which useBattle handles.
+ */
 export default function BootCampCoach() {
   const [step, setStep] = useState(bootCampStep);
   const [tips, setTips] = useState([]);

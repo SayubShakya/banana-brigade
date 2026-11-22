@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Sound effects with the Web Audio API. Most sounds are made in code (noise + tones), some guns use
+// recorded samples. Sounds react to game events on the event bus and get quieter and muffled with distance.
 import { on } from '../services/eventBus.js';
 
 let ctx = null;
@@ -10,10 +10,13 @@ let listener = { x: 0, y: 0 };
 let whiteNoise = null;
 let brownNoise = null;
 
+// Sounds further than 1300 px away are silent. At most 28 sounds play at once (voice limit).
 const HEARING = 1300;
 const MAX_VOICES = 28;
+// End times of the sounds playing now, kept sorted, to count active voices.
 const voiceEnds = [];
 
+// Creates a 2 s noise buffer: white noise (hiss) or brown noise (deep rumble, a smoothed random walk).
 function makeNoise(a, seconds, brown) {
   const buffer = a.createBuffer(1, Math.floor(a.sampleRate * seconds), a.sampleRate);
   const data = buffer.getChannelData(0);
@@ -25,6 +28,10 @@ function makeNoise(a, seconds, brown) {
   return buffer;
 }
 
+/**
+ * Returns the shared AudioContext, creating it on first use with a master gain and a limiter
+ * (compressor) so many loud sounds together do not clip. Resumes it if the browser suspended it.
+ */
 function audio() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -43,18 +50,21 @@ function audio() {
 
 const silent = () => muted || effectsVolume <= 0;
 
+// Distance volume: 1 at the listener (the player), falling to 0 at HEARING px. No position = full volume.
 function volumeAt(x, y) {
   if (x === undefined) return 1;
   const d = Math.hypot(x - listener.x, y - listener.y);
   return Math.max(0, 1 - d / HEARING);
 }
 
+// Stereo pan: sounds to the left of the player come from the left speaker.
 function panAt(x) {
   if (x === undefined) return 0;
   return Math.max(-0.8, Math.min(0.8, (x - listener.x) / 700));
 }
 
 const lastPlayed = new Map();
+// Rate limit: a sound with this key can only play once every gapMs (stops machine-gun spam).
 function allow(key, gapMs) {
   const now = performance.now();
   if (now - (lastPlayed.get(key) ?? -1e9) < gapMs) return false;
@@ -62,6 +72,13 @@ function allow(key, gapMs) {
   return true;
 }
 
+/**
+ * Reserves a "voice" (one sound) at a world position and builds its audio chain:
+ * gain -> low-pass filter when far away (muffled) -> stereo pan -> master.
+ * Voice limiting: finished voices are dropped from voiceEnds; if MAX_VOICES are still playing,
+ * a normal sound is skipped, but priority sounds (the player's own, UI) always play.
+ * @returns {{out: GainNode, t: number}|null} where to connect the sound and when to start it, or null if skipped
+ */
 function voice(x, y, volume, length, { priority = false } = {}) {
   if (silent()) return null;
   const v = volume * volumeAt(x, y);
@@ -93,6 +110,7 @@ function voice(x, y, volume, length, { priority = false } = {}) {
   return { out: g, t: now + 0.005 };
 }
 
+// Plays a short filtered burst of noise on a voice (shots, explosions, footsteps).
 function noise(v, { dur = 0.1, volume = 0.3, type = 'lowpass', freq = 1800, freqTo, q = 0.7, delay = 0, attack = 0.002, brown = false } = {}) {
   if (!v) return;
   const t = v.t + delay;
@@ -112,6 +130,7 @@ function noise(v, { dur = 0.1, volume = 0.3, type = 'lowpass', freq = 1800, freq
   src.stop(t + dur + 0.02);
 }
 
+// Plays a short oscillator tone on a voice, optionally sliding in pitch (beeps, thumps, chimes).
 function tone(v, freq, dur, { volume = 0.15, type = 'square', slideTo, delay = 0, attack = 0.003 } = {}) {
   if (!v) return;
   const t = v.t + delay;
@@ -128,12 +147,14 @@ function tone(v, freq, dur, { volume = 0.15, type = 'square', slideTo, delay = 0
   o.stop(t + dur + 0.02);
 }
 
+// A UI sound: no position (not affected by distance) and always high priority.
 const ui = (length, volume = 1) => voice(undefined, undefined, volume, length, { priority: true });
 
 const SAMPLE_GUNS = ['magnum', 'smg', 'rifle', 'shotgun', 'sniper']; // Gun shot samples: "Gunshot Sounds" by Vincent Sevedge (Tabasco), OpenGameArt.org, CC0 / CC-BY 3.0.
 const samples = new Map();
 let samplesLoading = false;
 
+// Loads the recorded gun samples in the background. If one fails, the synthesised sound is used.
 function loadSamples() {
   if (samplesLoading || typeof fetch !== 'function') return;
   samplesLoading = true;
@@ -147,6 +168,7 @@ function loadSamples() {
   }
 }
 
+// Plays a sample with a small random pitch change so repeated shots do not sound identical.
 function playSample(v, name, volume) {
   const buffer = samples.get(name);
   if (!v || !buffer) return false;
@@ -160,6 +182,7 @@ function playSample(v, name, volume) {
   return true;
 }
 
+// Sound for each weapon. length = how long the voice is reserved, gap = minimum ms between shots for fast guns.
 const GUNS = {
   magnum: { length: 0.3, play(v) {
     if (playSample(v, 'magnum', 0.75)) return;
@@ -202,6 +225,7 @@ const GUNS = {
   } },
 };
 
+// The listener is the player's position; it is updated every frame by the game loop.
 export function setListener(x, y) { listener = { x, y }; }
 export function setMuted(value) { muted = value; }
 export const isMuted = () => muted;
@@ -209,6 +233,7 @@ export function setEffectsVolume(value) {
   effectsVolume = Math.min(1, Math.max(0, value));
   if (effects) effects.gain.setTargetAtTime(effectsVolume, ctx.currentTime, 0.05);
 }
+// Browsers only allow audio after a user action, so this is called from a click (e.g. starting a match).
 export const unlockAudio = () => { const a = audio(); loadSamples(); return a; };
 export const audioContext = () => ctx;
 
@@ -312,7 +337,14 @@ function landing(soldier, speed) {
   tone(v, 90, 0.15, { volume: 0.15 + 0.2 * k, type: 'sine', slideTo: 45 });
 }
 
+/**
+ * Connects sounds to game events (event-driven). Listens to: banana:answered, match:countdown,
+ * match:ended, match:timeup, weapon:fired, explosion, bullet:wall, grenade:bounce, melee:swing,
+ * grenade:thrown, weapon:reloading, weapon:reloaded, weapon:empty, pickup:taken, power:start,
+ * power:warning, power:end, shield:broken, soldier:damaged, soldier:killed, soldier:landed, jetpack:sputter.
+ */
 export function initSound() {
+  // Safety net: if updateSound() stops being called (for example on the menu), stop all looping sounds.
   setInterval(() => { if (ctx && loops.size && performance.now() - lastUpdate > 250) reapLoops(-1); }, 250);
   on('banana:answered', ({ correct }) => (correct ? chime() : buzzer()));
   on('match:countdown', ({ seconds }) => countdownTick(seconds));
@@ -387,6 +419,7 @@ export function initSound() {
     if (!victim) return;
     if (victim.isPlayer) hurt();
     else fleshHit(victim);
+    // A hit right after a melee swing gets an extra punch sound.
     if (attacker && performance.now() - (lastSwing.get(attacker.id) ?? -1e9) < 250) {
       lastSwing.delete(attacker.id);
       const p = mid(victim);
@@ -420,10 +453,12 @@ export function initSound() {
 const flaming = new Map();
 const loops = new Map();
 const tracks = new Map();
+// Looping sounds (jetpacks, flamethrowers). Only the player and the 3 loudest bots get a jetpack loop.
 const JET_BOTS = 3;
 let lastUpdate = 0;
 let nextBeat = 0;
 
+// Starts a looping noise source for a jetpack (low rumble) or a flamethrower (hiss), silent at first.
 function startLoop(kind) {
   const a = audio();
   const src = a.createBufferSource();
@@ -443,6 +478,7 @@ function startLoop(kind) {
   return { src, gain, pan, filter, seen: 0 };
 }
 
+// Keeps a loop playing this frame and smoothly sets its volume and pan from its position.
 function setLoop(key, kind, x, y, volume, frame) {
   let l = loops.get(key);
   if (!l) { l = startLoop(kind); loops.set(key, l); }
@@ -453,6 +489,7 @@ function setLoop(key, kind, x, y, volume, frame) {
   if (kind === 'jet') l.filter.frequency.setTargetAtTime(380 + Math.random() * 120, t, 0.03);
 }
 
+// Fades out and stops every loop that was not refreshed this frame.
 function reapLoops(frame) {
   for (const [key, l] of loops) {
     if (l.seen === frame) continue;
@@ -475,6 +512,12 @@ function heartbeat() {
 }
 
 let frameNo = 0;
+/**
+ * Called every frame by the game loop. Updates looping sounds (jetpacks, flames),
+ * makes footsteps for soldiers walking near the player, and plays a heartbeat when health is low.
+ * @param {object[]} soldiers all soldiers (empty when paused, which stops the loops)
+ * @param {object} player the local player
+ */
 export function updateSound(soldiers = [], player = null) {
   if (!ctx) return;
   const now = performance.now();
@@ -504,13 +547,16 @@ export function updateSound(soldiers = [], player = null) {
     if (prev && s.onGround && prev.onGround) {
       const speed = Math.abs(p.x - prev.x) / (dt || 1);
       if (speed > 40 && speed < 2000) {
+        // Footsteps: one step sound every 52 px walked on the ground.
         step += speed * dt;
         if (step > 52) { step = 0; footstep(s, p); }
       }
+    // Fallback landing sound, only if the world does not send 'soldier:landed' events.
     } else if (prev && s.onGround && !prev.onGround && !landedEvents) landing(s, prev.vy);
     tracks.set(s.id, { x: p.x, y: p.y, vy, onGround: s.onGround, step });
   }
 
+  // Heartbeat below 30 health, beating faster as health drops.
   if (player?.alive && player.health < 30 && player.health > 0) {
     const t = ctx.currentTime;
     if (t >= nextBeat) { heartbeat(); nextBeat = t + 0.55 + (player.health / 30) * 0.45; }

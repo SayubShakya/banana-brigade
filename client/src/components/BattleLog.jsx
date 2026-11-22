@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// BattleLog.jsx: shows one saved match: its details, final scoreboard and event timeline.
+// BattleLogDialog loads the match from the server (GET /api/v1/matches/:id) in a pop-up.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../services/api.js';
@@ -7,6 +7,12 @@ import { Icon, Rank, Skeleton } from './common.jsx';
 import { ICONS, clock, mapLabel, modeName, rankRoster, sentence, winnerLabel } from '../services/history.js';
 import '../styles/history.css';
 
+/**
+ * BattleLog: the body of a saved match report.
+ * @param {{match: object}} props  the match record from the server (mode, map, roster, log...).
+ * Renders: a details list, the scoreboard table (sorted by kills) and the timeline of events,
+ * each event turned into a sentence by sentence() in services/history.js.
+ */
 export default function BattleLog({ match }) {
   const roster = rankRoster(match?.roster ?? []);
   const log = match?.log ?? [];
@@ -56,6 +62,12 @@ export default function BattleLog({ match }) {
   );
 }
 
+/**
+ * BattleLogDialog: modal pop-up that fetches and shows one match.
+ * @param {{matchId: string, onClose: Function}} props
+ * API: api.match(matchId) -> GET /api/v1/matches/:id. Keyboard: Escape closes, Tab stays inside.
+ * Rendered with a React portal into #ui so it sits above every screen.
+ */
 export function BattleLogDialog({ matchId, onClose }) {
   const [match, setMatch] = useState(null);
   const [error, setError] = useState('');
@@ -63,6 +75,7 @@ export function BattleLogDialog({ matchId, onClose }) {
   const closeBtn = useRef(null);
   const close = useRef(onClose);
   close.current = onClose;
+  // Load the match. `alive` stops a late reply from updating a dialog that already closed.
   useEffect(() => {
     let alive = true;
     setMatch(null);
@@ -71,6 +84,8 @@ export function BattleLogDialog({ matchId, onClose }) {
       .catch((e) => alive && setError(e.status === 404 ? 'This battle log is not available any more.' : 'Could not load the battle log. Try again in a moment.'));
     return () => { alive = false; };
   }, [matchId]);
+  // Accessibility: focus the Close button, trap Tab inside the dialog, Escape closes it,
+  // and give focus back to the element that opened it when the dialog unmounts.
   useEffect(() => {
     const before = document.activeElement;
     closeBtn.current?.focus();

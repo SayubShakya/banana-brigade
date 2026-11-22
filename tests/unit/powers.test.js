@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Unit tests for banana powers: solving a banana crate puzzle gives a short power-up
+// (Rage, Bubble, Overdrive, Juice, Rapid Fire). These check each one does what it says.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createWorld, updateWorld, damage, activeGun, rewardBananaCrate, closeBananaCrate, powerChoices } = require('../../client/src/game/world.js');
@@ -7,6 +7,7 @@ const { POWERS, BANANA_CRATE, PHYSICS, SOLDIER } = require('../../client/src/gam
 const { MAPS } = require('../../client/src/game/maps.js');
 const { createMap } = require('../../client/src/game/map.js');
 
+// Creates a training world with the player and one dummy (shields off) and records its events.
 function world() {
   const events = [];
   const w = createWorld({
@@ -18,6 +19,7 @@ function world() {
   return { w, p, dummy, events };
 }
 
+// Proves Banana Rage doubles the damage the player deals.
 test('Banana Rage doubles the damage you deal', () => {
   const { w, p, dummy } = world();
   rewardBananaCrate(w, p, 'rage');
@@ -25,6 +27,7 @@ test('Banana Rage doubles the damage you deal', () => {
   assert.equal(dummy.health, SOLDIER.maxHealth - 40);
 });
 
+// Proves Banana Bubble blocks all incoming damage.
 test('Banana Bubble blocks all damage', () => {
   const { w, p, dummy } = world();
   rewardBananaCrate(w, p, 'bubble');
@@ -32,6 +35,7 @@ test('Banana Bubble blocks all damage', () => {
   assert.equal(p.health, SOLDIER.maxHealth);
 });
 
+// Proves Jet Overdrive keeps fuel full, Banana Juice heals fully, and Rapid Fire uses no ammo.
 test('Jet Overdrive keeps the jet tank full; Banana Juice heals; Rapid Fire uses no ammo', () => {
   const { w, p } = world();
   rewardBananaCrate(w, p, 'overdrive');
@@ -51,6 +55,7 @@ test('Jet Overdrive keeps the jet tank full; Banana Juice heals; Rapid Fire uses
   assert.equal(gun.ammo, before);
 });
 
+// Proves a power ends after its time with a warning and an end event; Random adds bonus seconds.
 test('a power runs out after its time and announces it; random adds bonus seconds', () => {
   const { w, p, events } = world();
   const id = rewardBananaCrate(w, p, 'random');
@@ -61,6 +66,7 @@ test('a power runs out after its time and announces it; random adds bonus second
   assert.ok(events.some((e) => e.name === 'power:end' && e.payload.power === id));
 });
 
+// Proves a crate offers three different powers and comes back after its respawn time.
 test('the crate offers three different powers and comes back after its respawn time', () => {
   const choices = powerChoices();
   assert.equal(choices.length, 3);
@@ -71,6 +77,7 @@ test('the crate offers three different powers and comes back after its respawn t
   assert.equal(crate.timer, BANANA_CRATE.respawn);
 });
 
+// Proves every map has five banana crates, each standing on solid ground.
 test('every map has five banana crates on solid ground', () => {
   for (const id of Object.keys(MAPS)) {
     const m = createMap(id);
@@ -83,6 +90,7 @@ test('every map has five banana crates on solid ground', () => {
   }
 });
 
+// Proves Rage does not double damage to yourself, and the power ends when you die.
 test('Rage does not double your own blast damage, and a power ends when you die', () => {
   const { w, p, events } = world();
   rewardBananaCrate(w, p, 'rage');

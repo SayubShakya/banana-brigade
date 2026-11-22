@@ -1,10 +1,12 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Integration tests for virtual identity: register, login, logout, sessions and admin access.
+// They run against a real Express server with an in-memory MongoDB.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const bcrypt = require('bcryptjs');
 const { startServer, client } = require('./helpers');
 
+// Proves registering logs the player in with a cookie JavaScript cannot read (HttpOnly)
+// and that is not sent from other sites (SameSite), which protects against XSS and CSRF.
 test('register logs the player in with an HttpOnly, SameSite session cookie', async () => {
   const s = await startServer();
   try {
@@ -22,6 +24,7 @@ test('register logs the player in with an HttpOnly, SameSite session cookie', as
   } finally { await s.close(); }
 });
 
+// Proves passwords are stored as bcrypt hashes, not plain text, so a database leak does not reveal them.
 test('passwords are stored as bcrypt hashes, never in plain text', async () => {
   const s = await startServer();
   try {
@@ -33,6 +36,7 @@ test('passwords are stored as bcrypt hashes, never in plain text', async () => {
   } finally { await s.close(); }
 });
 
+// Proves bad input is refused on the server, not only checked in the browser.
 test('bad usernames, short passwords and duplicate names are refused', async () => {
   const s = await startServer();
   try {
@@ -45,6 +49,7 @@ test('bad usernames, short passwords and duplicate names are refused', async () 
   } finally { await s.close(); }
 });
 
+// Proves the full login cycle: right password works, wrong one fails, logout really ends the session.
 test('login works with the right password, refuses the wrong one, and logout ends the session', async () => {
   const s = await startServer();
   try {
@@ -60,6 +65,7 @@ test('login works with the right password, refuses the wrong one, and logout end
   } finally { await s.close(); }
 });
 
+// Proves a fresh session id is issued at login, so an attacker cannot plant an id and reuse it.
 test('login gives a new session id, so a planted id cannot be reused (session fixation)', async () => {
   const s = await startServer();
   try {
@@ -72,6 +78,7 @@ test('login gives a new session id, so a planted id cannot be reused (session fi
   } finally { await s.close(); }
 });
 
+// Proves repeated wrong passwords are rate limited, which slows down password guessing.
 test('five wrong passwords for one name from one IP are limited for a while', async () => {
   const s = await startServer();
   try {
@@ -84,6 +91,7 @@ test('five wrong passwords for one name from one IP are limited for a while', as
   } finally { await s.close(); }
 });
 
+// Proves puzzles and score saving are protected routes that need a logged-in session.
 test('Banana puzzles and saving scores need a login', async () => {
   const s = await startServer();
   try {
@@ -93,6 +101,7 @@ test('Banana puzzles and saving scores need a login', async () => {
   } finally { await s.close(); }
 });
 
+// Proves the puzzle counts on a score are counted by the server, so a faked browser request cannot inflate them.
 test('puzzle counts on a saved score come from the server, not the browser', async () => {
   const s = await startServer();
   try {
@@ -118,6 +127,7 @@ test('puzzle counts on a saved score come from the server, not the browser', asy
   } finally { await s.close(); }
 });
 
+// Proves puzzle counts reset for each new battle, so unsaved battles cannot add to the next score.
 test('a new deploy puzzle starts a new count, so puzzles from a battle that was never saved do not leak into the next one', async () => {
   const s = await startServer();
   try {
@@ -142,6 +152,7 @@ test('a new deploy puzzle starts a new count, so puzzles from a battle that was 
   } finally { await s.close(); }
 });
 
+// Proves impossible or badly formed scores are rejected.
 test('invalid scores are refused', async () => {
   const s = await startServer();
   try {
@@ -154,6 +165,7 @@ test('invalid scores are refused', async () => {
   } finally { await s.close(); }
 });
 
+// Proves role checks: players get 403 Forbidden on admin pages, admins are allowed.
 test('admin pages are refused for players (403) and allowed for admins', async () => {
   const s = await startServer();
   try {
@@ -174,6 +186,7 @@ test('admin pages are refused for players (403) and allowed for admins', async (
   } finally { await s.close(); }
 });
 
+// Proves the separate admin login only lets admins in, while the normal login still works for everyone.
 test('the admin login lets admins in, refuses players with no session, and the player login still works for both', async () => {
   const s = await startServer();
   try {

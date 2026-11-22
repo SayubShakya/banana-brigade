@@ -1,4 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Model layer: the Daily Challenge puzzle set for one date.
+// Everyone gets the same Banana API puzzles on the same day (date is unique).
 
 const { Schema } = require('mongoose');
 

@@ -1,5 +1,6 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Every option in the avatar editor.
+// Soldier characters: avatar parts the player can choose (hat, skin, uniform, goggles, face),
+// the bot avatars, and the canvas code that draws a soldier, its gun and weapon pickups.
 export const PARTS = {
   hat: [
     { id: 'headband', name: 'Headband' }, { id: 'none', name: 'Bald' }, { id: 'helmet', name: 'Helmet' },
@@ -26,6 +27,12 @@ export const PARTS = {
 const HAT_COLORS = { beret: '#c0392b', drill: '#b08850', bandana: '#7b2cbf', headband: '#7b2cbf', beanie: '#5b6770', cap: '#3d4f2a' };
 const HAIRLESS = new Set(['none', 'headband']);
 
+/**
+ * Turns the chosen parts into a full avatar with the colours needed for drawing.
+ * Unknown or missing parts fall back to safe defaults (so bad saved data cannot break drawing).
+ * @param {object} parts { hat, uniform, skin, goggles, face }
+ * @returns {object} avatar with parts plus resolved colours
+ */
 export function makeAvatar(parts = {}) {
   const hat = PARTS.hat.some((h) => h.id === parts.hat) ? parts.hat : 'headband';
   const uniform = PARTS.uniform.find((u) => u.id === parts.uniform) ?? PARTS.uniform[0];
@@ -48,6 +55,7 @@ export function makeAvatar(parts = {}) {
 
 export const DEFAULT_AVATAR = { hat: 'headband', uniform: 'woodland', skin: PARTS.skin[1], goggles: PARTS.goggles[0], face: 'none' };
 
+// Fixed looks for the bots.
 export const BOT_AVATARS = [
   { hat: 'helmet', uniform: 'desert', skin: PARTS.skin[3], goggles: PARTS.goggles[0], face: 'beard' },
   { hat: 'beanie', uniform: 'arctic', skin: PARTS.skin[0], goggles: PARTS.goggles[1], face: 'none' },
@@ -65,6 +73,7 @@ const BOOT = '#5b3a22';
 const SOLE = '#2a1c12';
 const METAL = '#8d949c';
 
+// Small drawing helpers: rounded rectangle path, fill with a dark outline, and an outlined limb (thick line).
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -92,6 +101,7 @@ function limb(ctx, color, width, points) {
   }
 }
 
+// Draws the hat on the head at (hx, hy). f = facing (1 right, -1 left) mirrors the shape.
 function drawHat(ctx, a, hx, hy, f, time) {
   ctx.lineJoin = 'round';
   switch (a.hat) {
@@ -164,6 +174,10 @@ function drawHat(ctx, a, hx, hy, f, time) {
   }
 }
 
+/**
+ * Draws a gun in "gun space" (x along the barrel, the hand at 0,0).
+ * @returns {number[]|null} where the front hand holds the gun, or null for the one-handed magnum
+ */
 function drawGun(ctx, weaponKey) {
   switch (weaponKey) {
     case 'smg':
@@ -219,6 +233,7 @@ function drawGun(ctx, weaponKey) {
   }
 }
 
+// Melee swing animation: wind up, strike, then return (t goes from 0 to 1).
 function swingAngle(t) {
   if (t < 0.3) return -1.3 * (t / 0.3);
   if (t < 0.55) return -1.3 + 2.2 * ((t - 0.3) / 0.25);
@@ -226,6 +241,7 @@ function swingAngle(t) {
 }
 
 const flashAvatars = new WeakMap();
+// A white copy of an avatar for the hit flash (cached per avatar in a WeakMap).
 function flashAvatar(avatar) {
   let white = flashAvatars.get(avatar);
   if (!white) {
@@ -235,6 +251,13 @@ function flashAvatar(avatar) {
   return white;
 }
 
+/**
+ * Draws a soldier, then a white flash on top when it was just hit.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} s the soldier draw state (position, facing, aim, weapon, animation values)
+ * @param {object} avatar from makeAvatar()
+ * @param {number} time seconds, for small animations
+ */
 export function drawSoldier(ctx, s, avatar, time) {
   drawSoldierBody(ctx, s, avatar, time);
   const flash = Math.min(1, s.hitFlash || 0);
@@ -245,6 +268,7 @@ export function drawSoldier(ctx, s, avatar, time) {
   ctx.restore();
 }
 
+// Draws the body from back to front: jet flame, jetpack, legs, body, head, face, goggles, hat, arms + gun.
 function drawSoldierBody(ctx, s, avatar, time) {
   const cx = s.x + s.w / 2;
   const top = s.y;
@@ -261,6 +285,7 @@ function drawSoldierBody(ctx, s, avatar, time) {
   ctx.lineCap = 'round';
   const lean = s.lean || 0;
   const squash = s.squash || 0;
+  // Lean and squash (landing) are applied around the feet so the soldier stays on the ground.
   if (lean || squash) {
     ctx.translate(cx, feet);
     if (lean) ctx.rotate(lean);
@@ -290,6 +315,7 @@ function drawSoldierBody(ctx, s, avatar, time) {
   roundRect(ctx, jx - 4, top + 38, 8, 4, 1); inked(ctx, '#55595f', 1.5);
 
   const walk = s.onGround ? s.walkPhase : 0;
+  // Two legs, half a step apart (phase PI), swinging with a sine wave while walking.
   for (const [dx, phase] of [[-4, 0], [4, Math.PI]]) {
     const sw = s.onGround ? Math.sin(walk + phase) * 6 : (phase ? -2 : 3);
     const lift = s.onGround ? Math.max(0, Math.cos(walk + phase)) * 3 : 3;
@@ -362,6 +388,7 @@ function drawSoldierBody(ctx, s, avatar, time) {
   drawHat(ctx, avatar, hx, hy, f, time);
 
   ctx.save();
+  // Arms and gun rotate around the shoulder to the aim angle; flip the drawing when aiming left.
   ctx.translate(cx, top + 25);
   ctx.rotate(s.aim);
   if (Math.cos(s.aim) < 0) ctx.scale(1, -1);
@@ -387,6 +414,7 @@ function drawSoldierBody(ctx, s, avatar, time) {
   ctx.beginPath(); ctx.arc(9.5, 1.5, 3.2, 0, Math.PI * 2); inked(ctx, avatar.skin, 1.5);
   ctx.restore();
 
+  // Grenade throw animation with the other arm.
   const thr = s.throwArm || 0;
   if (thr > 0 && thr < 1) {
     const ang = thr < 0.35 ? -1.7 - 0.9 * (thr / 0.35) : -2.6 + 3.0 * ((thr - 0.35) / 0.65);
@@ -404,6 +432,7 @@ function drawSoldierBody(ctx, s, avatar, time) {
 
 const GUN_SPAN = { magnum: [4, 22], smg: [1, 29], rifle: [-3, 38], shotgun: [-3, 35], sniper: [-4, 46], rocket: [-6, 40], flamer: [0, 36] };
 
+// Draws a gun lying on the map as a pickup, centred on (x, y).
 export function drawWeaponPickup(ctx, weaponKey, x, y, { scale = 1.25, angle = 0 } = {}) {
   const [from, to] = GUN_SPAN[weaponKey] ?? GUN_SPAN.magnum;
   ctx.save();
@@ -417,6 +446,7 @@ export function drawWeaponPickup(ctx, weaponKey, x, y, { scale = 1.25, angle = 0
   ctx.restore();
 }
 
+// Draws a standing soldier into a small canvas (avatar editor and HUD badge).
 export function drawAvatarPreview(canvas, avatar, time = 0) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);

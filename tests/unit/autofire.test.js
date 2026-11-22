@@ -1,16 +1,18 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Unit tests for auto-fire (client/src/game/autoFire.js): the gun only fires by itself
+// when the aim is on a live enemy that is in range and not hidden behind a wall.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { isAimedAtEnemy } = require('../../client/src/game/autoFire.js');
 const { TILE, WEAPONS } = require('../../client/src/game/config.js');
 
+// Builds a small empty map; wallCol puts a solid wall in one column to test line of sight.
 function arena(wallCol = null) {
   const cols = 60, rows = 20;
   const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, (_, c) => (c === wallCol ? 1 : 0)));
   return { cols, rows, grid };
 }
 
+// Makes a soldier object centred on (cx, cy) with a magnum as the sidearm.
 function soldier(id, team, cx, cy, extra = {}) {
   return {
     id, team, alive: true, w: 28, h: 50, x: cx - 14, y: cy - 25,
@@ -19,6 +21,7 @@ function soldier(id, team, cx, cy, extra = {}) {
   };
 }
 
+// Puts the player and one other soldier on the map and points the player's aim at `aim`.
 function setup({ enemy, wallCol, aim, team = 'p1', playerExtra = {} }) {
   const player = soldier('p0', 'p0', 200, 400, playerExtra);
   player.controls.aimX = aim.x;
@@ -27,6 +30,7 @@ function setup({ enemy, wallCol, aim, team = 'p1', playerExtra = {} }) {
   return { player, world: { map: arena(wallCol), soldiers: [player, other] }, other };
 }
 
+// Proves the basic case: aim on an enemy in the open fires, even a few pixels off the body.
 test('fires when the aim is on an enemy in the open', () => {
   const { player, world } = setup({ enemy: { x: 600, y: 400 }, aim: { x: 600, y: 375 } });
   assert.equal(isAimedAtEnemy(player, world), true);
@@ -37,6 +41,7 @@ test('fires when the aim is just off the body (small slack)', () => {
   assert.equal(isAimedAtEnemy(player, world), true);
 });
 
+// Proves it does not waste ammo: no fire when aiming away or at an enemy behind you.
 test('does not fire when aiming away from the enemy', () => {
   const { player, world } = setup({ enemy: { x: 600, y: 400 }, aim: { x: 600, y: 200 } });
   assert.equal(isAimedAtEnemy(player, world), false);
@@ -47,11 +52,13 @@ test('does not fire at an enemy behind the player', () => {
   assert.equal(isAimedAtEnemy(player, world), false);
 });
 
+// Proves walls block auto-fire, so the player cannot shoot through cover.
 test('does not fire through a wall', () => {
   const { player, world } = setup({ enemy: { x: 600, y: 400 }, aim: { x: 600, y: 375 }, wallCol: Math.floor(400 / TILE) });
   assert.equal(isAimedAtEnemy(player, world), false);
 });
 
+// Proves friendly fire and shooting corpses are ignored.
 test('does not fire at a teammate', () => {
   const { player, world } = setup({ enemy: { x: 600, y: 400 }, aim: { x: 600, y: 375 }, team: 'p0' });
   assert.equal(isAimedAtEnemy(player, world), false);
@@ -63,6 +70,7 @@ test('does not fire at a dead enemy', () => {
   assert.equal(isAimedAtEnemy(player, world), false);
 });
 
+// Proves the range check uses the weapon in hand: a shotgun cannot reach, a sniper can.
 test('respects the range of the weapon in hand', () => {
   const far = { x: 1200, y: 400 };
   const shotgun = setup({ enemy: far, aim: { x: 1200, y: 375 }, playerExtra: { current: 'primary', primary: { key: 'shotgun', ammo: 6, spare: 18 } } });

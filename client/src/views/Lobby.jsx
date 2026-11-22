@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Lobby.jsx: the online lobby: create a room, join by code or from the public list, get ready, start.
+// Uses Socket.IO (WebSockets) instead of fetch, because the server pushes room changes live.
 import { useEffect, useState } from 'react';
 import { getSocket, request } from '../net/socket.js';
 import { Panel, Icon } from '../components/common.jsx';
@@ -8,10 +8,18 @@ import { LengthPicker, MapPicker, savedLength, savedMap } from './Difficulty.jsx
 import { mapName } from '../game/maps.js';
 import { emit } from '../services/eventBus.js';
 
+// Small text helpers for the room tables.
 const botLevel = (key) => DIFFICULTY[key]?.name ?? 'Medium';
 const mapText = (r) => (r.map && r.map !== 'random' ? mapName(r.map) : 'Random map');
 const lengthText = (r) => `${MATCH_LENGTHS.find((l) => l.seconds === r.matchLength)?.label ?? '5 min'} · first to ${r.killLimit ?? 20}`;
 
+/**
+ * Lobby: the Play Online screen.
+ * @param {{account: object, parts: object, onBack: Function}} props
+ * Socket events listened to: 'connect', 'disconnect', 'connect_error', 'rooms:changed', 'room:update'.
+ * Requests sent: 'rooms:list', 'room:create', 'room:join', 'room:start'; also 'room:ready' and 'room:leave'.
+ * The socket handshake carries the same session cookie, so the server knows who is playing.
+ */
 export default function Lobby({ account, parts, onBack }) {
   const [rooms, setRooms] = useState([]);
   const [room, setRoom] = useState(null);
@@ -29,6 +37,7 @@ export default function Lobby({ account, parts, onBack }) {
   const [error, setError] = useState('');
   const [online, setOnline] = useState(false);
 
+  // Subscribe to socket events while the lobby is open and remove every listener on unmount.
   useEffect(() => {
     const socket = getSocket();
     const refresh = () => request('rooms:list').then((r) => setRooms(r.rooms)).catch(() => {});
@@ -51,6 +60,7 @@ export default function Lobby({ account, parts, onBack }) {
     };
   }, [account.id]);
 
+  // run: wrap a request so any error from the server is shown in the error line.
   const run = async (fn) => {
     setError('');
     try { await fn(); } catch (err) { setError(err.message); }
@@ -60,6 +70,7 @@ export default function Lobby({ account, parts, onBack }) {
   const start = () => run(() => request('room:start'));
   const leave = () => { getSocket().emit('room:leave'); setRoom(null); };
   const mine = room?.players.find((p) => p.userId === account.id);
+  // Only the host sees Start; the server also checks that the sender is the host.
   const isHost = room?.host === account.id;
   const allReady = room?.players.every((p) => p.ready);
 

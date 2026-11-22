@@ -1,5 +1,6 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// NetGame is the online client. The server runs the real world; this file sends the player's
+// controls over Socket.io, receives snapshots, smooths them with interpolation and draws them.
+// Server events are turned back into the same event bus events the offline game uses.
 import { on, emit } from '../services/eventBus.js';
 import { MODES, SOLDIER, WEAPONS, ZOOM_LEVELS, PHYSICS, DIFFICULTY, BANANA_METER } from '../game/config.js';
 import { BOT_AVATARS, makeAvatar } from '../game/characters.js';
@@ -11,18 +12,32 @@ import { askPuzzle, closePuzzle, isPuzzleOpen } from '../services/puzzleBridge.j
 import { askPower, isPowerOpen, closePower } from '../services/powerBridge.js';
 import { getSocket, request } from './socket.js';
 
+// Draw the world 60 ms in the past so there are usually two snapshots to blend between.
+// Resend unchanged controls at most every 50 ms.
 const DELAY_MS = 60;
 const RESEND_MS = 50;
+// One-shot actions that are sent once and then cleared.
 const ACTIONS = ['reload', 'swap', 'grenade', 'melee', 'pickup', 'supply'];
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => a + Math.random() * (b - a);
+// The server sends -1 for infinite spare ammo (JSON cannot hold Infinity), so convert it back.
 const fromGun = (g) => g && { key: g.key, ammo: g.ammo, spare: g.spare === -1 ? Infinity : g.spare };
 
+// Online puzzles come from our server over Socket.io (the server calls the Banana API),
+// so the answer is checked on the server and cannot be faked by the client.
 const socketPuzzles = {
   get: (purpose) => request('puzzle:get', { purpose }),
   answer: (puzzleId, answer) => request('puzzle:answer', { puzzleId, answer }),
 };
 
+/**
+ * Creates the online game client (once per page) and starts its render loop.
+ * Socket.io events in: match:start, room:update, match:snapshot, match:end, puzzle:offer,
+ * puzzle:closed, power:offer. Socket.io events out: input, puzzle:cancel, power:choose, room:leave.
+ * Event bus: listens to banana:answered, input:banana, input:supply, input:pause;
+ * emits game:state, game:over, match:timeup, match:countdown and the relayed game events.
+ * @returns {object} { active, isHost, endForAll, resume, leave }
+ */
 export function createNetGame() {
   const socket = getSocket();
   const { renderer, input, hud, meter } = getStage();
@@ -43,6 +58,7 @@ export function createNetGame() {
 
   const soldierById = (id) => view?.soldiers.find((s) => s.id === id) ?? null;
 
+  // The server started a match: build a local "view" of the world (map + soldiers) to draw.
   socket.on('match:start', ({ me: myId, teamMode, map, difficulty, timeLimit, killLimit, roster }) => {
     level = DIFFICULTY[difficulty] ?? DIFFICULTY.medium;
     const cfg = { ...MODES.online, ...(timeLimit > 0 && { timeLimit }), ...(killLimit > 0 && { killLimit }) };
@@ -73,6 +89,8 @@ export function createNetGame() {
 
   socket.on('room:update', (room) => { hostId = room.host; });
 
+  // A snapshot of the server world (30 per second, one per server tick). Keep the last 8 with their arrival time,
+  // and replay the events inside it (kills, shots, pickups) on the local event bus.
   socket.on('match:snapshot', (snap) => {
     if (!view) return;
     snap.at = performance.now();
@@ -82,6 +100,7 @@ export function createNetGame() {
     for (const [type, e] of snap.events) relay(type, e);
   });
 
+  // Match over: work out the result for this player, then emit 'game:over' after 1.5 s.
   socket.on('match:end', (summary) => {
     if (!view) return;
     closePower();
@@ -109,6 +128,7 @@ export function createNetGame() {
     }, 1500);
   });
 
+  // The server offers a crate puzzle (the player opened a banana crate). Cancelling tells the server.
   socket.on('puzzle:offer', async ({ purpose, seconds }) => {
     if (!active || purpose !== 'crate' || isPuzzleOpen()) return;
     crateOpen = true;
@@ -122,6 +142,7 @@ export function createNetGame() {
     closePuzzle();
   });
 
+  // After a solved crate puzzle, the server asks which Banana Power to take.
   socket.on('power:offer', async ({ choices, seconds }) => {
     if (!active) return;
     input.setEnabled(false);
@@ -163,6 +184,10 @@ export function createNetGame() {
     else { paused = true; input.setEnabled(false); emit('game:state', { state: 'paused', online: true }); }
   });
 
+  /**
+   * Turns a server event (with soldier ids) back into a local event bus event (with soldier objects),
+   * so the HUD, sound and effects work the same online and offline. Also adds blood and blast particles.
+   */
   function relay(type, e) {
     const s = (id) => soldierById(id);
     switch (type) {
@@ -191,6 +216,11 @@ export function createNetGame() {
     }
   }
 
+  /**
+   * Snapshot interpolation. Finds the two snapshots around (now - DELAY_MS) and blends
+   * each soldier's position between them (lerp), so movement looks smooth even though
+   * snapshots arrive less often than the screen refreshes (30 vs 60+ per second). Other state comes from the latest snapshot.
+   */
   function applySnapshots(now) {
     if (!snaps.length) return;
     const latest = snaps[snaps.length - 1];
@@ -200,6 +230,7 @@ export function createNetGame() {
     for (let i = 0; i < snaps.length - 1; i++) {
       if (snaps[i].at <= target && snaps[i + 1].at >= target) { a = snaps[i]; b = snaps[i + 1]; break; }
     }
+    // t = how far between snapshot a and b we are (0 to 1).
     const t = b.at === a.at ? 1 : Math.max(0, Math.min(1, (target - a.at) / (b.at - a.at)));
     const before = new Map(a.soldiers.map((x) => [x.id, x]));
     for (const st of latest.soldiers) {
@@ -209,6 +240,7 @@ export function createNetGame() {
       Object.assign(s, st, { primary: fromGun(st.primary), sidearm: fromGun(st.sidearm), lastAttacker: soldierById(st.lastAttacker), respawnTimer: st.alive ? 0 : st.respawnTimer });
       const p0 = before.get(st.id);
       const p1 = b.soldiers.find((x) => x.id === st.id);
+      // Only blend if alive in both snapshots; after a respawn jump straight to the new spot.
       if (p0 && p1 && p0.alive && p1.alive) { s.x = lerp(p0.x, p1.x, t); s.y = lerp(p0.y, p1.y, t); }
       else if (p1) { s.x = p1.x; s.y = p1.y; }
       if (!wasAlive && s.alive) s.walkPhase = 0;
@@ -218,9 +250,11 @@ export function createNetGame() {
       bullets: latest.bullets, rockets: latest.rockets, flames: latest.flames, grenades: latest.grenades, pickups: latest.pickups,
     });
     const seconds = Math.ceil(view.timeLeft);
+    // Same countdown event as offline, emitted once per second.
     if (seconds <= 10 && seconds > 0 && seconds !== view.countdown) { view.countdown = seconds; emit('match:countdown', { seconds, online: true }); }
   }
 
+  // Particles are only visual, so they run locally and are not sent by the server.
   function updateParticles(dt) {
     view.particles = view.particles.filter((p) => {
       p.life -= dt;
@@ -231,6 +265,10 @@ export function createNetGame() {
     });
   }
 
+  /**
+   * Sends the player's controls to the server (the client never moves itself; the server is in charge).
+   * Aim is rounded to 4 px, and an unchanged message is only resent after RESEND_MS, to save bandwidth.
+   */
   function sendControls(now) {
     const c = me.controls;
     if (me.alive && !paused && !isPuzzleOpen()) input.apply(me, view);
@@ -245,6 +283,7 @@ export function createNetGame() {
   }
 
   let last = performance.now();
+  // Online render loop: apply snapshots -> send input -> particles -> sound -> draw -> HUD.
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;

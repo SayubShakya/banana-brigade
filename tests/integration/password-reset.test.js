@@ -1,5 +1,4 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Integration tests for password reset links and login rate limits (virtual identity theme).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, client } = require('./helpers');
@@ -7,14 +6,18 @@ const { startServer, client } = require('./helpers');
 const PW = 'bananas123';
 const NEW_PW = 'new-bananas-456';
 
+// Starts a server that saves reset links in a list instead of sending them, so tests can read them.
 async function resetServer() {
   const sent = [];
   const s = await startServer({ appOptions: { trustProxy: true, sendResetLink: (msg) => { sent.push(msg); } } });
   return { s, sent };
 }
+// Takes the reset token out of the link (the part after #reset=).
 const tokenOf = (msg) => new URL(msg.link).hash.replace('#reset=', '');
+// Makes a client that pretends to come from a given IP address.
 const fromIp = (s, ip) => client(s.base, { headers: { 'X-Forwarded-For': ip } });
 
+// Proves a reset link changes the password, can only be used once and signs out every session.
 test('a reset link sets a new password, works once and ends every session', async () => {
   const { s, sent } = await resetServer();
   try {
@@ -43,6 +46,7 @@ test('a reset link sets a new password, works once and ends every session', asyn
   } finally { await s.close(); }
 });
 
+// Proves the reset token is stored only as a hash, and two uses at the same time still count once.
 test('the token is stored only as a hash, and two uses at once still work only once', async () => {
   const { s, sent } = await resetServer();
   try {
@@ -58,6 +62,7 @@ test('the token is stored only as a hash, and two uses at once still work only o
   } finally { await s.close(); }
 });
 
+// Proves old or expired links stop working, so a leaked old email is useless.
 test('an expired link is refused, and only the newest link works', async () => {
   const { s, sent } = await resetServer();
   try {
@@ -73,6 +78,7 @@ test('an expired link is refused, and only the newest link works', async () => {
   } finally { await s.close(); }
 });
 
+// Proves the reply does not reveal whether a username exists, and reset requests are limited per IP.
 test('an unknown username gets the same reply, and requests are limited per IP', async () => {
   const { s, sent } = await resetServer();
   try {
@@ -88,6 +94,7 @@ test('an unknown username gets the same reply, and requests are limited per IP',
   } finally { await s.close(); }
 });
 
+// Proves the lockout is per IP and name, so a stranger cannot lock the real owner out.
 test('a stranger typing wrong passwords does not lock the owner out on their own IP', async () => {
   const { s } = await resetServer();
   try {
@@ -99,6 +106,7 @@ test('a stranger typing wrong passwords does not lock the owner out on their own
   } finally { await s.close(); }
 });
 
+// Proves one IP cannot guess passwords across many different usernames.
 test('one IP cannot try more than 20 wrong passwords across different names', async () => {
   const { s } = await resetServer();
   try {
@@ -111,6 +119,7 @@ test('one IP cannot try more than 20 wrong passwords across different names', as
   } finally { await s.close(); }
 });
 
+// Proves sending many guesses at the same time cannot slip past the limit of 5.
 test('parallel guesses cannot get past the limit of 5', async () => {
   const { s } = await resetServer();
   try {
@@ -122,6 +131,7 @@ test('parallel guesses cannot get past the limit of 5', async () => {
   } finally { await s.close(); }
 });
 
+// Proves a correct login does not count against the IP limit.
 test('a correct password does not use up the IP allowance', async () => {
   const { s } = await resetServer();
   try {

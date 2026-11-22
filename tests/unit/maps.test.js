@@ -1,5 +1,5 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// Unit tests for the battle maps (client/src/game/map.js): every map must be a closed,
+// valid grid where all spawns and pickups stand on ground and can be reached.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createMap, MAP_IDS, MAPS, randomMapId } = require('../../client/src/game/map.js');
@@ -7,8 +7,11 @@ const { createWorld, updateWorld } = require('../../client/src/game/world.js');
 const { MISSIONS } = require('../../client/src/game/campaign.js');
 const { TILE } = require('../../client/src/game/config.js');
 
+// Turns a pixel position into a [column, row] tile position.
 const toTile = (p) => [Math.floor(p.x / TILE), Math.floor(p.y / TILE)];
 
+// Flood fill from one tile: finds every tile a soldier (two tiles tall) can get to.
+// Returns the tiles it reached and the `fits` check it used.
 function reachableFrom(map, [c0, r0]) {
   const fits = (c, r) => c > 0 && r > 1 && c < map.cols && r < map.rows && map.grid[r][c] === 0 && map.grid[r - 1][c] === 0;
   const seen = new Set();
@@ -23,6 +26,7 @@ function reachableFrom(map, [c0, r0]) {
   return { seen, fits };
 }
 
+// Proves there are at least four maps, each with a name and sky theme, and an unknown id falls back to jungle.
 test('maps: there are at least four, each with a name and a theme', () => {
   assert.ok(MAP_IDS.length >= 4);
   for (const id of ['jungle', 'desert', 'snow', 'night']) {
@@ -34,7 +38,9 @@ test('maps: there are at least four, each with a name and a theme', () => {
   assert.ok(MAP_IDS.includes(randomMapId()));
 });
 
+// The tests below run once for every map, so a new map is checked automatically.
 for (const id of Object.keys(MAPS)) {
+  // Proves the grid has the right size and is closed by ceiling, floor and side walls, so nobody can fall out.
   test(`maps: ${id} is a valid, enclosed grid`, () => {
     const map = createMap(id);
     assert.equal(map.grid.length, map.rows);
@@ -47,6 +53,7 @@ for (const id of Object.keys(MAPS)) {
     for (let r = 0; r < map.rows; r++) assert.ok(map.grid[r][0] === 1 && map.grid[r][map.cols - 1] === 1, 'side walls');
   });
 
+  // Proves every spawn and pickup is on an empty tile with head room and solid ground beneath.
   test(`maps: ${id} spawns and pickups stand on empty tiles above solid ground`, () => {
     const map = createMap(id);
     assert.ok(map.spawns.length >= 8, 'enough spawns');
@@ -62,6 +69,7 @@ for (const id of Object.keys(MAPS)) {
     }
   });
 
+  // Proves there are no sealed pockets: every spawn and pickup can be reached from the first spawn.
   test(`maps: ${id} has no sealed pockets; every spawn and pickup is reachable`, () => {
     const map = createMap(id);
     const { seen, fits } = reachableFrom(map, toTile(map.spawns[0]));
@@ -72,6 +80,7 @@ for (const id of Object.keys(MAPS)) {
     }
   });
 
+  // Proves each game mode can build and run a short battle on this map with everyone staying inside it.
   test(`maps: createWorld builds and runs a battle on ${id}`, () => {
     for (const mode of ['quick', 'team', 'survival', 'training']) {
       const world = createWorld({
@@ -87,6 +96,7 @@ for (const id of Object.keys(MAPS)) {
   });
 }
 
+// Proves quick battles pick a random map, while each campaign mission always uses its own map.
 test('maps: quick battles pick a map at random, campaign missions have a fixed one', () => {
   const opts = { mode: 'quick', playerName: 'Tester', playerAvatar: {}, emit: () => {}, botAvatars: [{}], botNames: ['A'] };
   const seen = new Set();

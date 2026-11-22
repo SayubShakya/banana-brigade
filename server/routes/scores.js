@@ -1,8 +1,9 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
+// Routes layer: /api/scores URLs.
 
 const express = require('express');
 const { requireLogin } = require('../middleware/auth');
 
+/** Builds the scores router. The leaderboard is public; the rest need login. */
 function createScoresRouter({ scoresController: scores }) {
   const router = express.Router();
 

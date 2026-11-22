@@ -1,11 +1,13 @@
-// Written with help from Claude (Anthropic), an AI coding assistant; reviewed by Sayub Shakya.
-
+// history.js: formatting helpers for match history, the battle log and leaderboards.
+// Pure functions: they turn raw server records into labels and sentences for the views.
 import { WEAPONS } from '../game/config.js';
 import { MAPS } from '../game/maps.js';
 import { MODE_NAMES } from './rank.js';
 
+// [value, label] pairs for the filter buttons on the History screen.
 export const FILTERS = [['all', 'All'], ['solo', 'Solo'], ['online', 'Online'], ['quick', 'Quick Play'], ['survival', 'Survival'], ['team', 'Team'], ['campaign', 'Campaign']];
 
+/** clock: seconds -> "m:ss" text, e.g. 75 -> "1:15". */
 export const clock = (s) => {
   const n = Math.max(0, Math.floor(Number(s) || 0));
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
@@ -15,12 +17,14 @@ export const modeName = (mode) => MODE_NAMES[mode] ?? mode ?? 'Battle';
 export const mapLabel = (id) => (id ? MAPS[id]?.name ?? id : '—');
 export const weaponName = (w) => (w ? WEAPONS[w]?.name ?? w : '');
 
+/** resultLabel: a match row -> { text, kind } such as "Won", "Lost", "Draw" or "Wave 7". */
 export function resultLabel(r) {
   if (r.mode === 'survival') return { text: `Wave ${r.wave ?? 0}`, kind: 'wave' };
   if (r.draw) return { text: 'Draw', kind: 'draw' };
   return r.won ? { text: 'Won', kind: 'won' } : { text: 'Lost', kind: 'lost' };
 }
 
+/** winnerLabel: the headline for a finished match (team won, player won, mission result). */
 export function winnerLabel(match) {
   const w = match?.winner;
   if (match?.mode === 'campaign') return w ? 'Mission complete' : 'Mission failed';
@@ -31,6 +35,11 @@ export function winnerLabel(match) {
 
 const PUZZLE_FOR = { deploy: 'to deploy', respawn: 'to respawn', crate: 'for a crate' };
 
+/**
+ * sentence: turn one battle-log event from the server into a readable sentence.
+ * @param {{type: string, by?: string, target?: string, weapon?: string, detail?: string, ok?: boolean}} e
+ * @returns {string} e.g. "Sayub solved a banana puzzle to respawn".
+ */
 export function sentence(e) {
   const by = e.by || 'Someone';
   switch (e.type) {
@@ -56,14 +65,18 @@ export function sentence(e) {
   }
 }
 
+// Battle-log event type -> icon name used by the <Icon /> component.
 export const ICONS = { kill: 'cross', puzzle: 'banana', crate: 'shield', power: 'chevron', drop: 'target', respawn: 'helmet', wave: 'team', join: 'user', leave: 'user', end: 'trophy' };
 
+/** rankRoster: sort players by kills (then fewest deaths) and add a 1-based rank. */
 export function rankRoster(roster = []) {
   return [...roster].sort((a, b) => (b.kills ?? 0) - (a.kills ?? 0) || (a.deaths ?? 0) - (b.deaths ?? 0)).map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
+/** kd: kill/death ratio with two decimals (no deaths = kills). */
 export const kd = (k, d) => (d ? k / d : k).toFixed(2);
 
+/** ago: an ISO date -> "just now", "5 min ago", "3 h ago" or a short date. */
 export const ago = (iso, now = Date.now()) => {
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return '—';
@@ -74,8 +87,13 @@ export const ago = (iso, now = Date.now()) => {
   return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 };
 
+/** boardStat: which number a leaderboard row shows (waves for survival, otherwise kills). */
 export const boardStat = (r, mode, by) => (by !== 'career' && mode === 'survival' ? r.wave ?? 0 : r.kills ?? 0);
 
+/**
+ * pinnedMe: if my own row is not in the top rows, return it so the board can pin it at the bottom.
+ * @returns {object|null} my row, or null when it is already visible.
+ */
 export function pinnedMe({ rows = [], me } = {}, myName) {
   if (!me) return null;
   const username = me.username ?? myName;
