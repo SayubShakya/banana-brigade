@@ -130,7 +130,7 @@ function tone(v, freq, dur, { volume = 0.15, type = 'square', slideTo, delay = 0
 
 const ui = (length, volume = 1) => voice(undefined, undefined, volume, length, { priority: true });
 
-const SAMPLE_GUNS = ['magnum', 'smg', 'rifle', 'shotgun', 'sniper'];
+const SAMPLE_GUNS = ['magnum', 'smg', 'rifle', 'shotgun', 'sniper']; // Gun shot samples: "Gunshot Sounds" by Vincent Sevedge (Tabasco), OpenGameArt.org, CC0 / CC-BY 3.0.
 const samples = new Map();
 let samplesLoading = false;
 

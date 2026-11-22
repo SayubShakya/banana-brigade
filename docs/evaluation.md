@@ -11,8 +11,9 @@ terms, without names.
 into `main`, so every feature shows as its own bubble in `git log --graph`. GitHub Actions runs the tests and
 the build on every push and pull request. A pull-request template and a review checklist are in the repository.
 Milestones are marked with annotated tags: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`,
-`v0.4-multiplayer`, `v0.5-campaign`, then `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.3.1` and `v1.3.2` (`git tag -n`).
-The release steps are in `CONTRIBUTING.md`. At the time of writing `main` has 355 commits, 75 of them merge commits.
+`v0.4-multiplayer`, `v0.5-campaign`, then `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.3.1`, `v1.3.2` and `v1.4.0` (`git tag -n`).
+The release steps are in `CONTRIBUTING.md`. On 22 Nov 2026 `main` had 487 commits, 114 of them merge commits, and five changes went through GitHub pull requests
+(#1 to #5) with review comments and green CI before merging.
 
 | Alternative | For | Against |
 |---|---|---|
@@ -22,10 +23,10 @@ The release steps are in `CONTRIBUTING.md`. At the time of writing `main` has 35
 | Git Flow (develop, release, hotfix branches) | Clear for teams with scheduled releases | Too heavy for a one-person project |
 
 **Trade-offs and limits**
-- **Code reviews were done locally**: each branch was checked against the review checklist and merged with
-  `--no-ff` on this machine, not through GitHub pull requests. So there is no recorded review discussion on
-  GitHub. The PR template and CI are the review workflow; using real GitHub pull requests with a required green
-  check is the obvious improvement.
+- **Most code reviews were done locally**: most branches were checked against the review checklist and merged
+  with `--no-ff` on this machine. From pull request #1 onwards, changes go through GitHub pull requests with
+  review comments and green CI; a branch ruleset on `main` makes that the only way in. One developer cannot approve their own
+  pull request, so a second reviewer is the next improvement in a team.
 - One developer: branches rarely conflict, so the history shows little real merge-conflict resolution.
 - Most work happened in a few days (14 and 28–30 October), so the dates show bursts rather than steady progress.
 - The history keeps a real design change: SQLite (`fadda7c`) replaced by MongoDB (`75afbbd`). Because
@@ -131,7 +132,8 @@ on Easy and never online, so it helps beginners without giving an advantage over
 **Chosen:** username and password; bcrypt hashes (cost 10); a server-side session in MongoDB identified by an
 HttpOnly, SameSite=Lax cookie; session regeneration at login; login limits per name+IP and per IP (5 tries for one name
 from one IP, 20 tries from one IP across all names, per 10 minutes, counted atomically); a dummy
-hash compare so timing does not reveal usernames; roles (`player`, `admin`) checked by middleware, which loads the user from the
+hash compare so timing does not reveal usernames; roles (`player`, `admin`) with a separate admin login (`/#admin-login`, `POST /api/v1/auth/admin-login`) that refuses
+player accounts before any session starts (Week 8 feedback), and roles checked by middleware, which loads the user from the
 database on every request so a deleted or demoted account loses access at once; the same session authenticates
 the WebSocket. Account tools: "remember me" (30 days, off by default), log out everywhere, change password
 (needs the current one, ends the other sessions) and delete account (GDPR erasure). Each of these also closes
