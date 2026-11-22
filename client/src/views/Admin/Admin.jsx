@@ -1,3 +1,6 @@
+// Admin.jsx: the admin dashboard (virtual identity theme: roles and authorisation).
+// Tabs: Players (manage accounts), Audit log, API health (Banana API status) and Live events.
+// Every button here calls /api/v1/admin/...; the server checks the admin role on each request.
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api.js';
 import { Panel, Skeleton, SkeletonRows } from '../../components/common.jsx';
@@ -7,6 +10,11 @@ const TABS = [['players', 'Players'], ['audit', 'Audit log'], ['health', 'API he
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const stamp = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
+/**
+ * Players: table of all accounts with Reset scores, Promote/Demote and Suspend/Restore buttons.
+ * @param {{account: object}} props  the logged-in admin (used to stop actions on yourself).
+ * API: GET /api/v1/admin/users, then DELETE .../scores, PATCH .../role, POST .../suspend|restore.
+ */
 function Players({ account }) {
   const [users, setUsers] = useState(null);
   const [msg, setMsg] = useState('');
@@ -16,6 +24,8 @@ function Players({ account }) {
   const load = () => api.adminUsers().then(({ users: list }) => setUsers(list)).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, []);
 
+  // A click does not call the API straight away: it opens a form asking for a reason.
+  // confirm() then runs the saved API call with that reason (stored in the audit log) and reloads.
   const ask = (id, label, run, done) => { setAsking({ id, label, run, done }); setReason(''); setMsg(''); };
   async function confirm(e) {
     e.preventDefault();
@@ -39,6 +49,8 @@ function Players({ account }) {
         <tbody>
           {!users && <SkeletonRows cols={7} />}
           {users?.map((u) => {
+            // Buttons are disabled for unsafe actions (demoting or suspending yourself); the server
+            // enforces the same rules, so this is only for a clearer UI.
             const me = u.id === account.id;
             const next = u.role === 'admin' ? 'player' : 'admin';
             return (
@@ -64,6 +76,7 @@ function Players({ account }) {
   );
 }
 
+/** Audit: read-only list of admin actions with their reasons (GET /api/v1/admin/audit). */
 function Audit() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
@@ -83,6 +96,11 @@ function Audit() {
   );
 }
 
+/**
+ * Sparkline: a tiny SVG line chart.
+ * @param {{values: number[], max: number, label: string, unit: string}} props
+ * Each value is mapped to an x (0-100) and y (0-32) point of an SVG polyline.
+ */
 function Sparkline({ values, max, label, unit }) {
   const pts = values.map((v, i) => [values.length < 2 ? 0 : (i / (values.length - 1)) * 100, v == null ? null : 30 - (Math.min(v, max) / max) * 28]);
   const line = pts.filter(([, y]) => y != null).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
@@ -101,6 +119,11 @@ function Sparkline({ values, max, label, unit }) {
   );
 }
 
+/**
+ * Health: Banana API status from GET /api/v1/admin/health, polled every 10 seconds.
+ * Shows online/offline, the circuit breaker state, puzzle buffer sizes, retries,
+ * and sparklines for median latency and success rate over the last hour.
+ */
 function Health() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -128,6 +151,11 @@ function Health() {
   );
 }
 
+/**
+ * Admin: the dashboard screen. Only shown to accounts with role 'admin' (checked in App.jsx),
+ * but the subtitle is honest: the real protection is the server-side role check.
+ * @param {{account: object, onBack: Function}} props
+ */
 export default function Admin({ account, onBack }) {
   const [tab, setTab] = useState('players');
   return (

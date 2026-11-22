@@ -1,3 +1,4 @@
+// Scores.jsx: leaderboards per mode, today and all time, best game or career totals.
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { Panel, Rank, SkeletonRows } from '../components/common.jsx';
@@ -8,6 +9,7 @@ const TABS = [['quick', 'Quick Play'], ['survival', 'Survival'], ['team', 'Team 
 const VIEWS = [['best', 'Best game'], ['career', 'Career']];
 const COLS = 6;
 
+/** Row: one leaderboard row; `pinned` marks my own row shown below the top list. */
 function Row({ r, mode, by, mine, pinned }) {
   return (
     <tr className={`${mine ? 'me' : ''}${pinned ? ' pinned' : ''}`} aria-current={mine ? 'true' : undefined}>
@@ -18,6 +20,10 @@ function Row({ r, mode, by, mine, pinned }) {
   );
 }
 
+/**
+ * Board: one leaderboard table.
+ * @param {{title, data, mode, by, me}} props  data: null = loading, false = error, else { rows, me }.
+ */
 function Board({ title, data, mode, by, me }) {
   const rows = data?.rows;
   const pin = data ? pinnedMe(data, me) : null;
@@ -41,6 +47,10 @@ function Board({ title, data, mode, by, me }) {
   );
 }
 
+/**
+ * Scores: the Scores screen with mode tabs and a best/career switch.
+ * API: GET /api/v1/scores/leaderboard for today and all time, fetched together with Promise.all.
+ */
 export default function Scores({ me, onBack }) {
   const [mode, setMode] = useState('quick');
   const [by, setBy] = useState('best');

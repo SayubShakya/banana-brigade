@@ -1,3 +1,4 @@
+// Campaign.jsx: the campaign map: 3 chapters of missions, stars and a mission briefing.
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { CHAPTERS, MISSIONS, isUnlocked, totalStars } from '../game/campaign.js';
@@ -5,12 +6,19 @@ import { DIFFICULTY } from '../game/config.js';
 import { mapName } from '../game/maps.js';
 import { Panel, Icon, Skeleton } from '../components/common.jsx';
 
+// fmt: seconds -> "m:ss". Stars: shows 0-3 filled stars (also used by the Results screen).
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const Stars = ({ n, big = false }) => (
   <span className={`stars${big ? ' big' : ''}`} aria-label={`${n} of 3 stars`}>{[1, 2, 3].map((i) => <i key={i} className={i <= n ? 'on' : ''}>★</i>)}</span>
 );
 export { Stars };
 
+/**
+ * Campaign: loads the player's progress with GET /api/v1/campaign and draws the mission map.
+ * @param {{onPlay: Function, onBack: Function}} props  onPlay(mission) starts the mission
+ *   (useBattle.playMission, which asks a Banana puzzle first).
+ * A mission is unlocked by finishing the one before; a chapter needs enough stars.
+ */
 export default function Campaign({ onPlay, onBack }) {
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');

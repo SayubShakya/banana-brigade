@@ -1,8 +1,11 @@
+// Login.jsx: the player login screen (virtual identity theme).
+// One form with four modes: log in, create account, forgot password and reset password.
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api.js';
 import { Sky, Icon } from '../../components/common.jsx';
 import { useNameHint, strength, LEVELS } from './authFields.js';
 
+// A password reset link looks like /#reset=<token>; read the token from the URL hash.
 const tokenFromHash = () => (location.hash.startsWith('#reset=') ? location.hash.slice(7) : null);
 
 const SUBMIT = { login: 'Log in', register: 'Create account', forgot: 'Send reset link', reset: 'Save new password' };
@@ -10,12 +13,23 @@ const TITLES = { forgot: 'Forgot your password?', reset: 'Choose a new password'
 
 
 const WORDS = ['banana', 'jetpack', 'goggle', 'brigade', 'monkey', 'rocket', 'jungle', 'peel', 'puzzle', 'cactus', 'snowman', 'parrot', 'mango', 'thunder', 'pickle', 'falcon'];
+/**
+ * suggestPassword: make a strong, easy-to-type password like "Mango-Rocket-Peel-42!".
+ * Uses crypto.getRandomValues (secure random numbers), not Math.random.
+ */
 function suggestPassword() {
   const n = new Uint32Array(4);
   crypto.getRandomValues(n);
   const word = (i) => { const w = WORDS[n[i] % WORDS.length]; return w[0].toUpperCase() + w.slice(1); };
   return `${word(0)}-${word(1)}-${word(2)}-${10 + (n[3] % 90)}!`;
 }
+/**
+ * Login: the login / register / forgot / reset form.
+ * @param {{onLogin: Function, onHome: Function, onGuest: Function}} props
+ * API calls: login, register, forgot, checkReset and resetPassword (all under /api/v1/auth).
+ * The password is sent once over HTTPS; the server hashes it with bcrypt and replies with
+ * an HttpOnly session cookie, so this code never stores the password or a token itself.
+ */
 export default function Login({ onLogin, onHome, onGuest }) {
   const [resetToken] = useState(tokenFromHash);
   const [mode, setMode] = useState(resetToken ? 'reset' : 'login');
@@ -31,6 +45,7 @@ export default function Login({ onLogin, onHome, onGuest }) {
   const hint = useNameHint(username.trim(), mode === 'register');
   const level = password ? strength(password) : '';
 
+  // Remove the token from the address bar, then ask the server if it is still valid.
   useEffect(() => { if (resetToken) history.replaceState(null, '', location.pathname); }, [resetToken]);
   const [resetFor, setResetFor] = useState(null);
   useEffect(() => {
@@ -40,6 +55,8 @@ export default function Login({ onLogin, onHome, onGuest }) {
 
   function switchTo(next) { setMode(next); setError(''); setInfo(''); setPassword(''); setConfirm(''); }
 
+  // submit: the form's onSubmit handler. Picks the API call for the current mode.
+  // Errors from the server (wrong password, name taken, breached password) are shown below the form.
   async function submit(e) {
     e.preventDefault();
     setError('');

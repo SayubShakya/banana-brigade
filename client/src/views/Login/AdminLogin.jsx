@@ -1,7 +1,14 @@
+// AdminLogin.jsx: separate login form for admin accounts (opened with #admin-login).
 import { useState } from 'react';
 import { api } from '../../services/api.js';
 import { Sky, Icon } from '../../components/common.jsx';
 
+/**
+ * AdminLogin: username + password form for admins.
+ * @param {{onLogin: Function, onPlayer: Function, onHome: Function}} props
+ * Submit -> api.adminLogin -> POST /api/v1/auth/admin-login. The server checks the bcrypt
+ * hash AND that the role is 'admin', then sets the session cookie; onLogin opens the dashboard.
+ */
 export default function AdminLogin({ onLogin, onPlayer, onHome }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

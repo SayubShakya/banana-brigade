@@ -1,8 +1,12 @@
+/* history.css: match history table, leaderboards and the battle log dialog. */
+
+/* Shared helpers (screen-reader-only text, muted text, small buttons) */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .muted { color: var(--khaki); opacity: 0.7; }
 .mbtn.small { font-size: 1.6cqh; padding: 0.6cqh 1.2cqh; box-shadow: none; white-space: nowrap; }
 .bl-scroll-x { overflow-x: auto; min-width: 0; }
 
+/* Match history table and result colours */
 .history-tabs { flex-wrap: wrap; }
 .history-tabs button { flex: 1 1 auto; font-size: 1.8cqh; padding: 0.9cqh 1.2cqh; }
 .history-table td { vertical-align: middle; white-space: nowrap; }
@@ -16,13 +20,16 @@
 .load-more { align-self: center; min-width: 24cqh; }
 .load-more:disabled { opacity: 0.6; cursor: progress; }
 
+/* Profile "Recent battles" heading row */
 .sub-head-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1cqh; }
 .sub-head-row .link-btn { padding: 0; color: var(--banana); }
 
+/* Scores screen: tabs bar and my pinned row */
 .scores-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2cqh; }
 .scores-bar .tabs { flex: 1 1 60%; }
 .leaderboard tfoot tr.pinned td { border-top: 0.3cqh dashed var(--banana); background: rgba(255, 225, 53, 0.08); }
 
+/* Battle log pop-up dialog */
 .bl-overlay { position: absolute; inset: 0; z-index: 60; display: grid; grid-template-rows: 100%; place-items: center; background: rgba(10, 12, 6, 0.7); backdrop-filter: blur(0.4cqh); }
 .bl-dialog {
   width: min(94%, 110cqh); max-height: 92%; display: flex; flex-direction: column; gap: 1.2cqh;
@@ -35,6 +42,7 @@
 .bl-body { overflow: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .bl-foot { display: flex; justify-content: flex-end; }
 
+/* Battle log content: match details and team colours */
 .battle-log { display: flex; flex-direction: column; gap: 1.2cqh; min-width: 0; }
 .bl-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1cqh; margin: 0; }
 .bl-meta div { padding: 1cqh 1.2cqh; border-radius: 1.2cqh; background: rgba(255, 255, 255, 0.05); border: 0.25cqh solid var(--panel-line); min-width: 0; }
@@ -49,6 +57,7 @@
 .team-dot.blue { color: var(--blue); }
 .team-dot.red { color: var(--red); }
 
+/* Timeline of events, coloured by event type */
 .bl-timeline { list-style: none; margin: 0; padding: 0.4cqh; max-height: 40cqh; overflow-y: auto; border-radius: 1.2cqh; background: rgba(0, 0, 0, 0.2); border: 0.25cqh solid var(--panel-line); }
 .bl-timeline:focus-visible { outline: 0.5cqh solid var(--banana); outline-offset: 0.2cqh; }
 .bl-timeline li { display: grid; grid-template-columns: 6cqh 2.6cqh 1fr; align-items: center; gap: 1cqh; padding: 0.6cqh 1cqh; font-size: 1.9cqh; border-bottom: 0.15cqh solid var(--panel-line); }
@@ -62,6 +71,7 @@
 .bl-timeline li.miss span { color: var(--khaki); }
 .bl-empty { margin: 0; padding: 2cqh; text-align: center; color: var(--khaki); border-radius: 1.2cqh; background: rgba(255, 255, 255, 0.04); }
 
+/* Accessibility: high contrast, calm and large text */
 body.a11y-contrast .bl-dialog { background: #000; border-color: #fff; }
 body.a11y-contrast .bl-overlay { background: rgba(0, 0, 0, 0.88); backdrop-filter: none; }
 body.a11y-contrast .bl-timeline, body.a11y-contrast .bl-meta div { background: #000; border-color: #fff; }
@@ -71,6 +81,7 @@ body.a11y-contrast .leaderboard tfoot tr.pinned td { background: #000; border-to
 body.a11y-calm .bl-dialog { animation: none; }
 body.a11y-large .bl-timeline li, body.a11y-large .bl-meta, body.a11y-large .history-table { zoom: 1.12; }
 
+/* Small (phone) screens: keep text readable and stack the details */
 @media (max-height: 520px) {
   .bl-timeline li, .bl-meta dd, .history-table td, .history-table th { font-size: max(1.9cqh, 12px); }
   .bl-meta dt, .bl-tag, .mbtn.small { font-size: max(1.5cqh, 11px); }

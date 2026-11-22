@@ -1,10 +1,17 @@
+// PowerPicker.jsx: the overlay where the player picks a Banana Power after opening a crate.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { POWERS, BANANA_CRATE } from '../game/config.js';
 import { registerPowerOpener } from '../services/powerBridge.js';
 import LoopVideo from './LoopVideo.jsx';
 
+// Length of the timer circle (radius 26) used for the countdown ring animation.
 const RING = 2 * Math.PI * 26;
 
+/**
+ * PowerPicker: no props. Registers with powerBridge; askPower(choices, seconds) opens it.
+ * Renders one card per power plus a Random card. Clicking a card, pressing 1-9 or R,
+ * or the timer running out resolves the request with the chosen power id.
+ */
 export default function PowerPicker() {
   const [req, setReq] = useState(null);
   const [left, setLeft] = useState(0);
@@ -22,6 +29,8 @@ export default function PowerPicker() {
     setReq((r) => { r?.resolve(id); return null; });
   }, []);
 
+  // While open: update the countdown 10 times a second and listen for number keys.
+  // The capture-phase listener stops the key from also reaching the game controls.
   useEffect(() => {
     if (!req) return undefined;
     const tick = setInterval(() => {

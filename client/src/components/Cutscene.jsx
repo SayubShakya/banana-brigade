@@ -1,11 +1,21 @@
+// Cutscene.jsx: the full-screen story clip player.
+// It registers itself with cutsceneBridge, so playCutscene() anywhere can show a clip here.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { registerCutscenePlayer } from '../services/cutsceneBridge.js';
 
+// Timings: show the still image if the video has not started after 2.5 s; never play longer
+// than 9 s; a still image shows for 2 s; ignore keys pressed in the first 250 ms.
 const LOAD_TIMEOUT_MS = 2500;
 const MAX_MS = 9000;
 const STILL_MS = 2000;
 const KEY_GRACE_MS = 250;
 
+/**
+ * Cutscene: no props. While a clip request is active it renders the video (or a still poster
+ * in calm mode / on error), a caption and a Skip button.
+ * Any key, a click on the picture, or Skip resolves the request with 'skipped';
+ * the video ending or the time limit resolves it with 'ended'.
+ */
 export default function Cutscene() {
   const [req, setReq] = useState(null);
   const [still, setStill] = useState(false);
@@ -14,6 +24,7 @@ export default function Cutscene() {
   const openedAt = useRef(0);
   const returnFocus = useRef(null);
 
+  // Register the player: each request becomes a Promise that resolves when the clip closes.
   useEffect(() => registerCutscenePlayer((clip) => new Promise((resolve) => {
     openedAt.current = performance.now();
     returnFocus.current = document.activeElement;
@@ -43,6 +54,7 @@ export default function Cutscene() {
     };
   }, [req, still, close]);
 
+  // When the clip closes, give keyboard focus back to where it was.
   useEffect(() => {
     if (req) return;
     const back = returnFocus.current;
@@ -50,6 +62,7 @@ export default function Cutscene() {
     if (back && document.contains(back)) back.focus?.({ preventScroll: true });
   }, [req]);
 
+  // Start the video muted (browsers block autoplay with sound); fall back to the still image.
   useEffect(() => {
     const v = videoRef.current;
     if (!req || still || !v) return;

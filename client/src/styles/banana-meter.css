@@ -1,3 +1,7 @@
+/* banana-meter.css: styles for the Banana Meter in the HUD, the puzzle modal extras
+   (speed grade badges, streak burst) and the Banana report on the Results screen. */
+
+/* Banana Meter bar and supply drop button (hidden in online games) */
 .banana-meter-row { display: flex; align-items: center; gap: 0.8cqh; }
 .bar.banana-meter { width: 28cqh; height: 2.4cqh; }
 .bar.banana-meter .fill { background: linear-gradient(90deg, #c9a400, var(--banana, #ffe135)); transition: width 0.35s ease; }
@@ -8,6 +12,7 @@
 .supply-btn kbd { color: inherit; }
 #hud[data-mode="online"] .banana-meter-row { display: none; }
 
+/* Puzzle modal: instruction text, correct-answer burst, streak pop-up and gold/silver/bronze badges */
 .puzzle-chips { display: flex; flex-wrap: wrap; gap: 0.6cqh; align-items: center; }
 .rule-chip.how { background: rgba(255, 225, 53, 0.18); color: var(--banana, #ffe135); }
 .puzzle-instruction { margin: 0.4cqh 0 0; font-size: 2cqh; color: var(--paper, #fff); }
@@ -24,6 +29,7 @@
 .puzzle-card.bad.soft-shake { animation: soft-shake 0.4s ease; }
 @keyframes soft-shake { 25%, 75% { transform: translateX(-0.5cqh); } 50% { transform: translateX(0.5cqh); } }
 
+/* Banana report box on the Results screen */
 .banana-report { margin-top: 1.6cqh; padding: 1.4cqh 1.8cqh; border: 0.3cqh solid rgba(255, 225, 53, 0.55); border-radius: 1.2cqh; background: rgba(255, 225, 53, 0.06); }
 .banana-report h3 { margin: 0 0 1cqh; font: 400 2.8cqh 'Black Ops One', sans-serif; color: var(--banana, #ffe135); }
 .banana-report dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(18cqh, 1fr)); gap: 1cqh 1.6cqh; margin: 0; }
@@ -33,6 +39,7 @@
 .banana-report .medals { display: flex; gap: 0.8cqh; flex-wrap: wrap; }
 .banana-report .medals .grade-badge { margin-top: 0; }
 
+/* Reduced motion: switch the animations off (OS setting or the in-game Calm option) */
 @media (prefers-reduced-motion: reduce) {
   .bar.banana-meter.full, .supply-btn, .puzzle-burst::before, .streak-pop, .puzzle-card.bad.soft-shake { animation: none; }
 }

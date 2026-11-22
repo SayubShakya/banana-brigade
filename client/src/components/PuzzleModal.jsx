@@ -1,3 +1,6 @@
+// PuzzleModal.jsx: the Banana API puzzle pop-up (interoperability + event-driven themes).
+// Flow: askPuzzle() opens it -> GET /api/v1/puzzle (the server calls the Banana API)
+// -> player clicks or types a digit -> POST /api/v1/puzzle/answer -> the server says if it is correct.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emit, on } from '../services/eventBus.js';
 import { api } from '../services/api.js';
@@ -9,6 +12,7 @@ import '../styles/banana-meter.css';
 const RING = 2 * Math.PI * 26;
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
+// Fallback speed grade (gold/silver/bronze) if the server reply has no grade.
 const clientGrade = (ms) => Object.entries(PUZZLE_GRADES).find(([, g]) => ms < g.under * 1000)?.[0] ?? 'bronze';
 
 const CORRECT = {
@@ -18,6 +22,14 @@ const CORRECT = {
   daily: 'Correct!',
 };
 
+/**
+ * PuzzleModal: no props; it is opened through puzzleBridge with a purpose
+ * ('deploy', 'respawn', 'crate' or 'daily') and options (title, subtitle, seconds, retry, source).
+ * Renders the puzzle image, a countdown ring, a 0-9 keypad and status text.
+ * Emits: 'banana:requested', 'banana:loaded', 'banana:error', 'banana:answered'.
+ * Listens: 'banana:meter' (to show how much the banana meter grew).
+ * Resolves the request with 'solved', 'failed', 'cancelled' or 'closed'.
+ */
 export default function PuzzleModal() {
   const [req, setReq] = useState(null);
   const [puzzle, setPuzzle] = useState(null);
@@ -34,9 +46,11 @@ export default function PuzzleModal() {
   useEffect(() => on('banana:meter', ({ soldier, gained }) => {
     if (soldier?.isPlayer && gained > 0) setReward((r) => (r && r.gain === null ? { ...r, gain: gained } : r));
   }), []);
+  // live: the request currently on screen, used to ignore replies that belong to an old puzzle.
   const live = useRef(null);
 
   const closeRef = useRef(null);
+  // Register with the bridge: each askPuzzle() call becomes a Promise we resolve in finish().
   useEffect(() => registerPuzzleOpener((purpose, options) => new Promise((resolve) => {
     setReq({ purpose, options, resolve, key: Math.random() });
   }), () => closeRef.current?.()), []);
@@ -47,6 +61,7 @@ export default function PuzzleModal() {
   } : null;
   const secondsFor = (r) => r.options.seconds ?? PUZZLE_RULES[r.purpose].seconds;
 
+  /** finish: close the modal and return the result to whoever called askPuzzle(). */
   const finish = useCallback((result) => {
     const r = live.current;
     if (!r) return;
@@ -60,6 +75,12 @@ export default function PuzzleModal() {
   }, []);
   closeRef.current = () => finish('closed');
 
+  /**
+   * load: fetch a new puzzle. api.puzzle(purpose) -> GET /api/v1/puzzle?purpose=...
+   * The server gets it from the Banana API over HTTPS and replies with { puzzleId, image, source };
+   * the answer stays on the server. We preload the image before showing it and starting the timer.
+   * (options.source lets the Daily challenge use its own endpoints instead.)
+   */
   const load = useCallback(async (r) => {
     setPuzzle(null);
     setPicked(null);
@@ -84,6 +105,7 @@ export default function PuzzleModal() {
       deadline.current = performance.now() + secondsFor(r) * 1000;
       shownAt.current = performance.now();
       emit('banana:loaded', { purpose: r.purpose });
+    // Network or Banana API problem: show the message and a "Try again" button.
     } catch (err) {
       if (live.current !== r) return;
       setPhase('error');
@@ -99,6 +121,12 @@ export default function PuzzleModal() {
     load(req);
   }, [req, load]);
 
+  /**
+   * answer: the keypad click / key press handler.
+   * api.answer(puzzleId, n) -> POST /api/v1/puzzle/answer. The server compares the digit with
+   * the stored solution and replies { correct, solution, ms, grade }; the client never decides.
+   * n = -1 with timedOut = true is sent when the countdown reaches zero.
+   */
   const answer = useCallback(async (n, timedOut = false) => {
     const r = live.current;
     if (!r || !puzzle || phase !== 'ready') return;
@@ -111,6 +139,7 @@ export default function PuzzleModal() {
       const grade = result.correct ? (result.grade ?? clientGrade(ms)) : null;
       setFlash('');
       if (result.correct) setReward({ grade, secs: (ms / 1000).toFixed(1), streak: puzzleStats.streak + 1, gain: null });
+      // Tell the rest of the game (stats, game engine, sounds) what happened.
       emit('banana:answered', { purpose: r.purpose, correct: result.correct, timedOut, grade, ms, source: puzzle.source });
       requestAnimationFrame(() => setFlash(result.correct ? 'good' : 'bad soft-shake'));
       if (result.correct) {
@@ -120,6 +149,7 @@ export default function PuzzleModal() {
         return;
       }
       const why = timedOut ? 'Time is up' : 'Not quite';
+      // Some purposes (like respawn) give a new puzzle after a miss; others just fail.
       if (r.options.retry ?? PUZZLE_RULES[r.purpose].retry) {
         setStatus({ text: `${why}: it was ${result.solution}. Here comes another one.`, kind: 'bad' });
         setTimeout(() => { if (live.current === r) load(r); }, 1500);
@@ -135,6 +165,7 @@ export default function PuzzleModal() {
     }
   }, [puzzle, phase, finish, load]);
 
+  // Countdown: checks the deadline every 200 ms; at zero it sends a timed-out answer.
   useEffect(() => {
     if (phase !== 'ready') return undefined;
     const tick = () => {
@@ -147,6 +178,7 @@ export default function PuzzleModal() {
     return () => clearInterval(id);
   }, [phase, answer]);
 
+  // Keyboard: digits answer, Escape cancels. Capture phase so game controls do not see the keys.
   useEffect(() => {
     if (!req) return undefined;
     const onKey = (e) => {
@@ -168,6 +200,7 @@ export default function PuzzleModal() {
   const frac = counting && total ? left / total : 1;
   const urgency = frac > 0.5 ? 'safe' : frac >= 0.25 ? 'warn' : 'danger';
 
+  // The keypad buttons call answer(d) on click; they are disabled unless a puzzle is ready.
   return (
     <div className="puzzle" role="dialog" aria-modal="true" aria-labelledby="puzzle-title" data-purpose={req.purpose}>
       <div className={`puzzle-card ${flash}`}>

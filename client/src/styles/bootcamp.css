@@ -1,3 +1,6 @@
+/* bootcamp.css: Boot Camp tutorial coach card, tips, the Boot Camp menu card and offer. */
+
+/* Coach card shown over the battle (compact version while a puzzle is open) */
 .coach-layer { position: absolute; inset: 0; z-index: 12; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 1.2cqh; padding-top: 12cqh; }
 .coach-card {
   pointer-events: auto; width: min(64cqh, 92%); padding: 1.6cqh 2.4cqh 1.4cqh; border-radius: 1.6cqh;
@@ -26,6 +29,7 @@
 .coach-card.compact .coach-title { margin: 0; font-size: 2.4cqh; order: 1; }
 .coach-card.compact .coach-skip { order: 2; margin-left: 0.6cqh; }
 .coach-card.compact .coach-text, .coach-card.compact .coach-keys, .coach-card.compact .coach-progress { display: none; }
+/* One-off tip bubbles */
 .coach-tips { display: flex; flex-direction: column; gap: 0.8cqh; align-items: center; }
 .coach-tip {
   display: flex; align-items: center; gap: 1cqh; max-width: 64cqh; padding: 1cqh 1.8cqh; border-radius: 1.2cqh;
@@ -34,6 +38,7 @@
 }
 .coach-tip .ico { width: 2.6cqh; height: 2.6cqh; color: var(--banana); flex: none; }
 
+/* "How to play: Boot Camp" card on the menu */
 .bootcamp-card {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2cqh; text-align: left;
   padding: 1.2cqh 2.2cqh; border-radius: 1.4cqh; color: var(--ink);
@@ -49,6 +54,7 @@
 .bootcamp-card .mode-tag { padding: 0.5cqh 1.2cqh; border-radius: 3cqh; background: var(--olive-dark); color: var(--banana); font: 800 1.5cqh 'Rubik', sans-serif; text-transform: uppercase; letter-spacing: 0.1cqh; }
 .bootcamp-card.offer { animation: coach-glow 1.6s ease-in-out infinite; }
 
+/* First-time offer box on the menu */
 .bootcamp-offer {
   display: flex; flex-direction: column; gap: 1cqh; padding: 1.4cqh 1.8cqh; border-radius: 1.4cqh;
   background: rgba(24, 28, 15, 0.88); border: 0.3cqh solid var(--banana); color: var(--paper);
@@ -58,10 +64,12 @@
 .bootcamp-offer .row { display: flex; gap: 1cqh; }
 .bootcamp-offer .mbtn { font-size: 1.9cqh; padding: 0.8cqh 1.8cqh; }
 
+/* Small extras used by the Difficulty and Controls screens */
 .recommended { display: inline-block; margin-top: 0.4cqh; padding: 0.3cqh 1cqh; border-radius: 3cqh; background: var(--good); color: var(--ink); font: 800 1.4cqh 'Rubik', sans-serif; text-transform: uppercase; letter-spacing: 0.1cqh; }
 .controls-hint { margin: 1.4cqh 0 0; font-size: 1.9cqh; color: var(--khaki); text-align: center; }
 .controls-hint .mbtn { margin-left: 1cqh; font-size: 1.8cqh; padding: 0.6cqh 1.6cqh; }
 
+/* Animations, plus the accessibility variants (calm = no animation, large text) */
 @keyframes coach-in { from { opacity: 0; transform: translateY(-1.5cqh); } to { opacity: 1; transform: none; } }
 @keyframes coach-pulse { 50% { opacity: 0.45; } }
 @keyframes coach-glow { 50% { box-shadow: 0 0.7cqh 0 var(--banana-dark), 0 0 3cqh rgba(255, 225, 53, 0.9); } }

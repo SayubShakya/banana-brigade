@@ -1,6 +1,10 @@
+// cutsceneBridge.js: lets any code (controllers or the game engine) play a short story clip.
+// The <Cutscene /> component registers itself as the player; this file decides when a clip
+// may play (once only, settings, reduced motion) and emits 'cutscene:started' / 'cutscene:ended'.
 import { store } from './storage.js';
 import { emit } from './eventBus.js';
 
+// Clip id -> caption text. The video files live at /media/clips/<id>.mp4 (poster .jpg).
 export const CUTSCENES = {
   logo: 'Banana Brigade',
   deploy: 'Puzzle solved: drop into battle',
@@ -22,6 +26,11 @@ const clipUrl = (id, ext) => `/media/clips/${id}.${ext}`;
 let player = null;
 let open = false;
 
+/**
+ * registerCutscenePlayer: called by the Cutscene component when it mounts.
+ * @param {Function} fn  plays one clip and resolves when it ends (or 'skipped').
+ * @returns {Function} cleanup that unregisters the player on unmount.
+ */
 export function registerCutscenePlayer(fn) {
   player = fn;
   return () => { if (player === fn) player = null; };
@@ -29,10 +38,12 @@ export function registerCutscenePlayer(fn) {
 
 export const isCutsceneOpen = () => open;
 
+/** storyClipsEnabled: true unless the player switched story clips off in Settings. */
 export function storyClipsEnabled() {
   try { return JSON.parse(store.get('settings', '{}')).storyClips !== false; } catch { return true; }
 }
 
+// The ids of clips already watched are saved in localStorage so "once" clips do not repeat.
 function seenSet() {
   try { return new Set(JSON.parse(store.get(SEEN_KEY, '[]'))); } catch { return new Set(); }
 }
@@ -49,8 +60,16 @@ export function resetSeenCutscenes() {
   store.set(SEEN_KEY, '[]');
 }
 
+// "Calm" mode: the OS asks for reduced motion, or the player chose Calm in accessibility settings.
 const calm = () => (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) || document.body.classList.contains('a11y-calm');
 
+/**
+ * playCutscene: play one story clip full screen and wait until it finishes.
+ * @param {string} id  a key of CUTSCENES.
+ * @param {{once?: boolean}} [options]  once = only ever show it the first time.
+ * @returns {Promise<boolean>} true if a clip was shown, false if it was skipped by the rules.
+ * Emits 'cutscene:started' and 'cutscene:ended' so the game can pause its sounds.
+ */
 export async function playCutscene(id, { once = true } = {}) {
   if (!(id in CUTSCENES) || open || !player || !storyClipsEnabled()) return false;
   if (once && hasSeenCutscene(id)) return false;
@@ -65,6 +84,7 @@ export async function playCutscene(id, { once = true } = {}) {
     return true;
   } catch {
     return false;
+  // Always restore the previous overlay state and announce the end, even if the clip failed.
   } finally {
     open = false;
     if (previous) document.body.dataset.overlay = previous;

@@ -1,3 +1,5 @@
+// useBattle.js: controller hook that starts, pauses and ends battles.
+// It reacts to game engine events on the event bus and asks for Banana puzzles before deploying.
 import { useCallback, useRef, useState } from 'react';
 import { useBus } from '../hooks/useBus.js';
 import { askPuzzle } from '../services/puzzleBridge.js';
@@ -10,6 +12,7 @@ import { emit } from '../services/eventBus.js';
 import { BOOT_CAMP, startBootCamp, stopBootCamp } from '../game/tutorial.js';
 import { game, net, netIfStarted } from './gameEngine.js';
 
+// Training mode skips the deploy puzzle. TIPS are one-time hints shown on first events.
 const NO_DEPLOY_PUZZLE = ['training'];
 const TIPS = {
   weapon: 'Weapon crate! Stand on it and press E to swap guns.',
@@ -17,6 +20,16 @@ const TIPS = {
   death: 'You went down. Press B to solve a Banana puzzle and respawn at once.',
 };
 
+/**
+ * useBattle: everything about running a match from the UI side.
+ * @param {object} nav      setScreen / setParent from useNavigation.
+ * @param {object} player   account, accountRef and parts from useAccount.
+ * @param {object} prefs    settings and setSetting from useSettings.
+ * @returns {object} state (over, online, pendingMode) and actions: deploy, deployWith,
+ *   playMission, toMenu, resume, endNow, playAgain, ...
+ * Listens to: 'pickup:available', 'soldier:killed', 'game:state', 'game:over',
+ *   'tutorial:done', 'tutorial:skip'. Emits 'tip:show' and toasts.
+ */
 export function useBattle({ setScreen, setParent }, { account, accountRef, parts }, { settings, setSetting }) {
   const [over, setOver] = useState(null);
   const [online, setOnline] = useState(false);
@@ -27,12 +40,14 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   lengthRef.current = settings.matchLength;
   const tipsShown = useRef(new Set());
 
+  // Show a hint once per player; remembered in settings.tipsSeen.
   const tip = (key) => {
     if (bootCamp.current || tipsShown.current.has(key) || settings.tipsSeen?.[key]) return;
     tipsShown.current.add(key);
     setSetting('tipsSeen', (seen) => ({ ...seen, [key]: true }));
     emit('tip:show', { id: key, text: TIPS[key] });
   };
+  // Event handlers: the game engine emits these and the UI reacts (show tips, switch screens).
   useBus('pickup:available', ({ weapon, banana, soldier }) => {
     if (soldier && !soldier.isPlayer) return;
     if (banana) tip('banana');
@@ -40,11 +55,13 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   });
   useBus('soldier:killed', ({ victim }) => { if (victim?.isPlayer && victim.id === 'p0') tip('death'); });
 
+  // The engine says when it is paused or playing, and the UI shows the matching screen.
   useBus('game:state', ({ state, online: isOnline = false }) => {
     setOnline(isOnline);
     if (state === 'paused') setScreen('pause');
     else if (state === 'playing' || state === 'ending') setScreen('battle');
   });
+  // End of match: play the victory/defeat clip for ranked games, then show the Results screen.
   useBus('game:over', async (payload) => {
     if (payload.mission?.bootCamp) { finishBootCamp(false); return; }
     const ranked = !payload.online && payload.result?.mode !== 'training';
@@ -55,6 +72,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   useBus('tutorial:done', () => finishBootCamp(true));
   useBus('tutorial:skip', () => finishBootCamp(false));
 
+  /** startBattle: start the prepared game session and switch to the battle screen. */
   const startBattle = useCallback((mode) => {
     game().start({ playerName: accountRef.current?.username ?? 'You', parts });
     lastMode.current = mode;
@@ -71,6 +89,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     startBattle('training');
   }, [startBattle]);
 
+  /** deploy: first step after picking a mode: online goes to the lobby, others pick a difficulty. */
   const deploy = useCallback((mode) => {
     if (mode === 'online') { net(); setScreen('lobby'); return; }
     if (mode === 'tutorial') { startBootCampBattle(); return; }
@@ -79,6 +98,10 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
   }, []);
   const deployFrom = (from, mode) => { setParent(from); deploy(mode); };
 
+  /**
+   * deployWith: prepare the match, then ask a Banana puzzle; only a solved puzzle starts the battle.
+   * The await on askPuzzle waits until the PuzzleModal has checked the answer with the server.
+   */
   const deployWith = useCallback(async (mode, difficulty, length = lengthRef.current, map = undefined) => {
     setSetting('difficulty', difficulty);
     if (length !== undefined && length !== lengthRef.current) setSetting('matchLength', length);
@@ -95,6 +118,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     startBattle(mode);
   }, [startBattle]);
 
+  /** playMission: start a campaign mission (chapter clip, then deploy puzzle, then battle). */
   const playMission = useCallback(async (mission) => {
     const difficulty = chapterOf(mission).difficulty;
     game().quit();
@@ -109,6 +133,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     if (result === 'solved') startBattle('campaign');
   }, [startBattle]);
 
+  /** toMenu: stop everything (boot camp, local game, online room) and return to the menu. */
   const toMenu = () => {
     bootCamp.current = false;
     stopBootCamp();
@@ -129,6 +154,7 @@ export function useBattle({ setScreen, setParent }, { account, accountRef, parts
     toMenu();
   }
 
+  // Online games are resumed / ended through the server; only the host may end for everyone.
   const resume = () => (online ? net().resume() : game().resume());
   const endNow = () => (online ? net().endForAll().then(resume).catch((err) => emit('toast:error', { text: err.message })) : game().endNow());
   const canEnd = () => !online || net().isHost;

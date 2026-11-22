@@ -1,3 +1,6 @@
+/* match.css: match setup pickers (length and map) and the live mini scoreboard in the HUD. */
+
+/* Match length pills with a sliding highlight ("glider") */
 .length-row { display: flex; align-items: center; gap: 1.6cqh; margin: 0 0 1.8cqh; flex-wrap: wrap; }
 .length-row .length-head, .map-row .length-head { font: 800 1.9cqh 'Rubik', sans-serif; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.15cqh; display: inline-flex; align-items: center; gap: 0.6cqh; }
 .length-row .length-head .ico, .map-row .length-head .ico { width: 2.2cqh; height: 2.2cqh; }
@@ -25,6 +28,7 @@
 .length-pill .length-tag { position: absolute; top: -1.2cqh; right: 0.4cqh; padding: 0 0.7cqh; border-radius: 1cqh; background: var(--good, #6bbf59); color: var(--ink); font-size: 1.1cqh; letter-spacing: 0.08cqh; text-transform: uppercase; }
 @keyframes pill-pop { 0% { transform: scale(0.9); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
 
+/* Mini scoreboard in the HUD */
 .score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 0.8cqh; }
 .mini-board {
   list-style: none; margin: 0; padding: 0.5cqh; min-width: 22cqh; max-width: 30cqh; display: flex; flex-direction: column; gap: 0.3cqh;
@@ -42,9 +46,11 @@
 .mb-row.scored { animation: mb-flash 0.7s ease-out; }
 @keyframes mb-flash { 0% { background: var(--banana); color: var(--ink); } 100% { } }
 
+/* Last seconds of the match: the timer pulses red */
 #timer.final { color: var(--bad); animation: timer-pulse 1s ease-in-out infinite; }
 @keyframes timer-pulse { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.18); box-shadow: 0 0 2cqh rgba(230, 57, 70, 0.6); } }
 
+/* Accessibility and small screens */
 body.a11y-calm .length-glider, body.a11y-calm .length-pill, body.a11y-calm .length-pill small { transition: none; }
 body.a11y-calm .length-pill[aria-checked="true"], body.a11y-calm .mb-row.scored, body.a11y-calm #timer.final { animation: none; }
 @media (prefers-reduced-motion: reduce) {
@@ -53,6 +59,7 @@ body.a11y-calm .length-pill[aria-checked="true"], body.a11y-calm .mb-row.scored,
 }
 @media (max-width: 560px) { .mini-board { display: none; } }
 @media (max-height: 420px) { .mini-board .mb-row:nth-child(n + 4):not(.me) { display: none; } }
+/* Map picker cards */
 .map-row { display: flex; align-items: center; gap: 1.6cqh; flex-wrap: wrap; margin: -0.6cqh 0 1.8cqh; }
 .map-row .length-head { min-width: 19cqh; }
 .panel .lobby-grid .map-row .length-head, .map-row.stack .length-head { min-width: 0; flex-basis: 100%; }

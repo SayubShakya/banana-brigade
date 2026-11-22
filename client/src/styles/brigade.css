@@ -1,3 +1,7 @@
+/* brigade.css: the main stylesheet for the whole game UI (menus, forms, HUD, puzzle modal).
+   Sizes use cqh (container query height) so the 16:9 stage scales on any screen. */
+
+/* Colour theme: CSS variables used everywhere (olive army green + banana yellow) */
 :root {
   --olive: #4b5a2a;
   --olive-dark: #2f3a18;
@@ -17,6 +21,7 @@
   --panel-line: rgba(255, 255, 255, 0.12);
 }
 
+/* Base page and the 16:9 #stage that holds the game */
 * { box-sizing: border-box; }
 html, body {
   margin: 0; height: 100%;
@@ -40,6 +45,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .ico.big { width: 4.4cqh; height: 4.4cqh; color: var(--banana); }
 kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-radius: 0.7cqh; background: var(--paper); color: var(--ink); font: 800 1.9cqh 'Rubik', sans-serif; text-align: center; box-shadow: 0 0.4cqh 0 var(--khaki); }
 
+/* Menu buttons (primary = yellow, ghost = outline) */
 .mbtn {
   font: 800 2.4cqh 'Rubik', sans-serif; text-transform: uppercase; letter-spacing: 0.15cqh;
   color: var(--paper);
@@ -57,6 +63,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .mbtn.ghost { background: transparent; border-color: var(--panel-line); box-shadow: none; color: var(--khaki); }
 .mbtn.ghost:hover { background: rgba(255,255,255,0.06); }
 
+/* Chips and small labels (API status dot, puzzle rule chips, puzzle counts by purpose) */
 .chip { display: inline-flex; align-items: center; gap: 0.8cqh; padding: 0.7cqh 1.6cqh; border-radius: 4cqh; background: rgba(24, 28, 15, 0.78); color: var(--paper); font-size: 1.9cqh; font-weight: 600; }
 .chip b { color: var(--banana); font-size: 2.3cqh; }
 .chip span { color: var(--khaki); }
@@ -71,6 +78,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .purpose-row b { color: var(--banana); font-size: 2.4cqh; }
 .mode-chip { display: inline-block; padding: 0.4cqh 1.4cqh; border-radius: 3cqh; background: var(--banana); color: var(--ink); font: 800 1.7cqh 'Rubik', sans-serif; letter-spacing: 0.15cqh; text-transform: uppercase; }
 
+/* Main menu layout, sky background with drifting clouds, and the ground */
 .menu {
   display: grid; grid-template-columns: 1.05fr 1fr; grid-template-rows: auto 1fr; column-gap: 4cqh;
   padding: 3cqh 5cqh 4cqh;
@@ -96,6 +104,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .stat-chips { display: flex; gap: 1cqh; }
 .stat-chips .ico { color: var(--banana); }
 
+/* Menu left column: logo, avatar podium */
 .menu-left { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 1.4cqh; }
 .logo {
   margin: 0; position: relative; align-self: flex-start;
@@ -114,6 +123,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 @keyframes idle { 50% { transform: translateY(-0.6cqh); } }
 .rock { position: absolute; bottom: 0; width: 24cqh; height: 6cqh; border-radius: 50% 50% 1.2cqh 1.2cqh; background: linear-gradient(#8a8f98, #5e636b); box-shadow: inset 0 0.8cqh 0 rgba(255,255,255,0.18); }
 
+/* Login and register forms: tabs, fields, password strength meter, errors, links */
 .login { display: grid; justify-items: center; align-content: start; padding-top: 5cqh; overflow-y: auto; background: radial-gradient(ellipse at 22% 112%, #4a7a32 0 40%, transparent 41%), radial-gradient(ellipse at 88% 125%, #3e6a2a 0 46%, transparent 47%), linear-gradient(#7fbfe6, #cfe8d5 72%, #9cc7a4); }
 .login-wrap { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2cqh; width: min(92%, 64cqh); }
 .logo.small { font-size: 8cqh; align-self: center; text-align: center; }
@@ -158,6 +168,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .name-field input { font: 600 2.5cqh 'Rubik', sans-serif; padding: 1cqh 1.6cqh; width: 32cqh; border: 0.4cqh solid var(--olive-dark); border-radius: 1cqh; background: var(--paper); color: var(--ink); }
 .name-field input:focus { outline: 0.4cqh solid var(--banana); }
 
+/* Menu right column: big mode cards */
 .menu-right { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 1.4cqh; max-width: 66cqh; justify-self: end; width: 100%; }
 .mode-card {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2cqh;
@@ -181,6 +192,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .menu-row .mbtn { flex: 1; }
 .banana-note { margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.8cqh; font-weight: 600; font-size: 1.9cqh; color: var(--ink); background: rgba(255, 225, 53, 0.9); border-radius: 1cqh; padding: 0.8cqh 1.4cqh; }
 
+/* Panel: the shared box layout used by most screens */
 .panel-screen { display: grid; place-items: center; background: repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 2cqh, transparent 2cqh 6cqh) 0 100% / 100% 14% no-repeat, linear-gradient(#7fbfe6 0%, #cfe8d5 80%, #9cc7a4 84%, #5fae3b 84% 86%, #7b5435 86%); }
 .panel-screen.dim { background: rgba(10, 12, 6, 0.6); backdrop-filter: blur(0.4cqh); }
 .panel {
@@ -199,6 +211,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
   position: sticky; bottom: -2.6cqh; background: linear-gradient(rgba(29, 33, 18, 0), #1d2112 40%);
 }
 
+/* Avatar editor */
 .avatar-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 3cqh; align-items: stretch; }
 .avatar-stage {
   position: relative; border-radius: 1.6cqh; padding: 1.4cqh; text-align: center; border: 0.4cqh solid var(--olive-dark);
@@ -217,6 +230,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .swatch.selected, .swatch[aria-pressed="true"] { border-color: var(--banana); box-shadow: 0 0 0 0.3cqh var(--banana); }
 .swatch.text.selected { background: var(--banana); color: var(--ink); }
 
+/* Controls help screen and the touch-stick demo */
 .controls-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 3cqh; align-items: center; }
 .key-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1cqh; }
 .key-card { display: flex; align-items: center; gap: 1.4cqh; padding: 1cqh 1.4cqh; border-radius: 1.2cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); font-size: 2cqh; font-weight: 600; }
@@ -235,6 +249,7 @@ kbd { display: inline-block; min-width: 3.4cqh; padding: 0.3cqh 0.9cqh; border-r
 .touch-diagram .lbl.l { left: 5%; }
 .touch-diagram .lbl.r { right: 5%; text-align: right; }
 
+/* Results cards and the shared table style */
 .result-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4cqh; }
 .result-card { display: flex; flex-direction: column; align-items: center; gap: 0.6cqh; padding: 2cqh 1cqh; border-radius: 1.4cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); }
 .result-card b { font: 400 4.6cqh 'Black Ops One', sans-serif; color: var(--banana); }
@@ -247,11 +262,13 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .team-blue { color: var(--blue); }
 .team-red { color: var(--red); }
 
+/* Battle screen: canvas and HUD layer (the HUD ignores clicks except on its buttons) */
 .battle { background: #6cb4e4; }
 #battle-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: none; touch-action: none; }
 #hud { position: absolute; inset: 0; pointer-events: none; font-weight: 800; text-shadow: 0 0.3cqh 0 rgba(0,0,0,0.6); }
 #hud button, #hud [role="button"] { pointer-events: auto; }
 
+/* HUD top left: avatar, health and jetpack fuel bars */
 .hud-player { position: absolute; left: 2cqh; top: 2cqh; display: flex; gap: 1.2cqh; align-items: center; }
 #hud-avatar { width: 8cqh; height: 10.6cqh; background: var(--panel); border: 0.4cqh solid var(--banana); border-radius: 1.2cqh; }
 .bars { display: flex; flex-direction: column; gap: 0.9cqh; }
@@ -264,6 +281,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .bar.fuel .fill { background: linear-gradient(90deg, var(--fuel), #a2e3f7); }
 .bar span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.9cqh; letter-spacing: 0.2cqh; }
 
+/* HUD top centre: match timer and kill feed */
 .hud-center { position: absolute; top: 1.6cqh; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.8cqh; }
 #timer { font: 400 4.4cqh 'Black Ops One', sans-serif; color: var(--banana); background: var(--panel); padding: 0.2cqh 2.2cqh; border-radius: 1cqh; }
 #killfeed { display: flex; flex-direction: column; gap: 0.5cqh; align-items: center; font-size: 1.9cqh; }
@@ -271,10 +289,12 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .feed-row.fade { opacity: 0; }
 .feed-row .weapon { color: var(--khaki); font-weight: 600; }
 
+/* HUD top right: score */
 .hud-score { position: absolute; right: 2cqh; top: 2cqh; display: flex; gap: 1.4cqh; align-items: flex-start; text-align: right; }
 #score { font-size: 2.6cqh; }
 #rank { font-size: 1.9cqh; color: var(--khaki); font-weight: 600; }
 
+/* HUD buttons */
 .hud-btn { font: 800 1.8cqh 'Rubik', sans-serif; color: var(--paper); background: rgba(24, 28, 15, 0.8); border: 0.3cqh solid var(--banana); border-radius: 1cqh; padding: 1cqh 1.5cqh; letter-spacing: 0.1cqh; text-shadow: none; }
 .hud-btn b { color: var(--banana); }
 .hud-btn:hover { background: rgba(24, 28, 15, 0.95); }
@@ -282,6 +302,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 @keyframes pulse { 40% { background: var(--banana); color: var(--ink); transform: scale(0.94); } }
 .hud-btn.round { width: 6cqh; height: 6cqh; border-radius: 50%; padding: 0; font-size: 2.4cqh; }
 
+/* HUD bottom right: weapon, ammo, reload bar and action buttons */
 .hud-weapons { position: absolute; right: 2cqh; bottom: 2cqh; display: flex; flex-direction: column; align-items: flex-end; gap: 1cqh; }
 .weapon-panel { background: var(--panel); border: 0.3cqh solid rgba(255,255,255,0.35); border-radius: 1.2cqh; padding: 1cqh 1.8cqh; text-align: right; min-width: 28cqh; }
 #weapon-name { font-size: 2.1cqh; color: var(--khaki); }
@@ -290,6 +311,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 #reload-fill { height: 100%; width: 0; background: var(--warn); }
 .action-buttons { display: grid; grid-template-columns: repeat(3, auto); gap: 0.8cqh; justify-content: end; }
 
+/* Crate prompt ("press E") */
 .crate-prompt {
   position: absolute; bottom: 22cqh; left: 50%; transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 0.8cqh;
@@ -301,6 +323,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .crate-prompt.empty { background: rgba(24, 28, 15, 0.8); color: var(--khaki); border-color: var(--panel-line); box-shadow: none; animation: none; cursor: default; }
 .crate-prompt.empty .ico { color: var(--khaki); }
 
+/* Centre messages, HUD toast and the red hit flash */
 #center-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 3cqh; background: rgba(0,0,0,0.65); padding: 1.6cqh 3cqh; border-radius: 1.4cqh; border: 0.3cqh solid var(--banana); white-space: nowrap; cursor: pointer; }
 #center-msg b { color: var(--banana); }
 #hud-toast { position: absolute; bottom: 30cqh; left: 50%; transform: translateX(-50%); font-size: 2.4cqh; color: var(--banana); background: rgba(0,0,0,0.6); padding: 0.8cqh 2cqh; border-radius: 1cqh; opacity: 0; white-space: nowrap; }
@@ -311,9 +334,11 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 @keyframes hit { from { opacity: 1; } to { opacity: 0; } }
 .preview-tag { position: absolute; left: 2cqh; bottom: 2cqh; font-size: 1.6cqh; font-weight: 600; color: var(--paper); background: rgba(0,0,0,0.45); padding: 0.5cqh 1.2cqh; border-radius: 1cqh; text-shadow: none; }
 
+/* Tab scoreboard */
 #scoreboard { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70cqh; background: var(--panel); border: 0.4cqh solid var(--olive); border-top: 1cqh solid var(--banana); border-radius: 1.6cqh; padding: 2cqh 3cqh; text-shadow: none; }
 #scoreboard h3 { margin: 0 0 1cqh; font: 400 3.4cqh 'Black Ops One', sans-serif; color: var(--banana); }
 
+/* Touch joysticks, only shown on touch screens (pointer: coarse) */
 .stick { display: none; position: absolute; bottom: 5cqh; width: 24cqh; height: 24cqh; border-radius: 50%; background: rgba(255,255,255,0.12); border: 0.5cqh solid rgba(255,255,255,0.45); }
 .stick.left { left: 5cqh; }
 .stick.right { right: 5cqh; }
@@ -324,6 +349,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
   .crate-prompt { bottom: 32cqh; }
 }
 
+/* Banana puzzle modal: card, good/bad animations, header and countdown ring */
 .puzzle { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(10, 12, 6, 0.62); backdrop-filter: blur(0.5cqh); }
 .puzzle-card {
   width: min(94%, 128cqh);
@@ -351,6 +377,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 @keyframes timer-pulse { 50% { transform: scale(1.1); } }
 #puzzle-time { position: absolute; inset: 0; display: grid; place-items: center; font: 400 3.2cqh 'Black Ops One', sans-serif; }
 
+/* Puzzle image area with loading and error states */
 .puzzle-body { display: grid; grid-template-columns: 1.55fr 1fr; gap: 2.4cqh; align-items: stretch; }
 .puzzle-img-wrap { position: relative; background: #fff; border-radius: 1.4cqh; border: 0.4cqh solid var(--banana); display: grid; place-items: center; overflow: hidden; min-height: 40cqh; }
 #puzzle-img { width: 100%; height: 100%; max-height: 52cqh; object-fit: contain; }
@@ -360,6 +387,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .puzzle-img-wrap[data-state="error"] .error-msg { display: grid; color: var(--bad); }
 @keyframes blink { 50% { opacity: 0.4; } }
 
+/* Puzzle side panel: status text, 0-9 keypad, stats, actions and credit line */
 .puzzle-side { display: flex; flex-direction: column; gap: 1.4cqh; }
 #puzzle-status { margin: 0; min-height: 6cqh; font-size: 2.2cqh; font-weight: 600; line-height: 1.3; }
 #puzzle-status[data-kind="good"] { color: var(--good); }
@@ -384,15 +412,18 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .puzzle-credit kbd { font-size: 1.5cqh; min-width: 2.6cqh; padding: 0.1cqh 0.6cqh; }
 .puzzle-credit a { color: var(--banana); }
 
+/* Reduced motion for the puzzle modal */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; transition-duration: 0.01s !important; }
 }
 
+/* Results text and "score saved" line */
 .results-reason { margin: 0.4cqh 0 0; color: var(--khaki); font-size: 2cqh; }
 .results-saved { margin: 0.6cqh 0 0; font-size: 1.8cqh; color: var(--khaki); text-align: center; }
 .results-saved[data-state="ok"] { color: var(--good); }
 .results-saved[data-state="error"] { color: var(--red); }
 
+/* Rank card with XP bar */
 .rank-card { display: flex; align-items: center; gap: 1.2cqh; padding: 1cqh 1.6cqh; border-radius: 1.4cqh; background: rgba(24, 28, 15, 0.82); color: var(--paper); width: min(100%, 52cqh); }
 .rank-ico { width: 4.4cqh; height: 4.4cqh; color: var(--banana); flex: none; }
 .rank-text { flex: 1; display: flex; flex-direction: column; gap: 0.5cqh; }
@@ -403,6 +434,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .rank-card.big { width: 100%; }
 .rank-card.big .rank-ico { width: 6cqh; height: 6cqh; }
 
+/* Menu tiles (Profile, History, Scores...) */
 .menu-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2cqh; }
 .tile {
   display: flex; flex-direction: column; align-items: center; gap: 0.6cqh; padding: 1.3cqh 0.6cqh;
@@ -416,6 +448,7 @@ tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
 .tile:active { transform: translateY(0.4cqh); box-shadow: 0 0.1cqh 0 var(--olive-dark); }
 .tile:focus-visible, .toggle:focus-visible, .tabs button:focus-visible { outline: 0.5cqh solid var(--banana); outline-offset: 0.4cqh; }
 
+/* Profile screen and service record */
 .profile-layout { display: grid; grid-template-columns: 26cqh 1fr; gap: 2.4cqh; }
 .profile-card { display: flex; flex-direction: column; align-items: center; align-self: start; gap: 1cqh; padding: 1.6cqh; border-radius: 1.6cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); }
 .profile-card canvas { width: 18cqh; height: 24cqh; }
@@ -431,18 +464,22 @@ table.compact { font-size: 1.9cqh; }
 .empty-row td { text-align: center; color: var(--khaki); padding: 2cqh; }
 .win { color: var(--good); font-weight: 800; }
 
+/* Tabs and the two leaderboards side by side */
 .tabs { display: flex; gap: 0.6cqh; background: rgba(255,255,255,0.06); padding: 0.6cqh; border-radius: 1.2cqh; }
 .tabs button { flex: 1; font: 800 2cqh 'Rubik', sans-serif; padding: 1cqh; border-radius: 0.9cqh; border: 0; background: transparent; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.1cqh; cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--banana); color: var(--ink); }
 .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 2.4cqh; }
 
+/* Settings rows and On/Off toggles */
 .settings-list { display: flex; flex-direction: column; gap: 0.9cqh; }
 .setting { display: flex; align-items: center; justify-content: space-between; padding: 1.1cqh 1.6cqh; border-radius: 1.2cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); font: 800 2.2cqh 'Rubik', sans-serif; color: var(--paper); text-transform: uppercase; letter-spacing: 0.1cqh; }
 .toggle { min-width: 10cqh; padding: 0.8cqh 1.4cqh; border-radius: 0.9cqh; border: 0.25cqh solid var(--banana-dark); background: var(--banana); color: var(--ink); font: 800 1.9cqh 'Rubik', sans-serif; text-transform: uppercase; cursor: pointer; }
 .toggle[aria-pressed="false"] { background: transparent; color: var(--khaki); border-color: var(--panel-line); }
 
+/* #ui is only a mount point for React, so it adds no box of its own */
 #ui { display: contents; }
 
+/* Online lobby and room code */
 .lobby-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.4cqh; }
 .lobby-box { display: flex; flex-direction: column; gap: 1.2cqh; }
 .code-row { display: flex; gap: 1cqh; }
@@ -453,6 +490,7 @@ table.compact { font-size: 1.9cqh; }
 .room-code small { font-size: 1.8cqh; text-transform: none; }
 .mode-chip[data-state="offline"] { opacity: 0.6; }
 
+/* HUD extras: score pill, key hints, in-battle help, FPS counter */
 .score-pill { padding: 0.8cqh 1.6cqh; border-radius: 1.2cqh; background: rgba(24, 28, 15, 0.78); }
 .hud-btn kbd { min-width: 0; margin-left: 0.4cqh; padding: 0 0.6cqh; font-size: 1.4cqh; box-shadow: none; background: rgba(255,255,255,0.18); color: var(--paper); }
 body.touch .hud-btn kbd { display: none; }
@@ -467,6 +505,7 @@ body.touch .hud-btn kbd { display: none; }
 body.touch .hud-help { display: none; }
 .fps { position: absolute; left: 2cqh; bottom: 1.4cqh; padding: 0.3cqh 0.8cqh; border-radius: 0.6cqh; background: rgba(0,0,0,0.55); color: #9ee37d; font: 700 1.6cqh monospace; }
 
+/* Menu layout version 2 (left rail of tiles + three columns) */
 .menu.v2 { grid-template-columns: 12cqh 1fr 0.95fr; }
 .menu.v2 .menu-top { grid-column: 1 / -1; }
 .menu-rail { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 1.2cqh; }
@@ -480,6 +519,7 @@ body.touch .hud-help { display: none; }
 .modes-list { display: flex; flex-direction: column; gap: 1.4cqh; }
 .modes-list .mode-card small { white-space: normal; line-height: 1.35; }
 
+/* Toast pop-ups (achievement, error, info) */
 .toasts { position: absolute; right: 2cqh; top: 12cqh; z-index: 30; display: flex; flex-direction: column; gap: 1cqh; pointer-events: none; }
 .toast { display: flex; gap: 1.2cqh; align-items: center; min-width: 40cqh; padding: 1.2cqh 1.8cqh; border-radius: 1.4cqh; background: var(--panel); border: 0.3cqh solid var(--banana); color: var(--paper); box-shadow: 0 1cqh 3cqh rgba(0,0,0,0.4); animation: toast-in 0.35s ease-out; }
 .toast small { display: block; font-size: 1.5cqh; color: var(--khaki); text-transform: uppercase; letter-spacing: 0.15cqh; }
@@ -487,12 +527,14 @@ body.touch .hud-help { display: none; }
 .toast span { font-size: 1.7cqh; }
 @keyframes toast-in { from { transform: translateX(110%); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* Achievement badges on the profile */
 .badges { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.8cqh; }
 .badge-item { display: flex; flex-direction: column; align-items: center; gap: 0.3cqh; padding: 0.8cqh 0.4cqh; border-radius: 1cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); text-align: center; font-size: 1.4cqh; color: var(--khaki); }
 .badge-item .ico { width: 3cqh; height: 3cqh; color: var(--banana); }
 .badge-item.locked { opacity: 0.35; }
 .badge-item.locked .ico { color: var(--khaki); }
 
+/* Daily challenge screen and the daily card on the menu */
 .daily-home { display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.4cqh; }
 .daily-result { display: flex; flex-direction: column; align-items: center; gap: 0.6cqh; padding: 2cqh; border-radius: 1.4cqh; background: rgba(255,255,255,0.05); text-align: center; }
 .daily-result b { font: 400 4.4cqh 'Black Ops One', sans-serif; color: var(--banana); }
@@ -505,16 +547,19 @@ body.touch .hud-help { display: none; }
 .daily-card .ico { width: 3.4cqh; height: 3.4cqh; }
 .daily-card small { display: block; font-weight: 600; font-size: 1.7cqh; }
 
+/* Profile record: tighter five-column grid */
 .record { grid-template-columns: repeat(5, 1fr); gap: 0.7cqh; }
 .record div { padding: 0.7cqh 1cqh; }
 .record dd { font-size: 2.6cqh; }
 .profile-main { gap: 1cqh; }
 .profile-main .rank-card.big { padding: 0.8cqh 1.4cqh; }
 
+/* Segmented switch (Best game / Career) */
 .segmented { display: flex; gap: 0.4cqh; padding: 0.4cqh; border-radius: 1cqh; background: rgba(255,255,255,0.08); }
 .segmented button { padding: 0.7cqh 1.4cqh; border: 0; border-radius: 0.8cqh; background: transparent; color: var(--khaki); font: 800 1.8cqh 'Rubik', sans-serif; text-transform: uppercase; cursor: pointer; }
 .segmented button[aria-checked="true"] { background: var(--banana); color: var(--ink); }
 
+/* Panel background and pop-in animation */
 .panel-screen:not(.dim) {
   background:
     repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 2cqh, transparent 2cqh 6cqh) 0 100% / 100% 14% no-repeat,
@@ -527,15 +572,18 @@ body.touch .hud-help { display: none; }
 .panel, .puzzle-card { animation: pop-in 0.22s ease-out; }
 @keyframes pop-in { from { transform: translateY(1.6cqh) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* Hover and press feedback on cards and buttons */
 .mode-card, .tile, .mbtn, .daily-card { transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease; }
 .mode-card:hover { transform: translateY(-0.4cqh); box-shadow: 0 0.9cqh 0 var(--olive-dark), 0 0 0 0.3cqh rgba(255,225,53,0.55); }
 .mode-card.primary:hover { box-shadow: 0 0.9cqh 0 var(--banana-dark), 0 0 2.4cqh rgba(255,225,53,0.6); }
 .tile:hover, .daily-card:hover { transform: translateY(-0.3cqh); filter: brightness(1.12); }
 .mbtn:hover { transform: translateY(-0.2cqh); }
 
+/* Small nudge animation on the main play card */
 .menu.v2 .mode-card.primary .mode-tag { animation: nudge 2.4s ease-in-out infinite; }
 @keyframes nudge { 0%, 70%, 100% { transform: none; } 80% { transform: scale(1.08); } 90% { transform: scale(0.98); } }
 
+/* Leaderboard medals for the top three */
 table.leaderboard tbody tr:nth-child(-n+3):not(.empty-row) td:first-child { font-weight: 800; }
 table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .medal { display: inline-grid; place-items: center; width: 3cqh; height: 3cqh; border-radius: 50%; font-size: 1.6cqh; font-weight: 800; color: var(--ink); }
@@ -543,6 +591,7 @@ table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .medal.m2 { background: linear-gradient(#f2f2f2, #a9a9a9); }
 .medal.m3 { background: linear-gradient(#f0b27a, #a05a2c); }
 
+/* Menu v2 adjustments: name tag above the avatar, setting notes */
 .menu.v2 { grid-template-rows: 1fr; padding-top: 5cqh; }
 .menu.v2 .menu-rail, .menu.v2 .menu-left, .menu.v2 .menu-right { grid-row: 1; }
 .name-tag { position: absolute; top: -1cqh; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; gap: 0.8cqh; align-items: center; padding: 0.5cqh 1.6cqh; border-radius: 3cqh; background: rgba(24, 28, 15, 0.85); white-space: nowrap; }
@@ -550,6 +599,7 @@ table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .menu.v2 .podium { height: 36cqh; padding-top: 4cqh; }
 .setting-note { font: 600 1.8cqh 'Rubik', sans-serif; color: var(--khaki); text-transform: none; letter-spacing: 0; }
 
+/* Difficulty cards (easy / medium / hard) and level tags */
 .levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.8cqh; }
 .level-card { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1cqh; padding: 2.2cqh; border-radius: 1.6cqh; cursor: pointer; text-align: left;
   border: 0.35cqh solid var(--olive-dark); background: linear-gradient(var(--olive-light), var(--olive)); color: var(--paper); box-shadow: 0 0.7cqh 0 var(--olive-dark);
@@ -569,6 +619,7 @@ table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .menu.v2 .podium { margin-top: 3cqh; }
 .menu.v2 .logo { margin-bottom: 0; }
 
+/* Campaign map: chapters, mission nodes, stars and the briefing panel */
 .campaign { display: grid; grid-template-columns: 1.6fr 1fr; gap: 2cqh; }
 .map { display: flex; flex-direction: column; gap: 1.2cqh; }
 .chapter { padding: 1.2cqh 1.6cqh; border-radius: 1.4cqh; background: rgba(255,255,255,0.05); border: 0.25cqh solid var(--panel-line); }
@@ -609,6 +660,7 @@ table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .briefing { align-self: start; }
 .briefing .mbtn { margin-top: 0.6cqh; }
 
+/* Login extras (remember me, name hint), account forms and admin table */
 .remember { display: flex; align-items: center; gap: 1cqh; font-weight: 600; font-size: 1.9cqh; color: var(--khaki); cursor: pointer; }
 .remember input { width: 2.4cqh; height: 2.4cqh; accent-color: var(--banana); }
 .remember small { opacity: 0.75; }
@@ -633,6 +685,7 @@ table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .admin-table tr[data-asking="true"] td { background: rgba(255,225,53,0.12); }
 .status-line { margin: 0.6cqh 0 0; color: var(--khaki); font-size: 1.9cqh; text-align: center; }
 
+/* Volume sliders and grouped settings */
 .setting label { cursor: pointer; }
 .slider { display: inline-flex; align-items: center; gap: 1.2cqh; }
 .slider input[type="range"] { width: 24cqh; height: 2.4cqh; accent-color: var(--banana); cursor: pointer; }
@@ -642,8 +695,10 @@ table.leaderboard tbody tr:not(.empty-row) td:first-child { width: 4cqh; }
 .settings-group { grid-column: 1 / -1; margin: 0.8cqh 0 0; font: 400 2.4cqh 'Black Ops One', sans-serif; letter-spacing: 0.15cqh; color: var(--banana); }
 .settings-group:first-child { margin-top: 0; }
 
+/* Keyboard focus ring for every interactive element */
 :where(button, a, input, select, [role="button"], [tabindex]):focus-visible { outline: 0.5cqh solid var(--banana); outline-offset: 0.3cqh; }
 
+/* Accessibility: high contrast mode (body class set by useSettings) */
 body.a11y-contrast { --panel: #000; --panel-line: rgba(255, 255, 255, 0.85); --khaki: #fff6cc; --paper: #fff; }
 body.a11y-contrast .panel, body.a11y-contrast .puzzle-card { border-color: #fff; }
 body.a11y-contrast .setting { background: #000; border-color: #fff; }
@@ -659,6 +714,7 @@ body.a11y-contrast .puzzle { background: rgba(0, 0, 0, 0.88); backdrop-filter: n
 body.a11y-contrast .panel-screen.dim { background: rgba(0, 0, 0, 0.85); backdrop-filter: none; }
 body.a11y-contrast :where(button, a, input, select, [role="button"], [tabindex]):focus-visible { outline-color: #fff; box-shadow: 0 0 0 0.9cqh #000; }
 
+/* Accessibility: large text mode */
 body.a11y-large .hud-player { scale: 1.15; transform-origin: top left; }
 body.a11y-large .hud-score { scale: 1.15; transform-origin: top right; }
 body.a11y-large .hud-weapons { scale: 1.15; transform-origin: bottom right; }
@@ -668,6 +724,7 @@ body.a11y-large .panel-head p, body.a11y-large .setting, body.a11y-large .panel 
 body.a11y-large #puzzle-sub, body.a11y-large .puzzle-side, body.a11y-large .puzzle-credit, body.a11y-large .rule-chip, body.a11y-large .mode-chip,
 body.a11y-large .toast { zoom: 1.15; }
 
+/* Accessibility: calm mode turns animations off */
 body.a11y-calm *, body.a11y-calm *::before, body.a11y-calm *::after {
   animation-duration: 0.01s !important; animation-iteration-count: 1 !important; transition: none !important; scroll-behavior: auto !important;
 }
@@ -681,12 +738,14 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
   .puzzle-card.good { border-color: var(--good); }
 }
 
+/* Full screen stage */
 #stage:fullscreen {
   position: fixed !important; inset: 0 !important; margin: auto !important;
   width: min(100vw, calc(100vh * 16 / 9)) !important; height: min(100vh, calc(100vw * 9 / 16)) !important;
 }
 #stage::backdrop { background: #10130a; }
 
+/* "Turn your phone sideways" hint for portrait phones */
 #rotate-hint { display: none; }
 @media (orientation: portrait) and (max-width: 760px) {
   #rotate-hint {
@@ -701,17 +760,20 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 @keyframes rotate-phone { 0%, 25% { transform: none; } 55%, 100% { transform: rotate(90deg); } }
 @media (prefers-reduced-motion: reduce) { .rotate-phone { animation: none !important; transform: rotate(90deg); } }
 
+/* Brand: emblem + logo title */
 .brand { display: flex; align-items: center; gap: 2cqh; }
 .emblem { height: 17cqh; width: auto; filter: drop-shadow(0 0.8cqh 0 rgba(0,0,0,0.25)); animation: emblem-in 0.6s ease-out; }
 .login .brand .emblem { height: 12cqh; }
 .login .brand { justify-content: center; }
 @keyframes emblem-in { from { transform: scale(0.6) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* Active power-up badges in the HUD */
 .buffs { display: flex; gap: 0.6cqh; min-height: 0; }
 .buff { padding: 0.2cqh 0.9cqh; border-radius: 1cqh; font: 800 1.5cqh 'Rubik', sans-serif; letter-spacing: 0.08cqh; color: var(--ink); box-shadow: 0 0.2cqh 0 rgba(0,0,0,0.3); }
 .buff.shield { background: #7ec8ff; }
 .buff.fuel { background: var(--fuel); }
 
+/* Banana Power picker cards */
 .power-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4cqh; }
 .power-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.8cqh; padding: 2cqh 1.4cqh; border-radius: 1.6cqh; cursor: pointer; text-align: center;
   border: 0.4cqh solid var(--power, var(--banana)); background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--power, var(--banana)) 35%, transparent), rgba(0,0,0,0.35) 70%); color: var(--paper);
@@ -725,6 +787,7 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .power-card.random { --power: #f4a261; }
 .buff.power { color: var(--ink); background: var(--power); }
 
+/* Public home page, trailer pop-up and the legal pages */
 .home { background: radial-gradient(ellipse at 22% 112%, #4a7a32 0 40%, transparent 41%), radial-gradient(ellipse at 88% 125%, #3e6a2a 0 46%, transparent 47%), linear-gradient(#7fbfe6, #cfe8d5 72%, #9cc7a4); }
 .home-scroll { position: absolute; inset: 0; z-index: 1; overflow-y: auto; padding: 4cqh 6cqh 3cqh; display: flex; flex-direction: column; gap: 3cqh; }
 .home-hero { display: grid; grid-template-columns: 1fr 1.15fr; gap: 4cqh; align-items: center; }
@@ -760,10 +823,12 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 @media (orientation: portrait) {
   .home-hero { grid-template-columns: 1fr; }
 }
+/* Guest badge and the "save your progress" button */
 .role-badge[data-role="guest"] { background: var(--khaki); color: var(--ink); }
 .welcome.guest-save { border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: 2.2cqh; text-align: left; }
 .welcome.guest-save b { color: var(--olive-dark); text-decoration: underline; }
 
+/* Admin: live events feed, coloured by event kind */
 .live-events { display: flex; flex-direction: column; gap: 1cqh; margin-top: 1.2cqh; }
 .live-bar { display: flex; align-items: center; gap: 1.4cqh; flex-wrap: wrap; color: var(--khaki); font-size: 1.9cqh; }
 .live-bar select { font: inherit; padding: 0.4cqh 0.8cqh; border-radius: 0.6cqh; }
@@ -782,6 +847,7 @@ body.a11y-calm #hud-toast.show { animation-duration: 2s !important; animation-ti
 .event-list li[data-kind="admin"] .event-kind { background: var(--banana); color: var(--ink); }
 .event-list b { color: var(--banana); }
 
+/* Settings: signed-in devices list and loading skeletons */
 .devices { display: flex; flex-direction: column; gap: 0.8cqh; margin: 0.6cqh 0 1cqh; }
 .devices h4 { margin: 0; color: var(--khaki); font-size: 2cqh; }
 .devices ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6cqh; }
@@ -792,6 +858,7 @@ a.toggle { text-decoration: none; display: inline-flex; align-items: center; }
 .skeleton-row { height: 5cqh; border-radius: 1cqh; background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.05) 100%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
+/* Admin: reason form, suspended rows, API health chips and sparklines */
 .reason-form { display: flex; align-items: flex-end; gap: 1cqh; margin: 1cqh 0; }
 .reason-form .field { flex: 1; }
 .admin-table tr[data-suspended="true"] td { opacity: 0.75; }
@@ -806,6 +873,7 @@ a.toggle { text-decoration: none; display: inline-flex; align-items: center; }
 .spark svg { width: 100%; height: 9cqh; display: block; }
 .spark-wait { margin: 0; height: 9cqh; display: grid; place-items: center; color: var(--khaki); font-size: 1.8cqh; }
 
+/* Misc: skeleton list, error/info toasts, save form */
 .skeleton { display: flex; flex-direction: column; gap: 0.8cqh; width: 100%; }
 .toast.error { border-color: var(--bad); }
 .toast.error .ico { color: var(--bad); }
@@ -815,6 +883,7 @@ body.a11y-calm .skeleton-row { animation: none; }
 .admin-msg { min-height: 2.4cqh; margin: 1cqh 0 0.4cqh; }
 .save-form { display: flex; flex-direction: column; gap: 1cqh; }
 
+/* Action toggles and small extras */
 .toggle.action { background: transparent; color: var(--banana); border-color: var(--banana-dark); }
 .toggle.action:hover { background: rgba(255,225,53,0.12); }
 .name-case { text-transform: none; }
@@ -829,9 +898,11 @@ body.a11y-large .mode-card, body.a11y-large .menu-rail .tile, body.a11y-large .d
 body.a11y-large .panel li, body.a11y-large .record, body.a11y-large .results, body.a11y-large .field,
 body.a11y-large .legal, body.a11y-large .home-block, body.a11y-large .toggle { zoom: 1.12; }
 
+/* More high contrast fixes */
 body.a11y-contrast .node.locked, body.a11y-contrast .chapter.locked { opacity: 1; filter: none; color: #fff; }
 body.a11y-contrast .mode-card, body.a11y-contrast .tile, body.a11y-contrast .home-block { border-color: #fff; }
 
+/* Short screens (phones in landscape): bigger minimum sizes */
 @media (max-height: 520px) {
   .setting-note, .auth-note, .name-hint, .meter-text, .remember, .remember small, .field, .panel-head p, .legal, .legal table,
   .home-block p, .home-puzzles span, .home-modes span, .home-foot, .chip, .mode-chip, .rule-chip, .api-chip,
@@ -849,6 +920,7 @@ body.a11y-contrast .mode-card, body.a11y-contrast .tile, body.a11y-contrast .hom
   #rank, #center-msg { font-size: max(2cqh, 12px); }
 }
 
+/* Wide touch screens */
 @media (pointer: coarse) and (min-aspect-ratio: 16/9) {
   #stage { width: 100vw; height: 100vh; height: 100dvh; aspect-ratio: auto; }
   #battle-canvas { inset: auto; left: 0; top: 50%; width: 100%; height: auto; aspect-ratio: 16 / 9; transform: translateY(-50%); }
@@ -859,6 +931,7 @@ body.touch .power-card kbd { display: none; }
 
 .feed-row .headshot-tag { display: inline-block; margin-left: 0.4cqh; padding: 0 0.7cqh; border-radius: 0.6cqh; background: linear-gradient(180deg, #ffe066, #f4b400); color: #3a2a00; font-weight: 800; font-size: 0.8em; letter-spacing: 0.05em; vertical-align: middle; box-shadow: 0 0 0.6cqh rgba(255, 209, 102, 0.6); }
 
+/* Story clip player and looping videos */
 .cutscene { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: #050703; overflow: hidden; animation: cutscene-in 0.25s ease-out; }
 .cutscene-media { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cutscene.still .cutscene-media { object-fit: cover; }
@@ -876,6 +949,7 @@ body.a11y-calm .cutscene { animation: none; }
 .avatar-hero figcaption { font: 700 1.3cqh 'Rubik', sans-serif; color: #1d2112; background: var(--banana); border-radius: 0 0 0.6cqh 0.6cqh; text-align: center; margin-top: -0.4cqh; }
 .trailer-actions { display: flex; gap: 1.2cqh; }
 
+/* Difficulty card icons, suggest-password button and copy-code button */
 .level-card { align-items: center; text-align: center; }
 .level-card ul { text-align: left; align-self: stretch; }
 .level-icon { font-size: 7cqh; line-height: 1; filter: drop-shadow(0 0 1.4cqh rgba(255, 225, 53, 0.45)); transition: transform 0.2s; }

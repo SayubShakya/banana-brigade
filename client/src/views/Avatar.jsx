@@ -1,3 +1,4 @@
+// Avatar.jsx: screen where the player designs their soldier (hat, uniform, skin, goggles, face).
 import { useEffect, useRef } from 'react';
 import { PARTS, DEFAULT_AVATAR, makeAvatar, drawSoldier } from '../game/characters.js';
 import { WEAPONS } from '../game/config.js';
@@ -7,6 +8,10 @@ import LoopVideo from '../components/LoopVideo.jsx';
 const WEAPON_KEYS = Object.keys(WEAPONS);
 const randomOf = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+/**
+ * Swatches: a row of colour or text buttons for one avatar part.
+ * @param {{values: Array, current: string, onPick: Function, label: Function}} props
+ */
 function Swatches({ values, current, onPick, label }) {
   return (
     <div className="swatches">
@@ -25,6 +30,11 @@ function Swatches({ values, current, onPick, label }) {
   );
 }
 
+/**
+ * Preview: an animated canvas of the soldier, drawn with requestAnimationFrame.
+ * Every 2 seconds it shows another weapon, and every 4 seconds it switches between
+ * walking and flying with the jetpack. The animation is cancelled on unmount.
+ */
 function Preview({ parts, weaponLabel }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -56,6 +66,11 @@ function Preview({ parts, weaponLabel }) {
   return <canvas id="avatar-preview" ref={ref} width={270} height={330} aria-label="Avatar preview" />;
 }
 
+/**
+ * Avatar: the avatar editor screen.
+ * @param {{name: string, parts: object, setParts: Function, onBack: Function}} props
+ * setParts (from useAccount) saves the choice in localStorage; no API call is needed.
+ */
 export default function Avatar({ name, parts, setParts, onBack }) {
   const weaponLabel = useRef(null);
   const pick = (key) => (value) => setParts({ ...parts, [key]: value });

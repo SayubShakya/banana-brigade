@@ -1,3 +1,4 @@
+// Home.jsx: the public landing page: pitch, Banana API status, how puzzles work, game modes.
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { Icon, Sky } from '../components/common.jsx';
@@ -22,6 +23,11 @@ const MODES = [
   ['helmet', 'Training', 'Target dummies to warm up on.'],
 ];
 
+/**
+ * useApiLine: asks GET /api/v1/status once and turns it into a status line, e.g.
+ * "Banana API online · 12 puzzles ready" or offline with reserve puzzles.
+ * @returns {{state: string, text: string}}
+ */
 export function useApiLine() {
   const [line, setLine] = useState({ state: 'checking', text: 'Checking the Banana API…' });
   useEffect(() => {
@@ -34,6 +40,10 @@ export function useApiLine() {
   return line;
 }
 
+/**
+ * Trailer: pop-up video player for the game trailer. Escape or a click outside closes it.
+ * Emits 'media:started' / 'media:ended' so the game music can pause.
+ */
 function Trailer({ onClose }) {
   const video = useRef(null);
   const fullscreen = () => {
@@ -59,6 +69,11 @@ function Trailer({ onClose }) {
   );
 }
 
+/**
+ * Home: landing screen for visitors who are not logged in.
+ * @param {{onPlay: Function, onGuest: Function, onOpen: Function}} props
+ * Plays the logo clip once, shortly after it opens.
+ */
 export default function Home({ onPlay, onGuest, onOpen }) {
   const apiLine = useApiLine();
   const [trailer, setTrailer] = useState(false);

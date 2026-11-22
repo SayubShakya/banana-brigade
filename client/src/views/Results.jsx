@@ -1,3 +1,5 @@
+// Results.jsx: the end-of-battle screen: outcome, puzzle stats, scoreboard and battle log.
+// It also saves the result to the server.
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { MODES } from '../game/config.js';
@@ -11,6 +13,10 @@ const fmtTime = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart
 const PURPOSES = [['deploy', 'Deploy'], ['respawn', 'Respawn'], ['crate', 'Crates']];
 const MEDALS = [['gold', 'GOLD'], ['silver', 'SILVER'], ['bronze', 'BRONZE']];
 
+/**
+ * bananaReport: turn the session's puzzle stats into display values
+ * (accuracy, average solve time, medals, live vs reserve puzzles, supply drops).
+ */
 export function bananaReport(s) {
   const solved = s.solved ?? 0;
   const attempts = s.attempts ?? 0;
@@ -27,6 +33,7 @@ export function bananaReport(s) {
   };
 }
 
+/** BananaReport: shows the numbers from bananaReport() as a small list. */
 function BananaReport({ s }) {
   const r = bananaReport(s);
   return (
@@ -42,6 +49,11 @@ function BananaReport({ s }) {
   );
 }
 
+/**
+ * resultMatch: build a match record (same shape as the server's saved match) from the
+ * finished game, so the Results screen can show the battle log straight away.
+ * @returns {object|null} null if nothing was logged.
+ */
 export function resultMatch(game) {
   const b = game.battleLog;
   if (!b?.log?.length && !b?.roster?.length) return null;
@@ -59,6 +71,12 @@ export function resultMatch(game) {
   };
 }
 
+/**
+ * Results: the results screen.
+ * @param {{game, me, onMenu, onAgain, onMission, onMap}} props  game = the 'game:over' payload.
+ * On mount it saves the result: POST /api/v1/campaign/result for missions, otherwise
+ * POST /api/v1/scores. Online and training games are not saved here.
+ */
 export default function Results({ game, me, onMenu, onAgain, onMission, onMap }) {
   const mission = game.mission;
   const [camp, setCamp] = useState(null);
@@ -69,6 +87,7 @@ export default function Results({ game, me, onMenu, onAgain, onMission, onMap })
     ? { state: 'ok', text: 'Online match: the server saved every player\'s score.' }
     : { state: '', text: result.mode === 'training' ? '' : 'Saving your score…' });
 
+  // Save once per finished game; the reply may unlock the next mission or achievements.
   useEffect(() => {
     if (mission) {
       api.campaignResult({ powers: [...(game.session?.powers ?? [])], mission: mission.id, won: outcome.won, kills: result.player.kills, deaths: result.player.deaths, continues: result.continues ?? 0, timeS: Math.min(3600, durationS), ...record })

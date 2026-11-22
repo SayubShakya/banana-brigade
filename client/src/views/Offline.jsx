@@ -1,9 +1,15 @@
+// Offline.jsx: shown when the game server cannot be reached (from the cached page).
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { Panel } from '../components/common.jsx';
 
 const EVERY_MS = 5000;
 
+/**
+ * Offline: explains whether the device or the server is offline and retries by itself.
+ * @param {{onBack: Function}} props  onBack re-runs the start route once the server answers.
+ * Listens to the browser 'online' / 'offline' events and polls GET /api/v1/status every 5 s.
+ */
 export default function Offline({ onBack }) {
   const [tries, setTries] = useState(0);
   const [checking, setChecking] = useState(false);

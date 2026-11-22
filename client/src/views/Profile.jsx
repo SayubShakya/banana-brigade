@@ -1,3 +1,4 @@
+// Profile.jsx: the player's service record: stats, rank, achievements and recent battles.
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import { rankFor, xpFor, MODE_NAMES } from '../services/rank.js';
@@ -5,9 +6,16 @@ import { Panel, AvatarCanvas, RankCard, Icon, Skeleton, SkeletonRows } from '../
 import { BattleLogDialog } from '../components/BattleLog.jsx';
 import { resultLabel } from '../services/history.js';
 
+// Format helpers: play time as "1h 5m" / "3m 20s", and dates as "5 Nov".
 const playTime = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`);
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
+/**
+ * Profile: the profile screen.
+ * @param {{account, parts, onCustomise, onHistory, onBack}} props
+ * API: GET /api/v1/scores/me, GET /api/v1/auth/sessions (member since, sessions)
+ * and GET /api/v1/achievements. All numbers come from the server, not from the browser.
+ */
 export default function Profile({ account, parts, onCustomise, onHistory, onBack }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');

@@ -1,3 +1,4 @@
+// Modes.jsx: the "More Modes" screen (Boot Camp, Survival, Team Battle, Training).
 import { Panel, Icon } from '../components/common.jsx';
 
 const MODES = [
@@ -7,6 +8,7 @@ const MODES = [
   { mode: 'training', icon: 'target', name: 'Training', text: 'A practice range with dummies that do not shoot back. Try every weapon and the jetpack. No puzzle to start, not ranked.', free: true },
 ];
 
+/** Modes: one card per mode; a click calls onDeploy(mode) (useBattle.deployFrom). */
 export default function Modes({ onDeploy, onBack }) {
   return (
     <Panel wide title="More Modes" subtitle="Battle modes start with a Banana puzzle. Boot Camp and Training drop you straight in."

@@ -1,8 +1,15 @@
+// SaveAccount.jsx: turns a guest account into a normal account with a username and password.
 import { useState } from 'react';
 import { api } from '../services/api.js';
 import { Panel } from '../components/common.jsx';
 import { useNameHint, strength, LEVELS } from './Login/authFields.js';
 
+/**
+ * SaveAccount: form to upgrade a guest.
+ * @param {{account, onSaved, onBack}} props
+ * Submit -> api.upgrade -> POST /api/v1/auth/upgrade. The server hashes the password with
+ * bcrypt and keeps the same user, so scores, achievements and stars are kept.
+ */
 export default function SaveAccount({ account, onSaved, onBack }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -12,6 +19,7 @@ export default function SaveAccount({ account, onSaved, onBack }) {
   const hint = useNameHint(username.trim(), true);
   const level = password ? strength(password) : '';
 
+  // Quick checks in the browser for fast feedback; the server checks everything again.
   async function submit(e) {
     e.preventDefault();
     setError('');

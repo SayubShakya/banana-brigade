@@ -1,6 +1,12 @@
+// Pause.jsx: the pause menu shown over the battle (Esc).
 import { Panel } from '../components/common.jsx';
 import { toggleFullscreen, useFullscreen } from '../services/fullscreen.js';
 
+/**
+ * Pause: Resume, sound, fullscreen, end battle and quit buttons.
+ * @param {{sound, online, canEnd, onResume, onToggleSound, onEnd, onQuit}} props
+ * In online games the match keeps running, and only the host can end it for everyone.
+ */
 export default function Pause({ sound, online, canEnd, onResume, onToggleSound, onEnd, onQuit }) {
   const [isFullscreen, canFullscreen] = useFullscreen();
   return (

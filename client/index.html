@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- index.html: the single page of Banana Brigade. Vite serves it and injects the built JS/CSS. -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Banana Brigade</title>
@@ -14,6 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet"> <!-- Fonts: Black Ops One and Rubik from Google Fonts (SIL Open Font License) -->
 </head>
 <body>
+  <!-- Icon sprite: each <symbol id="i-..."> is drawn by the React <Icon id="..." /> component with <use>. -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 1v6M12 17v6M1 12h6M17 12h6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -30,7 +32,10 @@
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M4 10l8-5 8 5v4l-8-5-8 5zM4 17l8-5 8 5v3l-8-5-8 5z" fill="currentColor"/></symbol>
   </svg>
 
+    <!-- #stage is the 16:9 game area (it is what goes full screen). -->
     <div id="stage">
+        <!-- Battle screen: plain HTML (canvas + HUD) driven by the game engine, not by React.
+             useNavigation shows it only while the screen is 'battle' or 'pause'. -->
         <section id="screen-battle" class="screen battle" hidden>
       <canvas id="battle-canvas" aria-label="Battlefield"></canvas>
       <div id="hud">
@@ -99,14 +104,17 @@
       </div>
     </section>
 
+    <!-- React mounts every menu, form and overlay here (see src/main.jsx). -->
     <div id="ui"></div>
   </div>
 
+    <!-- Shown by CSS on phones held in portrait. -->
     <div id="rotate-hint" role="alert">
     <div class="rotate-phone" aria-hidden="true"></div>
     <p><b>Turn your phone sideways</b>Banana Brigade is played in landscape.</p>
   </div>
 
+  <!-- Entry point of the React app (an ES module). -->
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
