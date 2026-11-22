@@ -6,6 +6,11 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+### Added (`feature/admin-login`)
+- Separate **admin login page** at `/#admin-login` (link under the player login). Only admin accounts can sign in
+  there and land straight on the Admin dashboard; a player gets 403 and no session is started. New endpoint
+  `POST /api/v1/auth/admin-login`; the player login still works for both roles.
+
 ### Added (`feature/history-server`, `feature/battle-log-recording`, `feature/history-ui`)
 - Match history screen (menu tile, `#history`, Profile "See full history") with All / Solo / Online / per-mode
   filters and Load more paging.

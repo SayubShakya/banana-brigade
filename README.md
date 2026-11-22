@@ -86,6 +86,8 @@ only shows pictures and sends controls and answers.
 - **Admin tools:** audit log of every admin action with its reason; suspend and restore players (signed out at
   once); Banana API health charts.
 - **Admin screen:** every account with its games, kills and puzzles; reset a player's scores; promote or demote.
+- **Two roles, two logins:** players log in on the normal page; admins can also use the separate admin login at
+  `/#admin-login`, which refuses player accounts (403, no session) and opens the Admin dashboard.
 - **Installable (PWA):** add it to a phone's home screen or install it from Chrome; it opens offline (and says
   so), while battles, logins and puzzles still need the server.
 - **Phones:** touch sticks, a fullscreen button and a "turn your phone sideways" hint.
