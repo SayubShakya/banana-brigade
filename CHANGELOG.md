@@ -6,6 +6,14 @@ merged into `main` with `--no-ff`; the merge commit is given in brackets.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-22
+
+Match history, battle logs, a per-player leaderboard, a separate admin login and many playtest fixes since 1.3.2.
+
+### Added (`feature/host-end-match`)
+- The online host can end a running match for everyone from the in-game menu (`room:end`, host only, checked on
+  the server). Results and the battle log say the host ended it.
+
 ### Added (`feature/admin-login`)
 - Separate **admin login page** at `/#admin-login` (link under the player login). Only admin accounts can sign in
   there and land straight on the Admin dashboard; a player gets 403 and no session is started. New endpoint
@@ -459,6 +467,7 @@ Merged from `fix/daily-and-demo` (90b15bd), `feature/identity-plus` (5945813), `
 - SQLite schema, registration, login and sessions with bcrypt.
 - Game, scores and admin routes; first pages and event bus; automated tests.
 
+[1.4.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.4.0
 [1.2.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.2.0
 [1.1.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.1.0
 [1.0.0]: https://github.com/SayubShakya/banana-brigade/releases/tag/v1.0.0

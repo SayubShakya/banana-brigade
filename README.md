@@ -343,7 +343,7 @@ verification.
 | Theme | What to look at | Where |
 |---|---|---|
 | Version control | Feature branches merged with `--no-ff`, small commits, CI | `git log --oneline --graph`, `CHANGELOG.md`, `CONTRIBUTING.md`, `.github/workflows/ci.yml` |
-| Version control | Annotated release tags for each milestone: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`, `v0.4-multiplayer`, `v0.5-campaign`, `v1.0.0` … `v1.3.2` | `git tag -n` |
+| Version control | Annotated release tags for each milestone: `v0.1-login`, `v0.2-gameplay`, `v0.3-mongo-react`, `v0.4-multiplayer`, `v0.5-campaign`, `v1.0.0` … `v1.4.0` | `git tag -n` |
 | Version control | SQLite to MongoDB swap kept in history | commits `fadda7c` and `75afbbd` (then `server/db.js`, today `server/repositories/`) |
 | Event-driven | Browser event bus (observer pattern) | `client/src/services/eventBus.js:3-23` |
 | Event-driven | Engine emits, HUD and sound listen | `client/src/game/world.js:206`, `client/src/game/world.js:305`, `client/src/game/hud.js:76`, `client/src/game/sound.js:343` |

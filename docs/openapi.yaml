@@ -2,7 +2,7 @@
 openapi: "3.0.3"
 info:
   title: "Banana Brigade API"
-  version: "1.3.2"
+  version: "1.4.0"
   description: "The REST API between the Banana Brigade browser app and its server. Every path also works without the /v1 prefix (the old paths). Login uses the HttpOnly session cookie brigade.sid; online matches use Socket.io (see docs/api.md). Puzzle pictures come from the Banana API by Marc Conrad."
 servers:
   - url: "/api/v1"
